@@ -1,0 +1,14 @@
+# Generated build and editor files.
+/build/
+/out/
+/cmake-build-*/
+/CMakeUserPresets.json
+/.vs/
+/.cache/
+*.user
+*.obj
+*.o
+*.exe
+*.dll
+*.ilk
+*.pdb

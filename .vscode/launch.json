@@ -1,0 +1,23 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "ERNC Studio (MINGW64 GDB)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/mingw64-dev/ernc-studio.exe",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "environment": [
+        {
+          "name": "PATH",
+          "value": "D:\\msys64\\mingw64\\bin;${env:PATH}"
+        }
+      ],
+      "MIMode": "gdb",
+      "miDebuggerPath": "D:/msys64/mingw64/bin/gdb.exe",
+      "stopAtEntry": false,
+      "externalConsole": false
+    }
+  ]
+}

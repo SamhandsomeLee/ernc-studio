@@ -1,0 +1,91 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 25,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "mingw64-base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "environment": {
+        "PATH": "D:/msys64/mingw64/bin;$penv{PATH}"
+      },
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "D:/msys64/mingw64/bin/gcc.exe",
+        "CMAKE_CXX_COMPILER": "D:/msys64/mingw64/bin/g++.exe",
+        "CMAKE_MAKE_PROGRAM": "D:/msys64/mingw64/bin/ninja.exe",
+        "CMAKE_PREFIX_PATH": "D:/msys64/mingw64",
+        "CMAKE_CXX_STANDARD": "20",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "ERNC_MINGW64_ROOT": "D:/msys64/mingw64"
+      }
+    },
+    {
+      "name": "mingw64-comm",
+      "displayName": "MINGW64 communication (no UI)",
+      "inherits": "mingw64-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ERNC_BUILD_UI": "OFF",
+        "ERNC_BUILD_TESTS": "ON",
+        "ERNC_BUILD_COMM_LAB": "ON"
+      }
+    },
+    {
+      "name": "mingw64-dev",
+      "displayName": "MINGW64 desktop debug",
+      "inherits": "mingw64-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ERNC_BUILD_UI": "ON",
+        "ERNC_BUILD_TESTS": "ON",
+        "ERNC_BUILD_COMM_LAB": "ON"
+      }
+    },
+    {
+      "name": "mingw64-release",
+      "displayName": "MINGW64 desktop release",
+      "inherits": "mingw64-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "ERNC_BUILD_UI": "ON",
+        "ERNC_BUILD_TESTS": "ON",
+        "ERNC_BUILD_COMM_LAB": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "mingw64-comm",
+      "configurePreset": "mingw64-comm"
+    },
+    {
+      "name": "mingw64-dev",
+      "configurePreset": "mingw64-dev"
+    },
+    {
+      "name": "mingw64-release",
+      "configurePreset": "mingw64-release"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "mingw64-comm",
+      "configurePreset": "mingw64-comm",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "mingw64-dev",
+      "configurePreset": "mingw64-dev",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}
