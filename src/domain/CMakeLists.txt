@@ -5,6 +5,7 @@ add_library(ernc_domain STATIC
     firmware_layout/firmware_layout.cpp
     parameter/runtime_store.cpp
     validation/validation.cpp
+    control_semantics/toggle_semantics.cpp
 )
 
 target_include_directories(ernc_domain PUBLIC

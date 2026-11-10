@@ -134,6 +134,29 @@ foreach(ernc_validation_case IN LISTS ernc_validation_cases)
     )
 endforeach()
 
+add_executable(ernc_toggle_semantics_tests
+    toggle_semantics_test.cpp
+)
+
+target_link_libraries(ernc_toggle_semantics_tests PRIVATE ernc_domain)
+
+set(ernc_toggle_cases
+    reverse_switches
+    unconfirmed_stay_unknown
+    encode_reverse_levels
+    encode_rejects_unknown
+    integer_level_rejects_float
+)
+
+foreach(ernc_toggle_case IN LISTS ernc_toggle_cases)
+    add_test(
+        NAME "toggle_semantics.${ernc_toggle_case}"
+        COMMAND ernc_toggle_semantics_tests
+            "${ernc_toggle_case}"
+            "${CMAKE_SOURCE_DIR}/catalog/parameter_catalog.json"
+    )
+endforeach()
+
 foreach(ernc_layout_case IN LISTS ernc_layout_cases)
     add_test(
         NAME "firmware_layout.${ernc_layout_case}"
