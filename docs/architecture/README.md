@@ -70,9 +70,10 @@ Presentation 只把参数 ID 和用户动作交给 Application。设备当前值
 - `RNC_refresh` 在车速映射确认前的真实写入
 - 顶层 `Step` 的写入口
 - Order 4/5 未确认控制开关
-- 时间换算的反向写入
 - 未确认的阈值公式
 - 没有 `sizeof` / `offsetof` 证据的固件偏移
+
+时间参考换算另行冻结，不因已有 Excel 备注而实现。`running_time`、`max_time` 在解除冻结前只使用固件原值：不显示参考秒数，也不把秒数反算成写入值。
 
 ## 提交规则
 
