@@ -6,6 +6,7 @@ add_library(ernc_domain STATIC
     parameter/runtime_store.cpp
     validation/validation.cpp
     control_semantics/toggle_semantics.cpp
+    control_semantics/command_policy.cpp
 )
 
 target_include_directories(ernc_domain PUBLIC

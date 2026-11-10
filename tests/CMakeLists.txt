@@ -157,6 +157,29 @@ foreach(ernc_toggle_case IN LISTS ernc_toggle_cases)
     )
 endforeach()
 
+add_executable(ernc_command_policy_tests
+    command_policy_test.cpp
+)
+
+target_link_libraries(ernc_command_policy_tests PRIVATE ernc_domain)
+
+set(ernc_command_policy_cases
+    policy_is_reserved
+    catalog_classes_stay_reserved
+    mode_change_is_reserved
+    momentary_stays_one_shot
+    missing_access_is_not_actuated
+)
+
+foreach(ernc_command_policy_case IN LISTS ernc_command_policy_cases)
+    add_test(
+        NAME "command_policy.${ernc_command_policy_case}"
+        COMMAND ernc_command_policy_tests
+            "${ernc_command_policy_case}"
+            "${CMAKE_SOURCE_DIR}/catalog/parameter_catalog.json"
+    )
+endforeach()
+
 foreach(ernc_layout_case IN LISTS ernc_layout_cases)
     add_test(
         NAME "firmware_layout.${ernc_layout_case}"
