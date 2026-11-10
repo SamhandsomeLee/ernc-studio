@@ -82,6 +82,31 @@ foreach(ernc_alias_case IN LISTS ernc_alias_cases)
     )
 endforeach()
 
+add_executable(ernc_runtime_store_tests
+    runtime_store_test.cpp
+)
+
+target_link_libraries(ernc_runtime_store_tests PRIVATE ernc_domain)
+
+set(ernc_runtime_cases
+    missing_id_has_no_state
+    observe_keeps_staged
+    stage_keeps_stale_device
+    offline_keeps_values
+    failed_observation_keeps_values
+    failed_observation_on_unknown
+    stage_starts_stale
+    zero_kinds_stay_distinct
+    offline_on_empty
+)
+
+foreach(ernc_runtime_case IN LISTS ernc_runtime_cases)
+    add_test(
+        NAME "runtime_store.${ernc_runtime_case}"
+        COMMAND ernc_runtime_store_tests "${ernc_runtime_case}"
+    )
+endforeach()
+
 foreach(ernc_layout_case IN LISTS ernc_layout_cases)
     add_test(
         NAME "firmware_layout.${ernc_layout_case}"

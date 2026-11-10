@@ -3,6 +3,7 @@ add_library(ernc_domain STATIC
     catalog/catalog.cpp
     catalog/alias_resolver.cpp
     firmware_layout/firmware_layout.cpp
+    parameter/runtime_store.cpp
 )
 
 target_include_directories(ernc_domain PUBLIC
