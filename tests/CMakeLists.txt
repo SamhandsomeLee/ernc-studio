@@ -466,3 +466,27 @@ foreach(ernc_device_transport_case IN LISTS ernc_device_transport_cases)
         COMMAND ernc_device_transport_tests "${ernc_device_transport_case}"
     )
 endforeach()
+
+add_executable(ernc_serial_transport_tests
+    serial_transport_test.cpp
+)
+
+target_link_libraries(ernc_serial_transport_tests PRIVATE ernc_serial)
+
+set(ernc_serial_transport_cases
+    worker_owns_port
+    missing_port_stays_closed
+    closed_submit
+    empty_submit_while_closed
+    close_while_closed
+    off_worker_open
+    list_ports_has_no_empty_name
+    interface_closed_submit
+)
+
+foreach(ernc_serial_transport_case IN LISTS ernc_serial_transport_cases)
+    add_test(
+        NAME "serial_transport.${ernc_serial_transport_case}"
+        COMMAND ernc_serial_transport_tests "${ernc_serial_transport_case}"
+    )
+endforeach()
