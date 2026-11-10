@@ -27,6 +27,8 @@ option(ERNC_BUILD_UI "Build the Qt Widgets desktop entry" ON)
 option(ERNC_BUILD_TESTS "Enable CTest and add tests/ when that CMakeLists exists" ON)
 option(ERNC_BUILD_COMM_LAB "Add tools/ernc-comm-lab when that CMakeLists exists" OFF)
 
+add_subdirectory(src/domain)
+
 if(ERNC_BUILD_UI)
     add_subdirectory(app)
 endif()
