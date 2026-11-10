@@ -441,3 +441,28 @@ foreach(ernc_wire_parser_case IN LISTS ernc_wire_parser_cases)
         COMMAND ernc_wire_parser_tests "${ernc_wire_parser_case}"
     )
 endforeach()
+
+add_executable(ernc_device_transport_tests
+    device_transport_test.cpp
+)
+
+target_link_libraries(ernc_device_transport_tests PRIVATE ernc_domain)
+
+set(ernc_device_transport_cases
+    closed_submit
+    empty_submit
+    duplicate_open
+    submit_stores_bytes
+    poll_bytes_then_idle
+    close_while_closed
+    close_emits_one_closed
+    refused_submit
+    fault_then_submit
+)
+
+foreach(ernc_device_transport_case IN LISTS ernc_device_transport_cases)
+    add_test(
+        NAME "device_transport.${ernc_device_transport_case}"
+        COMMAND ernc_device_transport_tests "${ernc_device_transport_case}"
+    )
+endforeach()
