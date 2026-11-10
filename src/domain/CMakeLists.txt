@@ -4,6 +4,7 @@ add_library(ernc_domain STATIC
     catalog/alias_resolver.cpp
     firmware_layout/firmware_layout.cpp
     parameter/runtime_store.cpp
+    parameter/write_plan.cpp
     validation/validation.cpp
     control_semantics/toggle_semantics.cpp
     control_semantics/command_policy.cpp

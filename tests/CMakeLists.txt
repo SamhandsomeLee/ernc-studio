@@ -180,6 +180,33 @@ foreach(ernc_command_policy_case IN LISTS ernc_command_policy_cases)
     )
 endforeach()
 
+add_executable(ernc_write_plan_tests
+    write_plan_test.cpp
+)
+
+target_link_libraries(ernc_write_plan_tests PRIVATE ernc_domain)
+
+set(ernc_write_plan_cases
+    selected_verified_is_included
+    blocked_kinds_stay_out
+    pack4_path_is_included
+    category_filters
+    stale_flag_kept
+    store_unchanged
+    duplicate_selection_once
+    real_manifest_alpha_included
+)
+
+foreach(ernc_write_plan_case IN LISTS ernc_write_plan_cases)
+    add_test(
+        NAME "write_plan.${ernc_write_plan_case}"
+        COMMAND ernc_write_plan_tests
+            "${ernc_write_plan_case}"
+            "${CMAKE_SOURCE_DIR}/catalog/parameter_catalog.json"
+            "${ernc_layout_manifest}"
+    )
+endforeach()
+
 foreach(ernc_layout_case IN LISTS ernc_layout_cases)
     add_test(
         NAME "firmware_layout.${ernc_layout_case}"
