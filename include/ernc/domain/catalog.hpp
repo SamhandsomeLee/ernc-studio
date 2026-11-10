@@ -17,16 +17,16 @@ enum class CatalogError {
     /// 两份记录使用了相同的 id 文本。加载失败，不返回部分目录。
     DuplicateId,
 
-    /// editor 缺失、类型不对，或不在本切片承认的控制类型闭集里。
+    /// 给出的 editor 不是文本，空白，或不在本切片承认的控制类型闭集里。缺省表示没有声明控件。
     InvalidControl,
 
-    /// firmware_path 缺失、不是文本，或只含空白。这里不检查该字符串是否出现在固件 manifest。
+    /// 给出了 firmware_path，但它不是文本或只含空白。缺省路径表示没有读取范围，这里不把缺省当成错误。
     MissingPath,
 
     /// 控制类型本身合法，但配套语义矛盾。toggle 必须同时给出不相等的 on/off 线值；其他控制类型不能携带 wire_semantics。
     SemanticConflict,
 
-    /// JSON 无法解析，或文档结构、版本、必填中文说明不符合本切片的 schema。
+    /// JSON 无法解析，或文档结构、版本、空白说明不符合本切片的 schema。说明可以缺省。
     InvalidDocument
 };
 
@@ -105,19 +105,22 @@ struct WireLevels {
     double off{0};
 };
 
+/// 工作表 1 对不上的结构体参数暂时使用的页面分类。它不是固件路径。
+inline constexpr std::string_view kOtherPageCategory = "other";
+
 /// 一条已通过加载校验的参数定义。字符串成员由本对象拥有。
 struct ParameterDefinition {
-    /// 目录主键。不是固件路径、slot 或寄存器地址。
+    /// 目录主键。结构体参数使用成员的完整路径。
     ParameterId id;
 
-    /// 固件字段路径的原文。加载器不把它解析成 offset 或 slot。
-    std::string firmwarePath;
+    /// 固件字段路径的原文。加载器不把它解析成 offset 或 slot。缺省表示这条记录没有读取范围。
+    std::optional<std::string> firmwarePath;
 
-    /// 分组表里的分类。原始表没有分组时为空。
+    /// 分组表里的分类。原始表没有分组时为空。工作表 1 对不上的结构体参数使用 other。
     std::optional<std::string> category;
 
-    /// 参数说明表 B 列原文。加载器不改写拼写。
-    std::string descriptionZh;
+    /// 参数说明表 B 列原文。加载器不改写拼写。说明表没有这一行时为空。
+    std::optional<std::string> descriptionZh;
 
     /// 同名固件字段的数据类型。目录没有给出时为空，加载器不猜测。
     std::optional<DataType> dataType;
@@ -128,8 +131,8 @@ struct ParameterDefinition {
     /// 访问声明。没有单独证据时为空，不用 manifest 的 writable 代替。
     std::optional<AccessMode> access;
 
-    /// 控制类型。每条成功载入的记录都有一个闭集内的值。
-    EditorKind editor{EditorKind::Numeric};
+    /// 控制类型。目录没有声明控件时为空，不用 Numeric 填上。
+    std::optional<EditorKind> editor;
 
     /// toggle 的 on/off 线值。其他控制类型必须为空。
     std::optional<WireLevels> wireLevels;

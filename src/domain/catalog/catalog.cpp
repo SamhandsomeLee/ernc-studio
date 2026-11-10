@@ -661,15 +661,15 @@ bool isParameterKey(std::string_view key) {
 
 /// @brief 读取 toggle 线值，或确认非 toggle 没有线值对象。
 /// @param parameter 参数 JSON 对象。
-/// @param editor 已经通过闭集校验的控制类型。
+/// @param editor 已经通过闭集校验的控制类型。空表示目录没有声明控件，这时不能携带线值。
 /// @param wireLevels 成功且 editor 为 toggle 时写入 on/off。
 /// @return 语义符合控制类型时为空。矛盾时为 SemanticConflict，线值对象结构不对时为 InvalidDocument。
 std::optional<CatalogError> readWireLevels(
     const Json& parameter,
-    EditorKind editor,
+    const std::optional<EditorKind>& editor,
     std::optional<WireLevels>& wireLevels) {
     const Json* field = findField(parameter, "wire_semantics");
-    if (editor != EditorKind::Toggle) {
+    if (!editor || *editor != EditorKind::Toggle) {
         if (field != nullptr) {
             return CatalogError::SemanticConflict;
         }
@@ -718,26 +718,44 @@ std::optional<CatalogError> readParameter(const Json& parameter, ParameterDefini
         return CatalogError::InvalidDocument;
     }
 
-    std::string firmwarePath;
+    std::optional<std::string> firmwarePath;
+    std::string firmwarePathText;
     bool pathPresent = false;
-    if (!readStringField(parameter, "firmware_path", firmwarePath, pathPresent) || !pathPresent
-        || isBlank(firmwarePath)) {
-        return CatalogError::MissingPath;
+    if (!readStringField(parameter, "firmware_path", firmwarePathText, pathPresent)) {
+        return CatalogError::InvalidDocument;
+    }
+    if (pathPresent) {
+        if (isBlank(firmwarePathText)) {
+            return CatalogError::MissingPath;
+        }
+        firmwarePath = std::move(firmwarePathText);
     }
 
+    std::optional<EditorKind> editor;
     std::string editorText;
     bool editorPresent = false;
-    EditorKind editor = EditorKind::Numeric;
-    if (!readStringField(parameter, "editor", editorText, editorPresent) || !editorPresent
-        || !parseEditor(editorText, editor)) {
-        return CatalogError::InvalidControl;
+    if (!readStringField(parameter, "editor", editorText, editorPresent)) {
+        return CatalogError::InvalidDocument;
+    }
+    if (editorPresent) {
+        EditorKind parsed = EditorKind::Numeric;
+        if (isBlank(editorText) || !parseEditor(editorText, parsed)) {
+            return CatalogError::InvalidControl;
+        }
+        editor = parsed;
     }
 
-    std::string description;
+    std::optional<std::string> description;
+    std::string descriptionText;
     bool descriptionPresent = false;
-    if (!readStringField(parameter, "description_zh", description, descriptionPresent)
-        || !descriptionPresent || isBlank(description)) {
+    if (!readStringField(parameter, "description_zh", descriptionText, descriptionPresent)) {
         return CatalogError::InvalidDocument;
+    }
+    if (descriptionPresent) {
+        if (isBlank(descriptionText)) {
+            return CatalogError::InvalidDocument;
+        }
+        description = std::move(descriptionText);
     }
 
     std::optional<std::string> category;
@@ -847,13 +865,13 @@ std::optional<CatalogError> readCatalog(
     for (const Json& element : parameters->elements) {
         ParameterDefinition definition = ParameterDefinition{
             ParameterId::parse("placeholder").value(),
-            {},
-            std::nullopt,
-            {},
             std::nullopt,
             std::nullopt,
             std::nullopt,
-            EditorKind::Numeric,
+            std::nullopt,
+            std::nullopt,
+            std::nullopt,
+            std::nullopt,
             std::nullopt};
         if (const std::optional<CatalogError> error = readParameter(element, definition)) {
             return error;

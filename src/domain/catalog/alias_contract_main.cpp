@@ -17,7 +17,6 @@ using ernc::domain::LayoutLoad;
 using ernc::domain::LayoutResolve;
 using ernc::domain::ParameterAliasLoader;
 using ernc::domain::ParameterAliasTable;
-using ernc::domain::kAdvancedParameterCategory;
 
 /// @brief 打印失败并记下一个检查没有通过。
 /// @param name 检查名，只在本次调用期间借用。调用方保留这段字面量。
@@ -70,10 +69,10 @@ bool expectError(
     return true;
 }
 
-/// @brief 确认正式别名文件里的显式绑定，以及对应路径仍然未核验。
+/// @brief 确认正式别名文件里的成员短名、共享绑定和未绑定文字。
 /// @param aliasPath 别名 JSON 路径，只在本次调用期间借用。
 /// @param manifestPath 正式 manifest 路径，只在本次调用期间借用。
-/// @return 14 条记录、分类、路径和 Unresolved 原因都匹配时为 true。
+/// @return 成员别名指向结构体完整路径，且没有读取范围的文字不带路径时为 true。
 bool checkAliasFile(const char* aliasPath, const char* manifestPath) {
     const LayoutLoad manifest = FirmwareLayoutLoader::loadFile(manifestPath);
     if (!manifest.ok()) {
@@ -85,93 +84,52 @@ bool checkAliasFile(const char* aliasPath, const char* manifestPath) {
         return fail("alias-file");
     }
     const ParameterAliasTable& table = loaded.table();
-    if (table.schemaVersion() != 1 || table.size() != 14) {
+    if (table.schemaVersion() != 1 || table.size() < 100) {
         return fail("alias-size");
     }
 
-    struct Expected {
-        /// Excel 名称原文。
-        const char* name;
-
-        /// 主分类。空指针表示这条记录没有分类。
-        const char* category;
-
-        /// true 表示 Unique，并带 firmwarePath。
-        bool unique;
-
-        /// Unique 时期望的 manifest 路径。Unresolved 时为空指针。
-        const char* firmwarePath;
-
-        /// Unresolved 时期望的原因原文。Unique 时为空指针。
-        const char* reason;
-    };
-    const Expected expected[] = {
-        {"Refer_Num", "ERNC_IN_OUT", true, "RNC_param.refernum", nullptr},
-        {"Err_Num", "ERNC_IN_OUT", true, "RNC_param.errnum", nullptr},
-        {"Spk_Num", "ERNC_IN_OUT", true, "RNC_param.spknum", nullptr},
-        {"RNC_Divergence_Con_Flag", "Threshold", true, "rnc_dicergence.rnc_divergence_con_flag", nullptr},
-        {"RNC_Divergence_Counting", "Threshold", true, "rnc_dicergence.rnc_divergence_counting", nullptr},
-        {"RNC_Divergence_OFF_Time", "Threshold", true, "rnc_dicergence.rnc_divergence_off_time", nullptr},
-        {"RNC_Divergence_threshold", "Threshold", true, "rnc_dicergence.rnc_diverge_threshold", nullptr},
-        {"RNCSpkFAdapMax", "Threshold", true, "rnc_dicergence.RNCSpkFAdapMax", nullptr},
-        {"CAN_Msg", "Check", false, nullptr,
-            "36 个 CAN 名称没有 Can_Msg 槽位，不能把 CAN_Msg 收成数组元素路径。"},
-        {"MiuControlFlag", "高级参数", true, "MiuControlFlag", nullptr},
-        {"TestMode", "高级参数", true, "TestMode", nullptr},
-        {"RNC_MIC_Gain_BT", "高级参数", true, "RNC_MIC_Gain_BT", nullptr},
-        {"Datarecordflag", "高级参数", true, "Datarecordflag", nullptr},
-        {"OrderFour_Flag", nullptr, false, nullptr, "OrderFour_Flag 不在 manifest 字段树里。"},
-    };
-
-    for (std::size_t index = 0; index < table.size(); ++index) {
-        const AliasRecord& record = table.entries()[index];
-        const Expected& item = expected[index];
-        if (record.name != item.name || record.shared) {
-            return fail(item.name);
-        }
-        if ((record.category.has_value()) != (item.category != nullptr)
-            || (item.category != nullptr && *record.category != item.category)) {
-            return fail(item.name);
-        }
-        if (item.unique) {
-            if (record.resolution != AliasResolution::Unique || !record.firmwarePath
-                || *record.firmwarePath != item.firmwarePath || record.reason) {
-                return fail(item.name);
-            }
-            const LayoutResolve resolved = layout.resolve(*record.firmwarePath);
-            if (resolved.tryField() != nullptr || resolved.tryError() == nullptr
-                || *resolved.tryError() != LayoutError::Unverified) {
-                return fail(item.name);
-            }
-        } else if (record.resolution != AliasResolution::Unresolved || record.firmwarePath
-                   || !record.reason || *record.reason != item.reason) {
-            return fail(item.name);
-        }
-        if (table.find(item.name) != &record) {
-            return fail("find");
-        }
+    const AliasRecord* alpha = table.find("alpha1");
+    const AliasRecord* refer = table.find("Refer_Num");
+    const AliasRecord* referMember = table.find("refernum");
+    const AliasRecord* radius = table.find("SpecRadius");
+    const AliasRecord* can = table.find("CAN_Msg");
+    const AliasRecord* date = table.find("check_date");
+    if (alpha == nullptr || alpha->resolution != AliasResolution::Unique || !alpha->firmwarePath
+        || *alpha->firmwarePath != "RNC_param.alpha1" || alpha->shared) {
+        return fail("alpha1");
     }
-
-    if (table.find("") != nullptr || table.find("Can_Msg") != nullptr || table.find("refernum") != nullptr) {
+    if (refer == nullptr || referMember == nullptr || !refer->shared || !referMember->shared
+        || !refer->firmwarePath || !referMember->firmwarePath
+        || *refer->firmwarePath != "RNC_param.refernum"
+        || *referMember->firmwarePath != "RNC_param.refernum") {
+        return fail("refer-num");
+    }
+    if (radius == nullptr || !radius->firmwarePath || *radius->firmwarePath != "ERNC_TF.SpecRadius") {
+        return fail("spec-radius");
+    }
+    if (can == nullptr || date == nullptr || can->resolution != AliasResolution::Unresolved
+        || date->resolution != AliasResolution::Unresolved || can->firmwarePath || date->firmwarePath
+        || can->category || date->category) {
+        return fail("unresolved-text");
+    }
+    if (table.find("Can_Msg") != nullptr || table.find("refer_num") != nullptr || table.find("") != nullptr) {
         return fail("case-fold");
     }
-    const LayoutResolve canArray = layout.resolve("Can_Msg");
-    if (canArray.tryError() == nullptr || *canArray.tryError() != LayoutError::Unverified) {
-        return fail("can-array-still-unverified");
+    for (const AliasRecord& record : table.entries()) {
+        if (record.resolution != AliasResolution::Unique || !record.firmwarePath) {
+            continue;
+        }
+        if (record.firmwarePath->find("Can_Msg[") != std::string::npos) {
+            return fail("can-slot");
+        }
+        const LayoutResolve resolved = layout.resolve(*record.firmwarePath);
+        if (resolved.tryError() == nullptr || *resolved.tryError() != LayoutError::Unverified) {
+            return fail("alias-unverified");
+        }
     }
     const LayoutResolve orderFour = layout.resolve("OrderFour_Flag");
     if (orderFour.tryError() == nullptr || *orderFour.tryError() != LayoutError::NotFound) {
         return fail("order-four-layout");
-    }
-
-    const std::vector<const AliasRecord*> advanced = table.findByCategory(kAdvancedParameterCategory);
-    if (advanced.size() != 4 || advanced[0]->name != "MiuControlFlag" || advanced[1]->name != "TestMode"
-        || advanced[2]->name != "RNC_MIC_Gain_BT" || advanced[3]->name != "Datarecordflag") {
-        return fail("advanced-category");
-    }
-    if (table.findByCategory("").size() != 0 || table.findByCategory("ERNC_IN_OUT").size() != 3
-        || table.findByCategory("Threshold").size() != 5 || table.findByCategory("Check").size() != 1) {
-        return fail("categories");
     }
     return true;
 }

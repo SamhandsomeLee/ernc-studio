@@ -2,46 +2,708 @@
   "schema_version": 1,
   "aliases": [
     {
+      "name": "alpha1",
+      "category": "RNC_Param",
+      "status": "unique",
+      "firmware_path": "RNC_param.alpha1"
+    },
+    {
+      "name": "alpha1_10",
+      "category": "RNC_Param",
+      "status": "unique",
+      "firmware_path": "RNC_param.alpha1_10"
+    },
+    {
+      "name": "alpha2",
+      "category": "RNC_Param",
+      "status": "unique",
+      "firmware_path": "RNC_param.alpha2"
+    },
+    {
+      "name": "alpha2_10",
+      "category": "RNC_Param",
+      "status": "unique",
+      "firmware_path": "RNC_param.alpha2_10"
+    },
+    {
+      "name": "alpha3",
+      "category": "RNC_Param",
+      "status": "unique",
+      "firmware_path": "RNC_param.alpha3"
+    },
+    {
+      "name": "alpha3_10",
+      "category": "RNC_Param",
+      "status": "unique",
+      "firmware_path": "RNC_param.alpha3_10"
+    },
+    {
+      "name": "alpha4",
+      "category": "RNC_Param",
+      "status": "unique",
+      "firmware_path": "RNC_param.alpha4"
+    },
+    {
+      "name": "alpha4_10",
+      "category": "RNC_Param",
+      "status": "unique",
+      "firmware_path": "RNC_param.alpha4_10"
+    },
+    {
+      "name": "alpha5",
+      "category": "RNC_Param",
+      "status": "unique",
+      "firmware_path": "RNC_param.alpha5"
+    },
+    {
+      "name": "alpha5_10",
+      "category": "RNC_Param",
+      "status": "unique",
+      "firmware_path": "RNC_param.alpha5_10"
+    },
+    {
+      "name": "LeakyRNCFre",
+      "category": "RNC_Param",
+      "status": "unique",
+      "firmware_path": "RNC_param.LeakyRNCFre"
+    },
+    {
+      "name": "LeakyRNC",
+      "category": "RNC_Param",
+      "status": "unique",
+      "firmware_path": "RNC_param.LeakyRNC"
+    },
+    {
+      "name": "eta",
+      "category": "RNC_Param",
+      "status": "unique",
+      "firmware_path": "RNC_param.eta"
+    },
+    {
+      "name": "delta",
+      "category": "RNC_Param",
+      "status": "unique",
+      "firmware_path": "RNC_param.delta"
+    },
+    {
+      "name": "refernum",
+      "category": "ERNC_IN_OUT",
+      "status": "unique",
+      "firmware_path": "RNC_param.refernum",
+      "shared": true
+    },
+    {
       "name": "Refer_Num",
       "category": "ERNC_IN_OUT",
       "status": "unique",
-      "firmware_path": "RNC_param.refernum"
+      "firmware_path": "RNC_param.refernum",
+      "shared": true
+    },
+    {
+      "name": "errnum",
+      "category": "ERNC_IN_OUT",
+      "status": "unique",
+      "firmware_path": "RNC_param.errnum",
+      "shared": true
     },
     {
       "name": "Err_Num",
       "category": "ERNC_IN_OUT",
       "status": "unique",
-      "firmware_path": "RNC_param.errnum"
+      "firmware_path": "RNC_param.errnum",
+      "shared": true
+    },
+    {
+      "name": "spknum",
+      "category": "ERNC_IN_OUT",
+      "status": "unique",
+      "firmware_path": "RNC_param.spknum",
+      "shared": true
     },
     {
       "name": "Spk_Num",
       "category": "ERNC_IN_OUT",
       "status": "unique",
-      "firmware_path": "RNC_param.spknum"
+      "firmware_path": "RNC_param.spknum",
+      "shared": true
+    },
+    {
+      "name": "OrderOne_Flag",
+      "category": "ENC_Param",
+      "status": "unique",
+      "firmware_path": "enc_order.OrderOne_Flag"
+    },
+    {
+      "name": "OrderTwo_Flag",
+      "category": "ENC_Param",
+      "status": "unique",
+      "firmware_path": "enc_order.OrderTwo_Flag"
+    },
+    {
+      "name": "OrderThree_Flag",
+      "category": "ENC_Param",
+      "status": "unique",
+      "firmware_path": "enc_order.OrderThree_Flag"
+    },
+    {
+      "name": "OrderOne_Type",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "enc_order.OrderOne_Type"
+    },
+    {
+      "name": "OrderTwo_Type",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "enc_order.OrderTwo_Type"
+    },
+    {
+      "name": "OrderThree_Type",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "enc_order.OrderThree_Type"
+    },
+    {
+      "name": "TachofAmp1",
+      "category": "ENC_Param",
+      "status": "unique",
+      "firmware_path": "ENC_param.TachofAmp1"
+    },
+    {
+      "name": "Amp1",
+      "category": "ENC_Param",
+      "status": "unique",
+      "firmware_path": "ENC_param.Amp1"
+    },
+    {
+      "name": "TachofStep1",
+      "category": "ENC_Param",
+      "status": "unique",
+      "firmware_path": "ENC_param.TachofStep1"
+    },
+    {
+      "name": "Step1",
+      "category": "ENC_Param",
+      "status": "unique",
+      "firmware_path": "ENC_param.Step1"
+    },
+    {
+      "name": "TachofLeaky1",
+      "category": "ENC_Param",
+      "status": "unique",
+      "firmware_path": "ENC_param.TachofLeaky1"
+    },
+    {
+      "name": "Leaky1",
+      "category": "ENC_Param",
+      "status": "unique",
+      "firmware_path": "ENC_param.Leaky1"
+    },
+    {
+      "name": "ErrWei1",
+      "category": "ENC_Param",
+      "status": "unique",
+      "firmware_path": "ENC_param.ErrWei1"
+    },
+    {
+      "name": "Delta1",
+      "category": "ENC_Param",
+      "status": "unique",
+      "firmware_path": "ENC_param.Delta1"
+    },
+    {
+      "name": "TachofAmp2",
+      "category": "ENC_Param",
+      "status": "unique",
+      "firmware_path": "ENC_param.TachofAmp2"
+    },
+    {
+      "name": "Amp2",
+      "category": "ENC_Param",
+      "status": "unique",
+      "firmware_path": "ENC_param.Amp2"
+    },
+    {
+      "name": "TachofStep2",
+      "category": "ENC_Param",
+      "status": "unique",
+      "firmware_path": "ENC_param.TachofStep2"
+    },
+    {
+      "name": "Step2",
+      "category": "ENC_Param",
+      "status": "unique",
+      "firmware_path": "ENC_param.Step2"
+    },
+    {
+      "name": "TachofLeaky2",
+      "category": "ENC_Param",
+      "status": "unique",
+      "firmware_path": "ENC_param.TachofLeaky2"
+    },
+    {
+      "name": "Leaky2",
+      "category": "ENC_Param",
+      "status": "unique",
+      "firmware_path": "ENC_param.Leaky2"
+    },
+    {
+      "name": "ErrWei2",
+      "category": "ENC_Param",
+      "status": "unique",
+      "firmware_path": "ENC_param.ErrWei2"
+    },
+    {
+      "name": "Delta2",
+      "category": "ENC_Param",
+      "status": "unique",
+      "firmware_path": "ENC_param.Delta2"
+    },
+    {
+      "name": "TachofAmp3",
+      "category": "ENC_Param",
+      "status": "unique",
+      "firmware_path": "ENC_param.TachofAmp3"
+    },
+    {
+      "name": "Amp3",
+      "category": "ENC_Param",
+      "status": "unique",
+      "firmware_path": "ENC_param.Amp3"
+    },
+    {
+      "name": "TachofStep3",
+      "category": "ENC_Param",
+      "status": "unique",
+      "firmware_path": "ENC_param.TachofStep3"
+    },
+    {
+      "name": "Step3",
+      "category": "ENC_Param",
+      "status": "unique",
+      "firmware_path": "ENC_param.Step3"
+    },
+    {
+      "name": "TachofLeaky3",
+      "category": "ENC_Param",
+      "status": "unique",
+      "firmware_path": "ENC_param.TachofLeaky3"
+    },
+    {
+      "name": "Leaky3",
+      "category": "ENC_Param",
+      "status": "unique",
+      "firmware_path": "ENC_param.Leaky3"
+    },
+    {
+      "name": "ErrWei3",
+      "category": "ENC_Param",
+      "status": "unique",
+      "firmware_path": "ENC_param.ErrWei3"
+    },
+    {
+      "name": "Delta3",
+      "category": "ENC_Param",
+      "status": "unique",
+      "firmware_path": "ENC_param.Delta3"
+    },
+    {
+      "name": "TachofAmp4",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "ENC_param.TachofAmp4"
+    },
+    {
+      "name": "Amp4",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "ENC_param.Amp4"
+    },
+    {
+      "name": "TachofStep4",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "ENC_param.TachofStep4"
+    },
+    {
+      "name": "Step4",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "ENC_param.Step4"
+    },
+    {
+      "name": "TachofLeaky4",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "ENC_param.TachofLeaky4"
+    },
+    {
+      "name": "Leaky4",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "ENC_param.Leaky4"
+    },
+    {
+      "name": "ErrWei4",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "ENC_param.ErrWei4"
+    },
+    {
+      "name": "Delta4",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "ENC_param.Delta4"
+    },
+    {
+      "name": "TachofAmp5",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "ENC_param.TachofAmp5"
+    },
+    {
+      "name": "Amp5",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "ENC_param.Amp5"
+    },
+    {
+      "name": "TachofStep5",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "ENC_param.TachofStep5"
+    },
+    {
+      "name": "Step5",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "ENC_param.Step5"
+    },
+    {
+      "name": "TachofLeaky5",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "ENC_param.TachofLeaky5"
+    },
+    {
+      "name": "Leaky5",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "ENC_param.Leaky5"
+    },
+    {
+      "name": "ErrWei5",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "ENC_param.ErrWei5"
+    },
+    {
+      "name": "Delta5",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "ENC_param.Delta5"
+    },
+    {
+      "name": "SpeakerFre",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "ENC_param.SpeakerFre"
+    },
+    {
+      "name": "SpeakerFreGain",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "ENC_param.SpeakerFreGain"
+    },
+    {
+      "name": "OrderOne",
+      "category": "ENC_Param",
+      "status": "unique",
+      "firmware_path": "ENC_param.OrderOne"
+    },
+    {
+      "name": "OrderTwo",
+      "category": "ENC_Param",
+      "status": "unique",
+      "firmware_path": "ENC_param.OrderTwo"
+    },
+    {
+      "name": "OrderThree",
+      "category": "ENC_Param",
+      "status": "unique",
+      "firmware_path": "ENC_param.OrderThree"
+    },
+    {
+      "name": "MaxEngineSpeed",
+      "category": "ENC_Param",
+      "status": "unique",
+      "firmware_path": "ENC_param.MaxEngineSpeed"
+    },
+    {
+      "name": "MinEngineSpeed",
+      "category": "ENC_Param",
+      "status": "unique",
+      "firmware_path": "ENC_param.MinEngineSpeed"
+    },
+    {
+      "name": "MaxAcSpeed",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "ENC_param.MaxAcSpeed"
+    },
+    {
+      "name": "MinAcSpeed",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "ENC_param.MinAcSpeed"
+    },
+    {
+      "name": "MaxFanSpeed",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "ENC_param.MaxFanSpeed"
+    },
+    {
+      "name": "MinFanSpeed",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "ENC_param.MinFanSpeed"
+    },
+    {
+      "name": "MaxPumpSpeedAC",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "ENC_param.MaxPumpSpeedAC"
+    },
+    {
+      "name": "MinPumpSpeedAC",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "ENC_param.MinPumpSpeedAC"
+    },
+    {
+      "name": "MaxPumpSpeedBattery",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "ENC_param.MaxPumpSpeedBattery"
+    },
+    {
+      "name": "MinPumpSpeedBattery",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "ENC_param.MinPumpSpeedBattery"
+    },
+    {
+      "name": "MaxPumpSpeedHot",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "ENC_param.MaxPumpSpeedHot"
+    },
+    {
+      "name": "MinPumpSpeedHot",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "ENC_param.MinPumpSpeedHot"
+    },
+    {
+      "name": "MaxFrontShaft",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "ENC_param.MaxFrontShaft"
+    },
+    {
+      "name": "MinFrontShaft",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "ENC_param.MinFrontShaft"
+    },
+    {
+      "name": "MaxRearShaft",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "ENC_param.MaxRearShaft"
+    },
+    {
+      "name": "MinRearShaft",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "ENC_param.MinRearShaft"
+    },
+    {
+      "name": "OutputCheck",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "check_data.OutputCheck"
+    },
+    {
+      "name": "RefCheck",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "check_data.RefCheck"
+    },
+    {
+      "name": "ErrCheck",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "check_data.ErrCheck"
+    },
+    {
+      "name": "ENCRefCheckSin",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "check_data.ENCRefCheckSin"
+    },
+    {
+      "name": "ENCRefCheckCos",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "check_data.ENCRefCheckCos"
+    },
+    {
+      "name": "ENCEngineSpeedCheck",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "check_data.ENCEngineSpeedCheck"
+    },
+    {
+      "name": "ENCErrCheck",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "check_data.ENCErrCheck"
+    },
+    {
+      "name": "ENCOutputCheck",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "check_data.ENCOutputCheck"
+    },
+    {
+      "name": "HornRefCheck_T",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "check_data.HornRefCheck_T"
+    },
+    {
+      "name": "HornRefCheck_F",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "check_data.HornRefCheck_F"
+    },
+    {
+      "name": "xPowCheck",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "check_data.xPowCheck"
+    },
+    {
+      "name": "MiuCheck",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "check_data.MiuCheck"
+    },
+    {
+      "name": "ENCEchoGainCheck",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "check_data.ENCEchoGainCheck"
+    },
+    {
+      "name": "OrderSpkoutmaxCheck",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "check_data.OrderSpkoutmaxCheck"
+    },
+    {
+      "name": "DataSpeedCheck",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "check_data.DataSpeedCheck"
+    },
+    {
+      "name": "DataSinCheck",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "check_data.DataSinCheck"
+    },
+    {
+      "name": "DataCosCheck",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "check_data.DataCosCheck"
+    },
+    {
+      "name": "RNCAdapCheckRefNum",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "check_data.RNCAdapCheckRefNum"
+    },
+    {
+      "name": "RNCAdapCheckSpkNum",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "check_data.RNCAdapCheckSpkNum"
+    },
+    {
+      "name": "RNCAdapCheck",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "check_data.RNCAdapCheck"
+    },
+    {
+      "name": "rnc_divergence_con_flag",
+      "category": "Threshold",
+      "status": "unique",
+      "firmware_path": "rnc_dicergence.rnc_divergence_con_flag",
+      "shared": true
     },
     {
       "name": "RNC_Divergence_Con_Flag",
       "category": "Threshold",
       "status": "unique",
-      "firmware_path": "rnc_dicergence.rnc_divergence_con_flag"
+      "firmware_path": "rnc_dicergence.rnc_divergence_con_flag",
+      "shared": true
+    },
+    {
+      "name": "rnc_divergence_counting",
+      "category": "Threshold",
+      "status": "unique",
+      "firmware_path": "rnc_dicergence.rnc_divergence_counting",
+      "shared": true
     },
     {
       "name": "RNC_Divergence_Counting",
       "category": "Threshold",
       "status": "unique",
-      "firmware_path": "rnc_dicergence.rnc_divergence_counting"
+      "firmware_path": "rnc_dicergence.rnc_divergence_counting",
+      "shared": true
+    },
+    {
+      "name": "rnc_divergence_off_time",
+      "category": "Threshold",
+      "status": "unique",
+      "firmware_path": "rnc_dicergence.rnc_divergence_off_time",
+      "shared": true
     },
     {
       "name": "RNC_Divergence_OFF_Time",
       "category": "Threshold",
       "status": "unique",
-      "firmware_path": "rnc_dicergence.rnc_divergence_off_time"
+      "firmware_path": "rnc_dicergence.rnc_divergence_off_time",
+      "shared": true
+    },
+    {
+      "name": "rnc_diverge_threshold",
+      "category": "Threshold",
+      "status": "unique",
+      "firmware_path": "rnc_dicergence.rnc_diverge_threshold",
+      "shared": true
     },
     {
       "name": "RNC_Divergence_threshold",
       "category": "Threshold",
       "status": "unique",
-      "firmware_path": "rnc_dicergence.rnc_diverge_threshold"
+      "firmware_path": "rnc_dicergence.rnc_diverge_threshold",
+      "shared": true
     },
     {
       "name": "RNCSpkFAdapMax",
@@ -50,39 +712,123 @@
       "firmware_path": "rnc_dicergence.RNCSpkFAdapMax"
     },
     {
+      "name": "fSecPathTransR",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "ERNC_TF.fSecPathTransR"
+    },
+    {
+      "name": "fSecPathTransI",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "ERNC_TF.fSecPathTransI"
+    },
+    {
+      "name": "SpecRadius",
+      "category": "RNC_Param",
+      "status": "unique",
+      "firmware_path": "ERNC_TF.SpecRadius"
+    },
+    {
+      "name": "ENCTF",
+      "category": "other",
+      "status": "unique",
+      "firmware_path": "ERNC_TF.ENCTF"
+    },
+    {
       "name": "CAN_Msg",
-      "category": "Check",
       "status": "unresolved",
-      "reason": "36 个 CAN 名称没有 Can_Msg 槽位，不能把 CAN_Msg 收成数组元素路径。"
+      "reason": "结构体 ERNCUppInit_Para 没有这个成员，不产生读取范围。"
     },
     {
-      "name": "MiuControlFlag",
-      "category": "高级参数",
-      "status": "unique",
-      "firmware_path": "MiuControlFlag"
+      "name": "ENCOutputMax",
+      "status": "unresolved",
+      "reason": "结构体 ERNCUppInit_Para 没有这个成员，不产生读取范围。"
     },
     {
-      "name": "TestMode",
-      "category": "高级参数",
-      "status": "unique",
-      "firmware_path": "TestMode"
+      "name": "ENC_Divergence_Counting",
+      "status": "unresolved",
+      "reason": "结构体 ERNCUppInit_Para 没有这个成员，不产生读取范围。"
     },
     {
-      "name": "RNC_MIC_Gain_BT",
-      "category": "高级参数",
-      "status": "unique",
-      "firmware_path": "RNC_MIC_Gain_BT"
+      "name": "OrderFive",
+      "status": "unresolved",
+      "reason": "结构体 ERNCUppInit_Para 没有这个成员，不产生读取范围。"
     },
     {
-      "name": "Datarecordflag",
-      "category": "高级参数",
-      "status": "unique",
-      "firmware_path": "Datarecordflag"
+      "name": "OrderFive_Flag",
+      "status": "unresolved",
+      "reason": "结构体 ERNCUppInit_Para 没有这个成员，不产生读取范围。"
+    },
+    {
+      "name": "OrderFive_Type",
+      "status": "unresolved",
+      "reason": "结构体 ERNCUppInit_Para 没有这个成员，不产生读取范围。"
+    },
+    {
+      "name": "OrderFour",
+      "status": "unresolved",
+      "reason": "结构体 ERNCUppInit_Para 没有这个成员，不产生读取范围。"
     },
     {
       "name": "OrderFour_Flag",
       "status": "unresolved",
-      "reason": "OrderFour_Flag 不在 manifest 字段树里。"
+      "reason": "结构体 ERNCUppInit_Para 没有这个成员，不产生读取范围。"
+    },
+    {
+      "name": "OrderFour_Type",
+      "status": "unresolved",
+      "reason": "结构体 ERNCUppInit_Para 没有这个成员，不产生读取范围。"
+    },
+    {
+      "name": "StoreANCDivergenceThreshold",
+      "status": "unresolved",
+      "reason": "结构体 ERNCUppInit_Para 没有这个成员，不产生读取范围。"
+    },
+    {
+      "name": "check_date",
+      "status": "unresolved",
+      "reason": "结构体 ERNCUppInit_Para 没有这个成员，不产生读取范围。"
+    },
+    {
+      "name": "ernc_Switch_State",
+      "status": "unresolved",
+      "reason": "结构体 ERNCUppInit_Para 没有这个成员，不产生读取范围。"
+    },
+    {
+      "name": "fInputPoi",
+      "status": "unresolved",
+      "reason": "结构体 ERNCUppInit_Para 没有这个成员，不产生读取范围。"
+    },
+    {
+      "name": "fOutputPoi",
+      "status": "unresolved",
+      "reason": "结构体 ERNCUppInit_Para 没有这个成员，不产生读取范围。"
+    },
+    {
+      "name": "ffirst_fre_num",
+      "status": "unresolved",
+      "reason": "结构体 ERNCUppInit_Para 没有这个成员，不产生读取范围。"
+    },
+    {
+      "name": "fforth_fre_num",
+      "status": "unresolved",
+      "reason": "结构体 ERNCUppInit_Para 没有这个成员，不产生读取范围。"
+    },
+    {
+      "name": "fsecond_fre_num",
+      "status": "unresolved",
+      "reason": "结构体 ERNCUppInit_Para 没有这个成员，不产生读取范围。"
+    },
+    {
+      "name": "fstart_fre_num",
+      "status": "unresolved",
+      "reason": "结构体 ERNCUppInit_Para 没有这个成员，不产生读取范围。"
+    },
+    {
+      "name": "fthird_fre_num",
+      "status": "unresolved",
+      "reason": "结构体 ERNCUppInit_Para 没有这个成员，不产生读取范围。"
     }
   ]
 }

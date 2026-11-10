@@ -533,7 +533,7 @@ bool shippedCanMsg(const char* aliasPath, const char* manifestPath) {
     }
     const AliasRecord* record = loaded.table().find("CAN_Msg");
     if (record == nullptr || record->resolution != AliasResolution::Unresolved || record->firmwarePath
-        || !record->category || *record->category != "Check" || !record->reason || record->reason->empty()
+        || record->category || !record->reason || record->reason->empty()
         || loaded.table().find("Can_Msg") != nullptr) {
         return fail("shipped_can_msg");
     }
@@ -546,38 +546,37 @@ bool shippedCanMsg(const char* aliasPath, const char* manifestPath) {
     return true;
 }
 
-/// @brief 正式别名文件里的高级参数入口只有四条有路径的记录。
+/// @brief 正式别名文件用成员短名指向完整路径，工作表里没有成员的文字保持未绑定。
 /// @param aliasPath 别名 JSON 路径，只在本次调用期间借用。
 /// @param manifestPath 正式 manifest 路径，只在本次调用期间借用。
-/// @return 四条都是 Unique，且 OrderFour_Flag 不在这个分类里时为 true。
-bool shippedAdvanced(const char* aliasPath, const char* manifestPath) {
+/// @return alpha1 指向 RNC_param.alpha1，且 check_date、OrderFour_Flag 没有路径时为 true。
+bool shippedMemberAlias(const char* aliasPath, const char* manifestPath) {
     const LayoutLoad manifest = FirmwareLayoutLoader::loadFile(manifestPath);
     if (!manifest.ok()) {
-        return fail("shipped_advanced");
+        return fail("shipped_member_alias");
     }
     const AliasLoad loaded = ParameterAliasLoader::loadFile(aliasPath, manifest.layout());
     if (!loaded.ok()) {
-        return fail("shipped_advanced");
+        return fail("shipped_member_alias");
     }
-    const auto advanced = loaded.table().findByCategory(kAdvancedParameterCategory);
-    if (advanced.size() != 4 || advanced[0]->name != "MiuControlFlag" || advanced[1]->name != "TestMode"
-        || advanced[2]->name != "RNC_MIC_Gain_BT" || advanced[3]->name != "Datarecordflag") {
-        return fail("shipped_advanced");
+    const AliasRecord* alpha = loaded.table().find("alpha1");
+    if (alpha == nullptr || alpha->resolution != AliasResolution::Unique || !alpha->firmwarePath
+        || *alpha->firmwarePath != "RNC_param.alpha1" || !alpha->category || *alpha->category != "RNC_Param") {
+        return fail("shipped_member_alias");
     }
-    for (const AliasRecord* record : advanced) {
-        if (record->resolution != AliasResolution::Unique || !record->firmwarePath
-            || *record->firmwarePath != record->name) {
-            return fail("shipped_advanced");
-        }
-        const LayoutResolve resolved = manifest.layout().resolve(*record->firmwarePath);
-        if (resolved.tryError() == nullptr || *resolved.tryError() != LayoutError::Unverified) {
-            return fail("shipped_advanced");
-        }
+    const LayoutResolve resolved = manifest.layout().resolve(*alpha->firmwarePath);
+    if (resolved.tryError() == nullptr || *resolved.tryError() != LayoutError::Unverified) {
+        return fail("shipped_member_alias");
     }
+    const AliasRecord* date = loaded.table().find("check_date");
     const AliasRecord* orderFour = loaded.table().find("OrderFour_Flag");
-    if (orderFour == nullptr || orderFour->resolution != AliasResolution::Unresolved || orderFour->firmwarePath
-        || orderFour->category) {
-        return fail("shipped_advanced");
+    if (date == nullptr || orderFour == nullptr || date->firmwarePath || orderFour->firmwarePath
+        || date->resolution != AliasResolution::Unresolved
+        || orderFour->resolution != AliasResolution::Unresolved) {
+        return fail("shipped_member_alias");
+    }
+    if (!loaded.table().findByCategory(kAdvancedParameterCategory).empty()) {
+        return fail("shipped_member_alias");
     }
     return true;
 }
@@ -662,8 +661,8 @@ bool runCase(std::string_view name, const char* aliasPath, const char* manifestP
     if (name == "shipped_can_msg") {
         return shippedCanMsg(aliasPath, manifestPath);
     }
-    if (name == "shipped_advanced") {
-        return shippedAdvanced(aliasPath, manifestPath);
+    if (name == "shipped_member_alias") {
+        return shippedMemberAlias(aliasPath, manifestPath);
     }
     recognized = false;
     return false;

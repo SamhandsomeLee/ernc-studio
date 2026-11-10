@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "catalog_version": "0.1.0",
+  "catalog_version": "0.2.0",
   "parameters": [
     {
       "id": "ANC_OFF",
@@ -10,7 +10,10 @@
       "data_type": "float32",
       "shape": "scalar",
       "editor": "toggle",
-      "wire_semantics": { "on": 0, "off": 1 }
+      "wire_semantics": {
+        "on": 0,
+        "off": 1
+      }
     },
     {
       "id": "ENC_OFF",
@@ -20,7 +23,10 @@
       "data_type": "float32",
       "shape": "scalar",
       "editor": "toggle",
-      "wire_semantics": { "on": 0, "off": 1 }
+      "wire_semantics": {
+        "on": 0,
+        "off": 1
+      }
     },
     {
       "id": "RNC_OFF",
@@ -30,7 +36,38 @@
       "data_type": "float32",
       "shape": "scalar",
       "editor": "toggle",
-      "wire_semantics": { "on": 0, "off": 1 }
+      "wire_semantics": {
+        "on": 0,
+        "off": 1
+      }
+    },
+    {
+      "id": "check_mod",
+      "firmware_path": "check_mod",
+      "category": "Check",
+      "description_zh": "数据检测模式（数据保持），1开启，0关闭"
+    },
+    {
+      "id": "RNC_refresh",
+      "firmware_path": "RNC_refresh",
+      "category": "ERNC_Flag",
+      "description_zh": "算法重置，1重置，0算法启动。注：重置1后需要置0开启算法，且需要在车速大于5kmph是重置",
+      "data_type": "int32",
+      "shape": "scalar",
+      "access": "command",
+      "editor": "momentary_command"
+    },
+    {
+      "id": "SpeakerCheckValue",
+      "firmware_path": "SpeakerCheckValue",
+      "category": "ERNC_Flag",
+      "description_zh": "扬声器检测模式，1开启，0关闭"
+    },
+    {
+      "id": "TranFuncFlag",
+      "firmware_path": "TranFuncFlag",
+      "category": "Check",
+      "description_zh": "传函采集模式，1采集传函，0控制程序"
     },
     {
       "id": "Step",
@@ -43,14 +80,1004 @@
       "editor": "read_only"
     },
     {
-      "id": "RNC_refresh",
-      "firmware_path": "RNC_refresh",
+      "id": "Bypass_mod",
+      "firmware_path": "Bypass_mod",
       "category": "ERNC_Flag",
-      "description_zh": "算法重置，1重置，0算法启动。注：重置1后需要置0开启算法，且需要在车速大于5kmph是重置",
-      "data_type": "int32",
-      "shape": "scalar",
-      "access": "command",
-      "editor": "momentary_command"
+      "description_zh": "直通模式"
+    },
+    {
+      "id": "RNC_param.alpha1",
+      "firmware_path": "RNC_param.alpha1",
+      "category": "RNC_Param",
+      "description_zh": "第一段步长(10分钟后)，步长越大系统收敛速度越快，但稳定性越差"
+    },
+    {
+      "id": "RNC_param.alpha1_10",
+      "firmware_path": "RNC_param.alpha1_10",
+      "category": "RNC_Param",
+      "description_zh": "第一段步长(10分钟前)"
+    },
+    {
+      "id": "RNC_param.alpha2",
+      "firmware_path": "RNC_param.alpha2",
+      "category": "RNC_Param",
+      "description_zh": "第二段步长(10分钟后)"
+    },
+    {
+      "id": "RNC_param.alpha2_10",
+      "firmware_path": "RNC_param.alpha2_10",
+      "category": "RNC_Param",
+      "description_zh": "第二段步长(10分钟前)"
+    },
+    {
+      "id": "RNC_param.alpha3",
+      "firmware_path": "RNC_param.alpha3",
+      "category": "RNC_Param",
+      "description_zh": "第三段步长(10分钟后)"
+    },
+    {
+      "id": "RNC_param.alpha3_10",
+      "firmware_path": "RNC_param.alpha3_10",
+      "category": "RNC_Param",
+      "description_zh": "第三段步长(10分钟前)"
+    },
+    {
+      "id": "RNC_param.alpha4",
+      "firmware_path": "RNC_param.alpha4",
+      "category": "RNC_Param",
+      "description_zh": "第四段步长(10分钟后)"
+    },
+    {
+      "id": "RNC_param.alpha4_10",
+      "firmware_path": "RNC_param.alpha4_10",
+      "category": "RNC_Param",
+      "description_zh": "第四段步长(10分钟前)"
+    },
+    {
+      "id": "RNC_param.alpha5",
+      "firmware_path": "RNC_param.alpha5",
+      "category": "RNC_Param",
+      "description_zh": "第五段步长(10分钟后)"
+    },
+    {
+      "id": "RNC_param.alpha5_10",
+      "firmware_path": "RNC_param.alpha5_10",
+      "category": "RNC_Param",
+      "description_zh": "第五段步长(10分钟前)"
+    },
+    {
+      "id": "RNC_param.LeakyRNCFre",
+      "firmware_path": "RNC_param.LeakyRNCFre",
+      "category": "RNC_Param",
+      "description_zh": "防爆音系数分段"
+    },
+    {
+      "id": "RNC_param.LeakyRNC",
+      "firmware_path": "RNC_param.LeakyRNC",
+      "category": "RNC_Param",
+      "description_zh": "防爆音系数，可增加系统鲁棒性，但过大会影响降噪效果"
+    },
+    {
+      "id": "RNC_param.eta",
+      "firmware_path": "RNC_param.eta",
+      "category": "RNC_Param",
+      "description_zh": "误差信号权重"
+    },
+    {
+      "id": "RNC_param.delta",
+      "firmware_path": "RNC_param.delta",
+      "category": "RNC_Param",
+      "description_zh": "小值、安全值"
+    },
+    {
+      "id": "RNC_param.refernum",
+      "firmware_path": "RNC_param.refernum",
+      "category": "ERNC_IN_OUT",
+      "description_zh": "参考信号通道数"
+    },
+    {
+      "id": "RNC_param.errnum",
+      "firmware_path": "RNC_param.errnum",
+      "category": "ERNC_IN_OUT",
+      "description_zh": "误差麦克通道数"
+    },
+    {
+      "id": "RNC_param.spknum",
+      "firmware_path": "RNC_param.spknum",
+      "category": "ERNC_IN_OUT",
+      "description_zh": "扬声器个数"
+    },
+    {
+      "id": "ERNC_Switch_State",
+      "firmware_path": "ERNC_Switch_State",
+      "category": "other"
+    },
+    {
+      "id": "ErrPowRNC",
+      "firmware_path": "ErrPowRNC",
+      "category": "other",
+      "description_zh": "RNC ErrPowCheck"
+    },
+    {
+      "id": "input_Amplitude",
+      "firmware_path": "input_Amplitude",
+      "category": "ERNC_IN_OUT",
+      "description_zh": "输入信号增益（粗调）"
+    },
+    {
+      "id": "output_Amplitude",
+      "firmware_path": "output_Amplitude",
+      "category": "ERNC_IN_OUT",
+      "description_zh": "扬声器输出增益，负数，值越小，信号越小"
+    },
+    {
+      "id": "Output_Threshold",
+      "firmware_path": "Output_Threshold",
+      "category": "Threshold",
+      "description_zh": "扬声器输出阈值（RNC）"
+    },
+    {
+      "id": "InputPoi",
+      "firmware_path": "InputPoi",
+      "category": "ERNC_IN_OUT"
+    },
+    {
+      "id": "OutputPoi",
+      "firmware_path": "OutputPoi",
+      "category": "ERNC_IN_OUT"
+    },
+    {
+      "id": "start_fre_num",
+      "firmware_path": "start_fre_num",
+      "category": "RNC_Param"
+    },
+    {
+      "id": "first_fre_num",
+      "firmware_path": "first_fre_num",
+      "category": "RNC_Param"
+    },
+    {
+      "id": "second_fre_num",
+      "firmware_path": "second_fre_num",
+      "category": "RNC_Param"
+    },
+    {
+      "id": "third_fre_num",
+      "firmware_path": "third_fre_num",
+      "category": "RNC_Param"
+    },
+    {
+      "id": "forth_fre_num",
+      "firmware_path": "forth_fre_num",
+      "category": "RNC_Param"
+    },
+    {
+      "id": "HornTime",
+      "firmware_path": "HornTime",
+      "category": "other"
+    },
+    {
+      "id": "max_time",
+      "firmware_path": "max_time",
+      "category": "RNC_Param",
+      "description_zh": "RNC运行最大时间(1分钟1100)"
+    },
+    {
+      "id": "HornPower",
+      "firmware_path": "HornPower",
+      "category": "other"
+    },
+    {
+      "id": "horn_control",
+      "firmware_path": "horn_control",
+      "category": "Threshold",
+      "description_zh": "是否打开喇叭控制（1为开）"
+    },
+    {
+      "id": "horn_trigger",
+      "firmware_path": "horn_trigger",
+      "category": "Threshold",
+      "description_zh": "检测喇叭控制策略是否有效"
+    },
+    {
+      "id": "RefChooseFloat",
+      "firmware_path": "RefChooseFloat",
+      "category": "Threshold",
+      "description_zh": "喇叭控制参考传感器序号"
+    },
+    {
+      "id": "HornRefThreshold",
+      "firmware_path": "HornRefThreshold",
+      "category": "Threshold",
+      "description_zh": "喇叭阈值"
+    },
+    {
+      "id": "HornOFFContinueTime",
+      "firmware_path": "HornOFFContinueTime",
+      "category": "Threshold",
+      "description_zh": "按喇叭持续关闭时间"
+    },
+    {
+      "id": "ACC_Gain",
+      "firmware_path": "ACC_Gain",
+      "category": "ERNC_IN_OUT",
+      "description_zh": "参考振动增益（细调），大于0的值"
+    },
+    {
+      "id": "RNC_MIC_Gain",
+      "firmware_path": "RNC_MIC_Gain",
+      "category": "ERNC_IN_OUT",
+      "description_zh": "RNC误差mic增益（细调），大于0的值"
+    },
+    {
+      "id": "Input_threshold",
+      "firmware_path": "Input_threshold",
+      "category": "Threshold",
+      "description_zh": "RNC参考振动阈值"
+    },
+    {
+      "id": "running_time",
+      "firmware_path": "running_time",
+      "category": "RNC_Param",
+      "description_zh": "RNC步长变换时间(1分钟1100)"
+    },
+    {
+      "id": "MiuControlFlag",
+      "firmware_path": "MiuControlFlag",
+      "category": "other",
+      "description_zh": "Miu控制开关（0为关，1为开）"
+    },
+    {
+      "id": "MiuThreshold",
+      "firmware_path": "MiuThreshold",
+      "category": "other",
+      "description_zh": "Miu阈值"
+    },
+    {
+      "id": "TestMode",
+      "firmware_path": "TestMode",
+      "category": "other",
+      "description_zh": "台架模式，０为实车模式，１为台架模式"
+    },
+    {
+      "id": "RNC_MIC_Gain_BT",
+      "firmware_path": "RNC_MIC_Gain_BT",
+      "category": "other",
+      "description_zh": "蓝牙电话模式下RNC mic增益"
+    },
+    {
+      "id": "ENC_Mic_Gain_BT",
+      "firmware_path": "ENC_Mic_Gain_BT",
+      "category": "other",
+      "description_zh": "蓝牙电话模式下ENC mic增益"
+    },
+    {
+      "id": "ENC_Mic_Gain",
+      "firmware_path": "ENC_Mic_Gain",
+      "category": "ERNC_IN_OUT",
+      "description_zh": "ENC麦克风增益（细调）"
+    },
+    {
+      "id": "enc_order.OrderOne_Flag",
+      "firmware_path": "enc_order.OrderOne_Flag",
+      "category": "ENC_Param",
+      "description_zh": "阶次1开闭标志，1开启，0关闭"
+    },
+    {
+      "id": "enc_order.OrderTwo_Flag",
+      "firmware_path": "enc_order.OrderTwo_Flag",
+      "category": "ENC_Param",
+      "description_zh": "阶次2开闭标志，1开启，0关闭"
+    },
+    {
+      "id": "enc_order.OrderThree_Flag",
+      "firmware_path": "enc_order.OrderThree_Flag",
+      "category": "ENC_Param",
+      "description_zh": "阶次3开闭标志，1开启，0关闭"
+    },
+    {
+      "id": "enc_order.OrderOne_Type",
+      "firmware_path": "enc_order.OrderOne_Type",
+      "category": "other",
+      "description_zh": "阶次1控制噪声类型，0-Engine 1-AC 2-Fan 3-PumpAC 4-PumpBattery 5-PumpHot"
+    },
+    {
+      "id": "enc_order.OrderTwo_Type",
+      "firmware_path": "enc_order.OrderTwo_Type",
+      "category": "other",
+      "description_zh": "阶次2控制噪声类型，0-Engine 1-AC 2-Fan 3-PumpAC 4-PumpBattery 5-PumpHot"
+    },
+    {
+      "id": "enc_order.OrderThree_Type",
+      "firmware_path": "enc_order.OrderThree_Type",
+      "category": "other",
+      "description_zh": "阶次3控制噪声类型，0-Engine 1-AC 2-Fan 3-PumpAC 4-PumpBattery 5-PumpHot"
+    },
+    {
+      "id": "ENC_param.TachofAmp1",
+      "firmware_path": "ENC_param.TachofAmp1",
+      "category": "ENC_Param",
+      "description_zh": "阶次1虚拟参考信号幅值转速区间"
+    },
+    {
+      "id": "ENC_param.Amp1",
+      "firmware_path": "ENC_param.Amp1",
+      "category": "ENC_Param",
+      "description_zh": "阶次1虚拟参考信号幅值"
+    },
+    {
+      "id": "ENC_param.TachofStep1",
+      "firmware_path": "ENC_param.TachofStep1",
+      "category": "ENC_Param",
+      "description_zh": "阶次1步长转速区间"
+    },
+    {
+      "id": "ENC_param.Step1",
+      "firmware_path": "ENC_param.Step1",
+      "category": "ENC_Param",
+      "description_zh": "阶次1步长"
+    },
+    {
+      "id": "ENC_param.TachofLeaky1",
+      "firmware_path": "ENC_param.TachofLeaky1",
+      "category": "ENC_Param",
+      "description_zh": "阶次1性能控制系数转速区间"
+    },
+    {
+      "id": "ENC_param.Leaky1",
+      "firmware_path": "ENC_param.Leaky1",
+      "category": "ENC_Param",
+      "description_zh": "阶次1性能控制系数"
+    },
+    {
+      "id": "ENC_param.ErrWei1",
+      "firmware_path": "ENC_param.ErrWei1",
+      "category": "ENC_Param",
+      "description_zh": "阶次1误差信号权重"
+    },
+    {
+      "id": "ENC_param.Delta1",
+      "firmware_path": "ENC_param.Delta1",
+      "category": "ENC_Param",
+      "description_zh": "阶次1小值、安全值"
+    },
+    {
+      "id": "ENC_param.TachofAmp2",
+      "firmware_path": "ENC_param.TachofAmp2",
+      "category": "ENC_Param",
+      "description_zh": "阶次2幅值转速区间"
+    },
+    {
+      "id": "ENC_param.Amp2",
+      "firmware_path": "ENC_param.Amp2",
+      "category": "ENC_Param",
+      "description_zh": "阶次2幅值"
+    },
+    {
+      "id": "ENC_param.TachofStep2",
+      "firmware_path": "ENC_param.TachofStep2",
+      "category": "ENC_Param",
+      "description_zh": "阶次2步长转速区间"
+    },
+    {
+      "id": "ENC_param.Step2",
+      "firmware_path": "ENC_param.Step2",
+      "category": "ENC_Param",
+      "description_zh": "阶次2步长"
+    },
+    {
+      "id": "ENC_param.TachofLeaky2",
+      "firmware_path": "ENC_param.TachofLeaky2",
+      "category": "ENC_Param",
+      "description_zh": "阶次2性能控制系数转速区间"
+    },
+    {
+      "id": "ENC_param.Leaky2",
+      "firmware_path": "ENC_param.Leaky2",
+      "category": "ENC_Param",
+      "description_zh": "阶次2性能控制系数"
+    },
+    {
+      "id": "ENC_param.ErrWei2",
+      "firmware_path": "ENC_param.ErrWei2",
+      "category": "ENC_Param",
+      "description_zh": "阶次2误差信号权重"
+    },
+    {
+      "id": "ENC_param.Delta2",
+      "firmware_path": "ENC_param.Delta2",
+      "category": "ENC_Param",
+      "description_zh": "阶次2小值、安全值"
+    },
+    {
+      "id": "ENC_param.TachofAmp3",
+      "firmware_path": "ENC_param.TachofAmp3",
+      "category": "ENC_Param",
+      "description_zh": "阶次3幅值转速区间"
+    },
+    {
+      "id": "ENC_param.Amp3",
+      "firmware_path": "ENC_param.Amp3",
+      "category": "ENC_Param",
+      "description_zh": "阶次3幅值"
+    },
+    {
+      "id": "ENC_param.TachofStep3",
+      "firmware_path": "ENC_param.TachofStep3",
+      "category": "ENC_Param",
+      "description_zh": "阶次3步长转速区间"
+    },
+    {
+      "id": "ENC_param.Step3",
+      "firmware_path": "ENC_param.Step3",
+      "category": "ENC_Param",
+      "description_zh": "阶次3步长"
+    },
+    {
+      "id": "ENC_param.TachofLeaky3",
+      "firmware_path": "ENC_param.TachofLeaky3",
+      "category": "ENC_Param",
+      "description_zh": "阶次3性能控制系数转速区间"
+    },
+    {
+      "id": "ENC_param.Leaky3",
+      "firmware_path": "ENC_param.Leaky3",
+      "category": "ENC_Param",
+      "description_zh": "阶次3性能控制系数"
+    },
+    {
+      "id": "ENC_param.ErrWei3",
+      "firmware_path": "ENC_param.ErrWei3",
+      "category": "ENC_Param",
+      "description_zh": "阶次3误差信号权重"
+    },
+    {
+      "id": "ENC_param.Delta3",
+      "firmware_path": "ENC_param.Delta3",
+      "category": "ENC_Param",
+      "description_zh": "阶次3小值、安全值"
+    },
+    {
+      "id": "ENC_param.TachofAmp4",
+      "firmware_path": "ENC_param.TachofAmp4",
+      "category": "other",
+      "description_zh": "阶次4幅值转速区间"
+    },
+    {
+      "id": "ENC_param.Amp4",
+      "firmware_path": "ENC_param.Amp4",
+      "category": "other",
+      "description_zh": "阶次4幅值"
+    },
+    {
+      "id": "ENC_param.TachofStep4",
+      "firmware_path": "ENC_param.TachofStep4",
+      "category": "other",
+      "description_zh": "阶次4步长转速区间"
+    },
+    {
+      "id": "ENC_param.Step4",
+      "firmware_path": "ENC_param.Step4",
+      "category": "other",
+      "description_zh": "阶次4步长"
+    },
+    {
+      "id": "ENC_param.TachofLeaky4",
+      "firmware_path": "ENC_param.TachofLeaky4",
+      "category": "other",
+      "description_zh": "阶次4性能控制系数转速区间"
+    },
+    {
+      "id": "ENC_param.Leaky4",
+      "firmware_path": "ENC_param.Leaky4",
+      "category": "other",
+      "description_zh": "阶次4性能控制系数"
+    },
+    {
+      "id": "ENC_param.ErrWei4",
+      "firmware_path": "ENC_param.ErrWei4",
+      "category": "other",
+      "description_zh": "阶次4误差信号权重"
+    },
+    {
+      "id": "ENC_param.Delta4",
+      "firmware_path": "ENC_param.Delta4",
+      "category": "other",
+      "description_zh": "阶次4小值、安全值"
+    },
+    {
+      "id": "ENC_param.TachofAmp5",
+      "firmware_path": "ENC_param.TachofAmp5",
+      "category": "other",
+      "description_zh": "阶次5幅值转速区间"
+    },
+    {
+      "id": "ENC_param.Amp5",
+      "firmware_path": "ENC_param.Amp5",
+      "category": "other",
+      "description_zh": "阶次5幅值"
+    },
+    {
+      "id": "ENC_param.TachofStep5",
+      "firmware_path": "ENC_param.TachofStep5",
+      "category": "other",
+      "description_zh": "阶次5步长转速区间"
+    },
+    {
+      "id": "ENC_param.Step5",
+      "firmware_path": "ENC_param.Step5",
+      "category": "other",
+      "description_zh": "阶次5步长"
+    },
+    {
+      "id": "ENC_param.TachofLeaky5",
+      "firmware_path": "ENC_param.TachofLeaky5",
+      "category": "other",
+      "description_zh": "阶次5性能控制系数转速区间"
+    },
+    {
+      "id": "ENC_param.Leaky5",
+      "firmware_path": "ENC_param.Leaky5",
+      "category": "other",
+      "description_zh": "阶次5性能控制系数"
+    },
+    {
+      "id": "ENC_param.ErrWei5",
+      "firmware_path": "ENC_param.ErrWei5",
+      "category": "other",
+      "description_zh": "阶次5误差信号权重"
+    },
+    {
+      "id": "ENC_param.Delta5",
+      "firmware_path": "ENC_param.Delta5",
+      "category": "other",
+      "description_zh": "阶次5小值、安全值"
+    },
+    {
+      "id": "ENC_param.SpeakerFre",
+      "firmware_path": "ENC_param.SpeakerFre",
+      "category": "other",
+      "description_zh": "ENC扬声器分频"
+    },
+    {
+      "id": "ENC_param.SpeakerFreGain",
+      "firmware_path": "ENC_param.SpeakerFreGain",
+      "category": "other",
+      "description_zh": "ENC扬声器分频系数"
+    },
+    {
+      "id": "ENC_param.OrderOne",
+      "firmware_path": "ENC_param.OrderOne",
+      "category": "ENC_Param",
+      "description_zh": "阶次1阶数"
+    },
+    {
+      "id": "ENC_param.OrderTwo",
+      "firmware_path": "ENC_param.OrderTwo",
+      "category": "ENC_Param",
+      "description_zh": "阶次2阶数"
+    },
+    {
+      "id": "ENC_param.OrderThree",
+      "firmware_path": "ENC_param.OrderThree",
+      "category": "ENC_Param",
+      "description_zh": "阶次3阶数"
+    },
+    {
+      "id": "ENC_param.MaxEngineSpeed",
+      "firmware_path": "ENC_param.MaxEngineSpeed",
+      "category": "ENC_Param",
+      "description_zh": "最大发动机控制转速"
+    },
+    {
+      "id": "ENC_param.MinEngineSpeed",
+      "firmware_path": "ENC_param.MinEngineSpeed",
+      "category": "ENC_Param",
+      "description_zh": "最小发动机控制转速"
+    },
+    {
+      "id": "ENC_param.MaxAcSpeed",
+      "firmware_path": "ENC_param.MaxAcSpeed",
+      "category": "other",
+      "description_zh": "最大压缩机控制转速"
+    },
+    {
+      "id": "ENC_param.MinAcSpeed",
+      "firmware_path": "ENC_param.MinAcSpeed",
+      "category": "other",
+      "description_zh": "最小压缩机控制转速"
+    },
+    {
+      "id": "ENC_param.MaxFanSpeed",
+      "firmware_path": "ENC_param.MaxFanSpeed",
+      "category": "other",
+      "description_zh": "最大风扇控制转速"
+    },
+    {
+      "id": "ENC_param.MinFanSpeed",
+      "firmware_path": "ENC_param.MinFanSpeed",
+      "category": "other",
+      "description_zh": "最小风扇控制转速"
+    },
+    {
+      "id": "ENC_param.MaxPumpSpeedAC",
+      "firmware_path": "ENC_param.MaxPumpSpeedAC",
+      "category": "other",
+      "description_zh": "最大压缩机水泵控制转速"
+    },
+    {
+      "id": "ENC_param.MinPumpSpeedAC",
+      "firmware_path": "ENC_param.MinPumpSpeedAC",
+      "category": "other",
+      "description_zh": "最小压缩机水泵控制转速"
+    },
+    {
+      "id": "ENC_param.MaxPumpSpeedBattery",
+      "firmware_path": "ENC_param.MaxPumpSpeedBattery",
+      "category": "other",
+      "description_zh": "最大电池水泵控制转速"
+    },
+    {
+      "id": "ENC_param.MinPumpSpeedBattery",
+      "firmware_path": "ENC_param.MinPumpSpeedBattery",
+      "category": "other",
+      "description_zh": "最小电池水泵控制转速"
+    },
+    {
+      "id": "ENC_param.MaxPumpSpeedHot",
+      "firmware_path": "ENC_param.MaxPumpSpeedHot",
+      "category": "other",
+      "description_zh": "最大散热水泵控制转速"
+    },
+    {
+      "id": "ENC_param.MinPumpSpeedHot",
+      "firmware_path": "ENC_param.MinPumpSpeedHot",
+      "category": "other",
+      "description_zh": "最小散热水泵控制转速"
+    },
+    {
+      "id": "ENC_param.MaxFrontShaft",
+      "firmware_path": "ENC_param.MaxFrontShaft",
+      "category": "other",
+      "description_zh": "最大前电轴控制转速"
+    },
+    {
+      "id": "ENC_param.MinFrontShaft",
+      "firmware_path": "ENC_param.MinFrontShaft",
+      "category": "other",
+      "description_zh": "最小前电轴控制转速"
+    },
+    {
+      "id": "ENC_param.MaxRearShaft",
+      "firmware_path": "ENC_param.MaxRearShaft",
+      "category": "other",
+      "description_zh": "最大后电轴控制转速"
+    },
+    {
+      "id": "ENC_param.MinRearShaft",
+      "firmware_path": "ENC_param.MinRearShaft",
+      "category": "other",
+      "description_zh": "最小后电轴控制转速"
+    },
+    {
+      "id": "ENCEchoControlFlag",
+      "firmware_path": "ENCEchoControlFlag",
+      "category": "Threshold",
+      "description_zh": "回声控制开关（0不控制，1控制）"
+    },
+    {
+      "id": "ENCEchoGainThreshold",
+      "firmware_path": "ENCEchoGainThreshold",
+      "category": "Threshold",
+      "description_zh": "回声控制参数"
+    },
+    {
+      "id": "K_AC_speed",
+      "firmware_path": "K_AC_speed",
+      "category": "other",
+      "description_zh": "压缩机转速K"
+    },
+    {
+      "id": "B_AC_speed",
+      "firmware_path": "B_AC_speed",
+      "category": "other",
+      "description_zh": "压缩机转速B"
+    },
+    {
+      "id": "K_Pump_speed_ac",
+      "firmware_path": "K_Pump_speed_ac",
+      "category": "other",
+      "description_zh": "压缩机水泵转速K"
+    },
+    {
+      "id": "B_Pump_speed_ac",
+      "firmware_path": "B_Pump_speed_ac",
+      "category": "other",
+      "description_zh": "压缩机水泵转速B"
+    },
+    {
+      "id": "K_Pump_speed_battery",
+      "firmware_path": "K_Pump_speed_battery",
+      "category": "other",
+      "description_zh": "电池水泵转速K"
+    },
+    {
+      "id": "B_Pump_speed_battery",
+      "firmware_path": "B_Pump_speed_battery",
+      "category": "other",
+      "description_zh": "电池水泵转速B"
+    },
+    {
+      "id": "K_Pump_speed_hot",
+      "firmware_path": "K_Pump_speed_hot",
+      "category": "other",
+      "description_zh": "散热水泵转速K"
+    },
+    {
+      "id": "B_Pump_speed_hot",
+      "firmware_path": "B_Pump_speed_hot",
+      "category": "other",
+      "description_zh": "散热水泵转速B"
+    },
+    {
+      "id": "K_Fan_speed",
+      "firmware_path": "K_Fan_speed",
+      "category": "other",
+      "description_zh": "风扇转速K"
+    },
+    {
+      "id": "B_Fan_speed",
+      "firmware_path": "B_Fan_speed",
+      "category": "other",
+      "description_zh": "风扇转速B"
+    },
+    {
+      "id": "SPEAKER_Gain",
+      "firmware_path": "SPEAKER_Gain",
+      "category": "ERNC_IN_OUT",
+      "description_zh": "RNC扬声器输出增益"
+    },
+    {
+      "id": "ENC_SPEAKER_Gain",
+      "firmware_path": "ENC_SPEAKER_Gain",
+      "category": "ERNC_IN_OUT",
+      "description_zh": "ENC扬声器输出增益"
+    },
+    {
+      "id": "ENC_Divergence_Con_Flag",
+      "firmware_path": "ENC_Divergence_Con_Flag",
+      "category": "Threshold",
+      "description_zh": "ENC发散控制模块开闭开关(1开启 0关闭)"
+    },
+    {
+      "id": "SpkOrderAmpThre",
+      "firmware_path": "SpkOrderAmpThre",
+      "category": "Threshold"
+    },
+    {
+      "id": "SpkandMicBreakControlFlag",
+      "firmware_path": "SpkandMicBreakControlFlag",
+      "category": "other",
+      "description_zh": "扬声器及麦克风断路控制模块(开机自检控制)"
+    },
+    {
+      "id": "CheckENCWFlag",
+      "firmware_path": "CheckENCWFlag",
+      "category": "other",
+      "description_zh": "ENC WCheck开关(1开启 0关闭)"
+    },
+    {
+      "id": "CheckOrder",
+      "firmware_path": "CheckOrder",
+      "category": "other",
+      "description_zh": "Check阶次序号(0-4)"
+    },
+    {
+      "id": "check_data",
+      "firmware_path": "check_data",
+      "category": "other"
+    },
+    {
+      "id": "check_data.OutputCheck",
+      "firmware_path": "check_data.OutputCheck",
+      "category": "other",
+      "description_zh": "RNC扬声器输出检测"
+    },
+    {
+      "id": "check_data.RefCheck",
+      "firmware_path": "check_data.RefCheck",
+      "category": "other",
+      "description_zh": "RNC参考信号检测"
+    },
+    {
+      "id": "check_data.ErrCheck",
+      "firmware_path": "check_data.ErrCheck",
+      "category": "other",
+      "description_zh": "RNC误差Mic检测"
+    },
+    {
+      "id": "check_data.ENCRefCheckSin",
+      "firmware_path": "check_data.ENCRefCheckSin",
+      "category": "other",
+      "description_zh": "ENC参考信号Sin检测"
+    },
+    {
+      "id": "check_data.ENCRefCheckCos",
+      "firmware_path": "check_data.ENCRefCheckCos",
+      "category": "other",
+      "description_zh": "ENC参考信号Cos检测"
+    },
+    {
+      "id": "check_data.ENCEngineSpeedCheck",
+      "firmware_path": "check_data.ENCEngineSpeedCheck",
+      "category": "other",
+      "description_zh": "ENC发动机转速检测"
+    },
+    {
+      "id": "check_data.ENCErrCheck",
+      "firmware_path": "check_data.ENCErrCheck",
+      "category": "other",
+      "description_zh": "ENC误差Mic检测"
+    },
+    {
+      "id": "check_data.ENCOutputCheck",
+      "firmware_path": "check_data.ENCOutputCheck",
+      "category": "other",
+      "description_zh": "ENC扬声器输出检测"
+    },
+    {
+      "id": "check_data.HornRefCheck_T",
+      "firmware_path": "check_data.HornRefCheck_T",
+      "category": "other",
+      "description_zh": "鸣笛时域信号检测"
+    },
+    {
+      "id": "check_data.HornRefCheck_F",
+      "firmware_path": "check_data.HornRefCheck_F",
+      "category": "other",
+      "description_zh": "鸣笛频域信号检测"
+    },
+    {
+      "id": "check_data.xPowCheck",
+      "firmware_path": "check_data.xPowCheck",
+      "category": "other",
+      "description_zh": "RNC xPowCheck"
+    },
+    {
+      "id": "check_data.MiuCheck",
+      "firmware_path": "check_data.MiuCheck",
+      "category": "other",
+      "description_zh": "RNC MiuCheck"
+    },
+    {
+      "id": "check_data.ENCEchoGainCheck",
+      "firmware_path": "check_data.ENCEchoGainCheck",
+      "category": "other",
+      "description_zh": "ENC EchoGainCheck"
+    },
+    {
+      "id": "check_data.OrderSpkoutmaxCheck",
+      "firmware_path": "check_data.OrderSpkoutmaxCheck",
+      "category": "other"
+    },
+    {
+      "id": "check_data.DataSpeedCheck",
+      "firmware_path": "check_data.DataSpeedCheck",
+      "category": "other",
+      "description_zh": "Check转速"
+    },
+    {
+      "id": "check_data.DataSinCheck",
+      "firmware_path": "check_data.DataSinCheck",
+      "category": "other",
+      "description_zh": "Check Sin相关"
+    },
+    {
+      "id": "check_data.DataCosCheck",
+      "firmware_path": "check_data.DataCosCheck",
+      "category": "other",
+      "description_zh": "Check Cos相关"
+    },
+    {
+      "id": "check_data.RNCAdapCheckRefNum",
+      "firmware_path": "check_data.RNCAdapCheckRefNum",
+      "category": "other",
+      "description_zh": "滤波器频域检查参考通道序号"
+    },
+    {
+      "id": "check_data.RNCAdapCheckSpkNum",
+      "firmware_path": "check_data.RNCAdapCheckSpkNum",
+      "category": "other",
+      "description_zh": "滤波器频域检查扬声器序号"
+    },
+    {
+      "id": "check_data.RNCAdapCheck",
+      "firmware_path": "check_data.RNCAdapCheck",
+      "category": "other",
+      "description_zh": "滤波器频域系数检查"
+    },
+    {
+      "id": "rnc_dicergence.rnc_divergence_con_flag",
+      "firmware_path": "rnc_dicergence.rnc_divergence_con_flag",
+      "category": "Threshold",
+      "description_zh": "RNC发散控制模块开闭开关(1开启 0关闭)"
+    },
+    {
+      "id": "rnc_dicergence.rnc_divergence_counting",
+      "firmware_path": "rnc_dicergence.rnc_divergence_counting",
+      "category": "Threshold",
+      "description_zh": "RNC超阈值持续点数"
+    },
+    {
+      "id": "rnc_dicergence.rnc_divergence_off_time",
+      "firmware_path": "rnc_dicergence.rnc_divergence_off_time",
+      "category": "Threshold",
+      "description_zh": "RNC发散触发临界时间T(发散模块被触发时，若系统运行时间小于T，系统关闭，反之系统重启)"
+    },
+    {
+      "id": "rnc_dicergence.rnc_diverge_threshold",
+      "firmware_path": "rnc_dicergence.rnc_diverge_threshold",
+      "category": "Threshold"
+    },
+    {
+      "id": "rnc_dicergence.RNCSpkFAdapMax",
+      "firmware_path": "rnc_dicergence.RNCSpkFAdapMax",
+      "category": "Threshold",
+      "description_zh": "RNC发散特征值检查"
+    },
+    {
+      "id": "SpkState",
+      "firmware_path": "SpkState",
+      "category": "other",
+      "description_zh": "扬声器状态(开机自检)"
+    },
+    {
+      "id": "MicState",
+      "firmware_path": "MicState",
+      "category": "other",
+      "description_zh": "麦克风状态(开机自检)"
+    },
+    {
+      "id": "Datarecordflag",
+      "firmware_path": "Datarecordflag",
+      "category": "other",
+      "description_zh": "数据录取功能开闭"
+    },
+    {
+      "id": "Can_Msg",
+      "firmware_path": "Can_Msg",
+      "category": "other"
+    },
+    {
+      "id": "ERNC_TF",
+      "firmware_path": "ERNC_TF",
+      "category": "Check"
+    },
+    {
+      "id": "ERNC_TF.fSecPathTransR",
+      "firmware_path": "ERNC_TF.fSecPathTransR",
+      "category": "other"
+    },
+    {
+      "id": "ERNC_TF.fSecPathTransI",
+      "firmware_path": "ERNC_TF.fSecPathTransI",
+      "category": "other"
+    },
+    {
+      "id": "ERNC_TF.SpecRadius",
+      "firmware_path": "ERNC_TF.SpecRadius",
+      "category": "RNC_Param",
+      "description_zh": "RNC谱半径"
+    },
+    {
+      "id": "ERNC_TF.ENCTF",
+      "firmware_path": "ERNC_TF.ENCTF",
+      "category": "other"
+    },
+    {
+      "id": "init_param_flag",
+      "firmware_path": "init_param_flag",
+      "category": "other"
     }
   ]
 }

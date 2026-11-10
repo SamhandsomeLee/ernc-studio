@@ -69,7 +69,7 @@ set(ernc_alias_cases
     missing_alias_file
     shipped_refer_num
     shipped_can_msg
-    shipped_advanced
+    shipped_member_alias
 )
 
 foreach(ernc_alias_case IN LISTS ernc_alias_cases)

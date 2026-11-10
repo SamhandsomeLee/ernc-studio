@@ -12,6 +12,7 @@ using ernc::domain::CatalogError;
 using ernc::domain::CatalogLoad;
 using ernc::domain::DataType;
 using ernc::domain::EditorKind;
+using ernc::domain::kOtherPageCategory;
 using ernc::domain::ParameterCatalog;
 using ernc::domain::ParameterCatalogLoader;
 using ernc::domain::ValueShape;
@@ -48,16 +49,16 @@ bool expectError(std::string_view jsonText, CatalogError expected, const char* n
     return true;
 }
 
-/// @brief 确认正式目录文件里的五条证据记录和原文中文说明。
+/// @brief 确认正式目录里的结构体参数，以及五条已有证据记录没有被改写。
 /// @param path 目录 JSON 路径，只在本次调用期间借用。文件由加载器打开并在返回前关闭。
-/// @return 版本、顺序、路径、说明、类型和控制语义都匹配时为 true。
+/// @return 版本、成员路径、other 页和五条控制语义都匹配时为 true。
 bool checkCatalogFile(const char* path) {
     const CatalogLoad loaded = ParameterCatalogLoader::loadFile(path);
     if (!loaded.ok()) {
         return fail("catalog-file");
     }
     const ParameterCatalog& catalog = *loaded.tryCatalog();
-    if (catalog.schemaVersion() != 1 || catalog.catalogVersion() != "0.1.0" || catalog.size() != 5) {
+    if (catalog.schemaVersion() != 1 || catalog.catalogVersion() != "0.2.0" || catalog.size() != 178) {
         return fail("catalog-version");
     }
 
@@ -103,33 +104,59 @@ bool checkCatalogFile(const char* path) {
             DataType::Int32, EditorKind::MomentaryCommand, true, AccessMode::Command, false},
     };
 
-    for (std::size_t index = 0; index < catalog.size(); ++index) {
-        const auto& entry = catalog.entries()[index];
-        const Expected& item = expected[index];
-        if (entry.id.text() != item.id || entry.firmwarePath != item.firmwarePath
-            || !entry.category || *entry.category != item.category
-            || entry.descriptionZh != item.description || !entry.dataType
-            || *entry.dataType != item.dataType || !entry.shape || *entry.shape != ValueShape::Scalar
-            || entry.editor != item.editor || entry.access.has_value() != item.hasAccess) {
+    for (const Expected& item : expected) {
+        const auto* entry = catalog.find(item.id);
+        if (entry == nullptr || !entry->firmwarePath || *entry->firmwarePath != item.firmwarePath
+            || !entry->category || *entry->category != item.category || !entry->descriptionZh
+            || *entry->descriptionZh != item.description || !entry->dataType
+            || *entry->dataType != item.dataType || !entry->shape || *entry->shape != ValueShape::Scalar
+            || !entry->editor || *entry->editor != item.editor
+            || entry->access.has_value() != item.hasAccess) {
             return fail(item.id);
         }
-        if (item.hasAccess && *entry.access != item.access) {
+        if (item.hasAccess && *entry->access != item.access) {
             return fail(item.id);
         }
         if (item.hasWire) {
-            if (!entry.wireLevels || entry.wireLevels->on != 0 || entry.wireLevels->off != 1) {
+            if (!entry->wireLevels || entry->wireLevels->on != 0 || entry->wireLevels->off != 1) {
                 return fail(item.id);
             }
-        } else if (entry.wireLevels) {
+        } else if (entry->wireLevels) {
             return fail(item.id);
         }
-        const auto* found = catalog.find(item.id);
-        if (found != &entry) {
-            return fail("find");
-        }
     }
-    if (catalog.find("") != nullptr || catalog.find("Refer_Num") != nullptr) {
-        return fail("missing-id");
+
+    const auto* alpha = catalog.find("RNC_param.alpha1");
+    const auto* refer = catalog.find("RNC_param.refernum");
+    const auto* region = catalog.find("check_data");
+    const auto* transfer = catalog.find("ERNC_TF");
+    const auto* other = catalog.find("MiuControlFlag");
+    if (alpha == nullptr || !alpha->firmwarePath || *alpha->firmwarePath != "RNC_param.alpha1"
+        || !alpha->category || *alpha->category != "RNC_Param" || alpha->editor) {
+        return fail("alpha1");
+    }
+    if (refer == nullptr || !refer->category || *refer->category != "ERNC_IN_OUT" || refer->editor) {
+        return fail("refernum");
+    }
+    if (region == nullptr || !region->firmwarePath || *region->firmwarePath != "check_data"
+        || !region->category || *region->category != kOtherPageCategory) {
+        return fail("check-data");
+    }
+    if (transfer == nullptr || !transfer->category || *transfer->category != "Check") {
+        return fail("ernc-tf");
+    }
+    if (other == nullptr || !other->category || *other->category != kOtherPageCategory || other->editor) {
+        return fail("other-page");
+    }
+    if (catalog.find("") != nullptr || catalog.find("Refer_Num") != nullptr
+        || catalog.find("check_date") != nullptr || catalog.find("CAN_Msg") != nullptr
+        || catalog.find("OrderFour_Flag") != nullptr) {
+        return fail("not-a-parameter");
+    }
+    for (const auto& entry : catalog.entries()) {
+        if (!entry.firmwarePath || entry.firmwarePath->empty()) {
+            return fail("struct-path");
+        }
     }
     return true;
 }
@@ -141,8 +168,6 @@ bool checkRejections() {
         R"({"id":"ANC_OFF","firmware_path":"ANC_OFF","description_zh":"第一","editor":"numeric"},{"id":"ANC_OFF","firmware_path":"ENC_OFF","description_zh":"第二","editor":"numeric"})");
     const std::string invalidControl = document(
         R"({"id":"ANC_OFF","firmware_path":"ANC_OFF","description_zh":"说明","editor":"slider"})");
-    const std::string missingPath = document(
-        R"({"id":"ANC_OFF","description_zh":"说明","editor":"numeric"})");
     const std::string blankPath = document(
         R"({"id":"ANC_OFF","firmware_path":"  ","description_zh":"说明","editor":"numeric"})");
     const std::string toggleWithoutWire = document(
@@ -156,7 +181,6 @@ bool checkRejections() {
 
     return expectError(duplicate, CatalogError::DuplicateId, "duplicate-id")
         && expectError(invalidControl, CatalogError::InvalidControl, "invalid-control")
-        && expectError(missingPath, CatalogError::MissingPath, "missing-path")
         && expectError(blankPath, CatalogError::MissingPath, "blank-path")
         && expectError(toggleWithoutWire, CatalogError::SemanticConflict, "toggle-wire")
         && expectError(wireOnReadOnly, CatalogError::SemanticConflict, "readonly-wire")
@@ -164,6 +188,22 @@ bool checkRejections() {
         && expectError(unknownKey, CatalogError::InvalidDocument, "unknown-key")
         && expectError("{", CatalogError::InvalidDocument, "malformed")
         && expectError("", CatalogError::InvalidDocument, "empty");
+}
+
+/// @brief 结构体参数可以暂时不写说明和控件。缺省路径也不是错误。
+/// @return 记录能载入且说明、控件、路径都为空时为 true。
+bool omittedFieldsAreAllowed() {
+    const CatalogLoad loaded = ParameterCatalogLoader::loadText(
+        document(R"({"id":"HornTime","category":"other"})"));
+    if (!loaded.ok()) {
+        return fail("omitted-fields");
+    }
+    const auto* entry = loaded.catalog().find("HornTime");
+    if (entry == nullptr || entry->firmwarePath || entry->descriptionZh || entry->editor
+        || !entry->category || *entry->category != kOtherPageCategory) {
+        return fail("omitted-fields");
+    }
+    return true;
 }
 
 }  // namespace
@@ -177,7 +217,7 @@ int main(int argc, char** argv) {
         std::cerr << "usage: ernc-catalog-contract <parameter-catalog.json>\n";
         return 2;
     }
-    if (!checkCatalogFile(argv[1]) || !checkRejections()) {
+    if (!checkCatalogFile(argv[1]) || !checkRejections() || !omittedFieldsAreAllowed()) {
         return 1;
     }
     const CatalogLoad missing = ParameterCatalogLoader::loadFile("catalog/source/does-not-exist.json");
