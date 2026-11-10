@@ -1,0 +1,1419 @@
+{
+  "kind": "raw",
+  "sheet": "ERNC参数说明",
+  "header": {
+    "A": "参数名称",
+    "B": "参数说明",
+    "C": "备注"
+  },
+  "rows": [
+    {
+      "row": 1,
+      "cells": {
+        "A": "参数名称",
+        "B": "参数说明",
+        "C": "备注"
+      }
+    },
+    {
+      "row": 2,
+      "cells": {
+        "A": "ANC_OFF",
+        "B": "ERNC总开关，0开启，1关闭",
+        "C": ""
+      }
+    },
+    {
+      "row": 3,
+      "cells": {
+        "A": "ENC_OFF",
+        "B": "ENC开关，0开启，1关闭",
+        "C": ""
+      }
+    },
+    {
+      "row": 4,
+      "cells": {
+        "A": "RNC_OFF",
+        "B": "RNC开关，0开启，1关闭",
+        "C": ""
+      }
+    },
+    {
+      "row": 5,
+      "cells": {
+        "A": "check_mod",
+        "B": "数据检测模式（数据保持），1开启，0关闭",
+        "C": ""
+      }
+    },
+    {
+      "row": 6,
+      "cells": {
+        "A": "RNC_refresh",
+        "B": "算法重置，1重置，0算法启动。注：重置1后需要置0开启算法，且需要在车速大于5kmph是重置",
+        "C": ""
+      }
+    },
+    {
+      "row": 7,
+      "cells": {
+        "A": "SpeakerCheckValue",
+        "B": "扬声器检测模式，1开启，0关闭",
+        "C": ""
+      }
+    },
+    {
+      "row": 8,
+      "cells": {
+        "A": "TranFuncFlag",
+        "B": "传函采集模式，1采集传函，0控制程序",
+        "C": ""
+      }
+    },
+    {
+      "row": 9,
+      "cells": {
+        "A": "Step",
+        "B": "实时步长显示",
+        "C": ""
+      }
+    },
+    {
+      "row": 10,
+      "cells": {
+        "A": "Bypass_mod",
+        "B": "直通模式",
+        "C": ""
+      }
+    },
+    {
+      "row": 11,
+      "cells": {
+        "A": "alpha1",
+        "B": "第一段步长(10分钟后)，步长越大系统收敛速度越快，但稳定性越差",
+        "C": ""
+      }
+    },
+    {
+      "row": 12,
+      "cells": {
+        "A": "alpha2",
+        "B": "第二段步长(10分钟后)",
+        "C": ""
+      }
+    },
+    {
+      "row": 13,
+      "cells": {
+        "A": "alpha3",
+        "B": "第三段步长(10分钟后)",
+        "C": ""
+      }
+    },
+    {
+      "row": 14,
+      "cells": {
+        "A": "alpha4",
+        "B": "第四段步长(10分钟后)",
+        "C": ""
+      }
+    },
+    {
+      "row": 15,
+      "cells": {
+        "A": "alpha5",
+        "B": "第五段步长(10分钟后)",
+        "C": ""
+      }
+    },
+    {
+      "row": 16,
+      "cells": {
+        "A": "alpha1_10",
+        "B": "第一段步长(10分钟前)",
+        "C": ""
+      }
+    },
+    {
+      "row": 17,
+      "cells": {
+        "A": "alpha2_10",
+        "B": "第二段步长(10分钟前)",
+        "C": ""
+      }
+    },
+    {
+      "row": 18,
+      "cells": {
+        "A": "alpha3_10",
+        "B": "第三段步长(10分钟前)",
+        "C": ""
+      }
+    },
+    {
+      "row": 19,
+      "cells": {
+        "A": "alpha4_10",
+        "B": "第四段步长(10分钟前)",
+        "C": ""
+      }
+    },
+    {
+      "row": 20,
+      "cells": {
+        "A": "alpha5_10",
+        "B": "第五段步长(10分钟前)",
+        "C": ""
+      }
+    },
+    {
+      "row": 21,
+      "cells": {
+        "A": "LeakyRNCFre",
+        "B": "防爆音系数分段",
+        "C": ""
+      }
+    },
+    {
+      "row": 22,
+      "cells": {
+        "A": "LeakyRNC",
+        "B": "防爆音系数，可增加系统鲁棒性，但过大会影响降噪效果",
+        "C": ""
+      }
+    },
+    {
+      "row": 23,
+      "cells": {
+        "A": "eta",
+        "B": "误差信号权重",
+        "C": ""
+      }
+    },
+    {
+      "row": 24,
+      "cells": {
+        "A": "delta",
+        "B": "小值、安全值",
+        "C": ""
+      }
+    },
+    {
+      "row": 25,
+      "cells": {
+        "A": "Refer_Num",
+        "B": "参考信号通道数",
+        "C": ""
+      }
+    },
+    {
+      "row": 26,
+      "cells": {
+        "A": "Err_Num",
+        "B": "误差麦克通道数",
+        "C": ""
+      }
+    },
+    {
+      "row": 27,
+      "cells": {
+        "A": "Spk_Num",
+        "B": "扬声器个数",
+        "C": ""
+      }
+    },
+    {
+      "row": 28,
+      "cells": {
+        "A": "output_Amplitude",
+        "B": "扬声器输出增益，负数，值越小，信号越小",
+        "C": ""
+      }
+    },
+    {
+      "row": 29,
+      "cells": {
+        "A": "Output_Threshold",
+        "B": "扬声器输出阈值（RNC）",
+        "C": ""
+      }
+    },
+    {
+      "row": 30,
+      "cells": {
+        "A": "fstart_fre_num",
+        "B": "开始控制频率点",
+        "C": ""
+      }
+    },
+    {
+      "row": 31,
+      "cells": {
+        "A": "ffirst_fre_num",
+        "B": "第一段控制频率点",
+        "C": ""
+      }
+    },
+    {
+      "row": 32,
+      "cells": {
+        "A": "fsecond_fre_num",
+        "B": "第二段控制频率点",
+        "C": ""
+      }
+    },
+    {
+      "row": 33,
+      "cells": {
+        "A": "fthird_fre_num",
+        "B": "第三段控制频率点",
+        "C": ""
+      }
+    },
+    {
+      "row": 34,
+      "cells": {
+        "A": "fforth_fre_num",
+        "B": "第四段控制频率点",
+        "C": ""
+      }
+    },
+    {
+      "row": 35,
+      "cells": {
+        "A": "max_time",
+        "B": "RNC运行最大时间(1分钟1100)",
+        "C": ""
+      }
+    },
+    {
+      "row": 36,
+      "cells": {
+        "A": "horn_control",
+        "B": "是否打开喇叭控制（1为开）",
+        "C": ""
+      }
+    },
+    {
+      "row": 37,
+      "cells": {
+        "A": "RefChooseFloat",
+        "B": "喇叭控制参考传感器序号",
+        "C": ""
+      }
+    },
+    {
+      "row": 38,
+      "cells": {
+        "A": "HornRefThreshold",
+        "B": "喇叭阈值",
+        "C": ""
+      }
+    },
+    {
+      "row": 39,
+      "cells": {
+        "A": "HornOFFContinueTime",
+        "B": "按喇叭持续关闭时间",
+        "C": ""
+      }
+    },
+    {
+      "row": 40,
+      "cells": {
+        "A": "horn_trigger",
+        "B": "检测喇叭控制策略是否有效",
+        "C": ""
+      }
+    },
+    {
+      "row": 41,
+      "cells": {
+        "A": "ACC_Gain",
+        "B": "参考振动增益（细调），大于0的值",
+        "C": ""
+      }
+    },
+    {
+      "row": 42,
+      "cells": {
+        "A": "RNC_MIC_Gain",
+        "B": "RNC误差mic增益（细调），大于0的值",
+        "C": ""
+      }
+    },
+    {
+      "row": 43,
+      "cells": {
+        "A": "running_time",
+        "B": "RNC步长变换时间(1分钟1100)",
+        "C": ""
+      }
+    },
+    {
+      "row": 44,
+      "cells": {
+        "A": "MiuControlFlag",
+        "B": "Miu控制开关（0为关，1为开）",
+        "C": ""
+      }
+    },
+    {
+      "row": 45,
+      "cells": {
+        "A": "MiuThreshold",
+        "B": "Miu阈值",
+        "C": ""
+      }
+    },
+    {
+      "row": 46,
+      "cells": {
+        "A": "TestMode",
+        "B": "台架模式，０为实车模式，１为台架模式",
+        "C": ""
+      }
+    },
+    {
+      "row": 47,
+      "cells": {
+        "A": "RNC_MIC_Gain_BT",
+        "B": "蓝牙电话模式下RNC mic增益",
+        "C": ""
+      }
+    },
+    {
+      "row": 48,
+      "cells": {
+        "A": "ENC_Mic_Gain_BT",
+        "B": "蓝牙电话模式下ENC mic增益",
+        "C": ""
+      }
+    },
+    {
+      "row": 49,
+      "cells": {
+        "A": "OrderOne_Flag",
+        "B": "阶次1开闭标志，1开启，0关闭",
+        "C": ""
+      }
+    },
+    {
+      "row": 50,
+      "cells": {
+        "A": "OrderTwo_Flag",
+        "B": "阶次2开闭标志，1开启，0关闭",
+        "C": ""
+      }
+    },
+    {
+      "row": 51,
+      "cells": {
+        "A": "OrderThree_Flag",
+        "B": "阶次3开闭标志，1开启，0关闭",
+        "C": ""
+      }
+    },
+    {
+      "row": 52,
+      "cells": {
+        "A": "OrderFour_Flag",
+        "B": "阶次4开闭标志，1开启，0关闭",
+        "C": ""
+      }
+    },
+    {
+      "row": 53,
+      "cells": {
+        "A": "OrderFive_Flag",
+        "B": "阶次5开闭标志，1开启，0关闭",
+        "C": ""
+      }
+    },
+    {
+      "row": 54,
+      "cells": {
+        "A": "OrderOne_Type",
+        "B": "阶次1控制噪声类型，0-Engine 1-AC 2-Fan 3-PumpAC 4-PumpBattery 5-PumpHot",
+        "C": ""
+      }
+    },
+    {
+      "row": 55,
+      "cells": {
+        "A": "OrderTwo_Type",
+        "B": "阶次2控制噪声类型，0-Engine 1-AC 2-Fan 3-PumpAC 4-PumpBattery 5-PumpHot",
+        "C": ""
+      }
+    },
+    {
+      "row": 56,
+      "cells": {
+        "A": "OrderThree_Type",
+        "B": "阶次3控制噪声类型，0-Engine 1-AC 2-Fan 3-PumpAC 4-PumpBattery 5-PumpHot",
+        "C": ""
+      }
+    },
+    {
+      "row": 57,
+      "cells": {
+        "A": "OrderFour_Type",
+        "B": "阶次4控制噪声类型，0-Engine 1-AC 2-Fan 3-PumpAC 4-PumpBattery 5-PumpHot",
+        "C": ""
+      }
+    },
+    {
+      "row": 58,
+      "cells": {
+        "A": "OrderFive_Type",
+        "B": "阶次5控制噪声类型，0-Engine 1-AC 2-Fan 3-PumpAC 4-PumpBattery 5-PumpHot",
+        "C": ""
+      }
+    },
+    {
+      "row": 59,
+      "cells": {
+        "A": "OrderOne",
+        "B": "阶次1阶数",
+        "C": ""
+      }
+    },
+    {
+      "row": 60,
+      "cells": {
+        "A": "OrderTwo",
+        "B": "阶次2阶数",
+        "C": ""
+      }
+    },
+    {
+      "row": 61,
+      "cells": {
+        "A": "OrderThree",
+        "B": "阶次3阶数",
+        "C": ""
+      }
+    },
+    {
+      "row": 62,
+      "cells": {
+        "A": "OrderFour",
+        "B": "阶次4阶数",
+        "C": ""
+      }
+    },
+    {
+      "row": 63,
+      "cells": {
+        "A": "OrderFive",
+        "B": "阶次5阶数",
+        "C": ""
+      }
+    },
+    {
+      "row": 64,
+      "cells": {
+        "A": "MinEngineSpeed",
+        "B": "最小发动机控制转速",
+        "C": ""
+      }
+    },
+    {
+      "row": 65,
+      "cells": {
+        "A": "MaxEngineSpeed",
+        "B": "最大发动机控制转速",
+        "C": ""
+      }
+    },
+    {
+      "row": 66,
+      "cells": {
+        "A": "MinAcSpeed",
+        "B": "最小压缩机控制转速",
+        "C": ""
+      }
+    },
+    {
+      "row": 67,
+      "cells": {
+        "A": "MaxAcSpeed",
+        "B": "最大压缩机控制转速",
+        "C": ""
+      }
+    },
+    {
+      "row": 68,
+      "cells": {
+        "A": "MinFanSpeed",
+        "B": "最小风扇控制转速",
+        "C": ""
+      }
+    },
+    {
+      "row": 69,
+      "cells": {
+        "A": "MaxFanSpeed",
+        "B": "最大风扇控制转速",
+        "C": ""
+      }
+    },
+    {
+      "row": 70,
+      "cells": {
+        "A": "MinPumpSpeedAC",
+        "B": "最小压缩机水泵控制转速",
+        "C": ""
+      }
+    },
+    {
+      "row": 71,
+      "cells": {
+        "A": "MaxPumpSpeedAC",
+        "B": "最大压缩机水泵控制转速",
+        "C": ""
+      }
+    },
+    {
+      "row": 72,
+      "cells": {
+        "A": "MinPumpSpeedBattery",
+        "B": "最小电池水泵控制转速",
+        "C": ""
+      }
+    },
+    {
+      "row": 73,
+      "cells": {
+        "A": "MaxPumpSpeedBattery",
+        "B": "最大电池水泵控制转速",
+        "C": ""
+      }
+    },
+    {
+      "row": 74,
+      "cells": {
+        "A": "MinPumpSpeedHot",
+        "B": "最小散热水泵控制转速",
+        "C": ""
+      }
+    },
+    {
+      "row": 75,
+      "cells": {
+        "A": "MaxPumpSpeedHot",
+        "B": "最大散热水泵控制转速",
+        "C": ""
+      }
+    },
+    {
+      "row": 76,
+      "cells": {
+        "A": "MinFrontShaft",
+        "B": "最小前电轴控制转速",
+        "C": ""
+      }
+    },
+    {
+      "row": 77,
+      "cells": {
+        "A": "MaxFrontShaft",
+        "B": "最大前电轴控制转速",
+        "C": ""
+      }
+    },
+    {
+      "row": 78,
+      "cells": {
+        "A": "MinRearShaft",
+        "B": "最小后电轴控制转速",
+        "C": ""
+      }
+    },
+    {
+      "row": 79,
+      "cells": {
+        "A": "MaxRearShaft",
+        "B": "最大后电轴控制转速",
+        "C": ""
+      }
+    },
+    {
+      "row": 80,
+      "cells": {
+        "A": "ENCEchoControlFlag",
+        "B": "回声控制开关（0不控制，1控制）",
+        "C": ""
+      }
+    },
+    {
+      "row": 81,
+      "cells": {
+        "A": "ENCEchoGainThreshold",
+        "B": "回声控制参数",
+        "C": ""
+      }
+    },
+    {
+      "row": 82,
+      "cells": {
+        "A": "K_AC_speed",
+        "B": "压缩机转速K",
+        "C": ""
+      }
+    },
+    {
+      "row": 83,
+      "cells": {
+        "A": "B_AC_speed",
+        "B": "压缩机转速B",
+        "C": ""
+      }
+    },
+    {
+      "row": 84,
+      "cells": {
+        "A": "K_Pump_speed_ac",
+        "B": "压缩机水泵转速K",
+        "C": ""
+      }
+    },
+    {
+      "row": 85,
+      "cells": {
+        "A": "B_Pump_speed_ac",
+        "B": "压缩机水泵转速B",
+        "C": ""
+      }
+    },
+    {
+      "row": 86,
+      "cells": {
+        "A": "K_Pump_speed_battery",
+        "B": "电池水泵转速K",
+        "C": ""
+      }
+    },
+    {
+      "row": 87,
+      "cells": {
+        "A": "B_Pump_speed_battery",
+        "B": "电池水泵转速B",
+        "C": ""
+      }
+    },
+    {
+      "row": 88,
+      "cells": {
+        "A": "K_Pump_speed_hot",
+        "B": "散热水泵转速K",
+        "C": ""
+      }
+    },
+    {
+      "row": 89,
+      "cells": {
+        "A": "B_Pump_speed_hot",
+        "B": "散热水泵转速B",
+        "C": ""
+      }
+    },
+    {
+      "row": 90,
+      "cells": {
+        "A": "K_Fan_speed",
+        "B": "风扇转速K",
+        "C": ""
+      }
+    },
+    {
+      "row": 91,
+      "cells": {
+        "A": "B_Fan_speed",
+        "B": "风扇转速B",
+        "C": ""
+      }
+    },
+    {
+      "row": 92,
+      "cells": {
+        "A": "TachofAmp1",
+        "B": "阶次1虚拟参考信号幅值转速区间",
+        "C": ""
+      }
+    },
+    {
+      "row": 93,
+      "cells": {
+        "A": "Amp1",
+        "B": "阶次1虚拟参考信号幅值",
+        "C": ""
+      }
+    },
+    {
+      "row": 94,
+      "cells": {
+        "A": "TachofStep1",
+        "B": "阶次1步长转速区间",
+        "C": ""
+      }
+    },
+    {
+      "row": 95,
+      "cells": {
+        "A": "Step1",
+        "B": "阶次1步长",
+        "C": ""
+      }
+    },
+    {
+      "row": 96,
+      "cells": {
+        "A": "TachofLeaky1",
+        "B": "阶次1性能控制系数转速区间",
+        "C": ""
+      }
+    },
+    {
+      "row": 97,
+      "cells": {
+        "A": "Leaky1",
+        "B": "阶次1性能控制系数",
+        "C": ""
+      }
+    },
+    {
+      "row": 98,
+      "cells": {
+        "A": "ErrWei1",
+        "B": "阶次1误差信号权重",
+        "C": ""
+      }
+    },
+    {
+      "row": 99,
+      "cells": {
+        "A": "Delta1",
+        "B": "阶次1小值、安全值",
+        "C": ""
+      }
+    },
+    {
+      "row": 100,
+      "cells": {
+        "A": "TachofAmp2",
+        "B": "阶次2幅值转速区间",
+        "C": ""
+      }
+    },
+    {
+      "row": 101,
+      "cells": {
+        "A": "Amp2",
+        "B": "阶次2幅值",
+        "C": ""
+      }
+    },
+    {
+      "row": 102,
+      "cells": {
+        "A": "TachofStep2",
+        "B": "阶次2步长转速区间",
+        "C": ""
+      }
+    },
+    {
+      "row": 103,
+      "cells": {
+        "A": "Step2",
+        "B": "阶次2步长",
+        "C": ""
+      }
+    },
+    {
+      "row": 104,
+      "cells": {
+        "A": "TachofLeaky2",
+        "B": "阶次2性能控制系数转速区间",
+        "C": ""
+      }
+    },
+    {
+      "row": 105,
+      "cells": {
+        "A": "Leaky2",
+        "B": "阶次2性能控制系数",
+        "C": ""
+      }
+    },
+    {
+      "row": 106,
+      "cells": {
+        "A": "ErrWei2",
+        "B": "阶次2误差信号权重",
+        "C": ""
+      }
+    },
+    {
+      "row": 107,
+      "cells": {
+        "A": "Delta2",
+        "B": "阶次2小值、安全值",
+        "C": ""
+      }
+    },
+    {
+      "row": 108,
+      "cells": {
+        "A": "TachofAmp3",
+        "B": "阶次3幅值转速区间",
+        "C": ""
+      }
+    },
+    {
+      "row": 109,
+      "cells": {
+        "A": "Amp3",
+        "B": "阶次3幅值",
+        "C": ""
+      }
+    },
+    {
+      "row": 110,
+      "cells": {
+        "A": "TachofStep3",
+        "B": "阶次3步长转速区间",
+        "C": ""
+      }
+    },
+    {
+      "row": 111,
+      "cells": {
+        "A": "Step3",
+        "B": "阶次3步长",
+        "C": ""
+      }
+    },
+    {
+      "row": 112,
+      "cells": {
+        "A": "TachofLeaky3",
+        "B": "阶次3性能控制系数转速区间",
+        "C": ""
+      }
+    },
+    {
+      "row": 113,
+      "cells": {
+        "A": "Leaky3",
+        "B": "阶次3性能控制系数",
+        "C": ""
+      }
+    },
+    {
+      "row": 114,
+      "cells": {
+        "A": "ErrWei3",
+        "B": "阶次3误差信号权重",
+        "C": ""
+      }
+    },
+    {
+      "row": 115,
+      "cells": {
+        "A": "Delta3",
+        "B": "阶次3小值、安全值",
+        "C": ""
+      }
+    },
+    {
+      "row": 116,
+      "cells": {
+        "A": "TachofAmp4",
+        "B": "阶次4幅值转速区间",
+        "C": ""
+      }
+    },
+    {
+      "row": 117,
+      "cells": {
+        "A": "Amp4",
+        "B": "阶次4幅值",
+        "C": ""
+      }
+    },
+    {
+      "row": 118,
+      "cells": {
+        "A": "TachofStep4",
+        "B": "阶次4步长转速区间",
+        "C": ""
+      }
+    },
+    {
+      "row": 119,
+      "cells": {
+        "A": "Step4",
+        "B": "阶次4步长",
+        "C": ""
+      }
+    },
+    {
+      "row": 120,
+      "cells": {
+        "A": "TachofLeaky4",
+        "B": "阶次4性能控制系数转速区间",
+        "C": ""
+      }
+    },
+    {
+      "row": 121,
+      "cells": {
+        "A": "Leaky4",
+        "B": "阶次4性能控制系数",
+        "C": ""
+      }
+    },
+    {
+      "row": 122,
+      "cells": {
+        "A": "ErrWei4",
+        "B": "阶次4误差信号权重",
+        "C": ""
+      }
+    },
+    {
+      "row": 123,
+      "cells": {
+        "A": "Delta4",
+        "B": "阶次4小值、安全值",
+        "C": ""
+      }
+    },
+    {
+      "row": 124,
+      "cells": {
+        "A": "TachofAmp5",
+        "B": "阶次5幅值转速区间",
+        "C": ""
+      }
+    },
+    {
+      "row": 125,
+      "cells": {
+        "A": "Amp5",
+        "B": "阶次5幅值",
+        "C": ""
+      }
+    },
+    {
+      "row": 126,
+      "cells": {
+        "A": "TachofStep5",
+        "B": "阶次5步长转速区间",
+        "C": ""
+      }
+    },
+    {
+      "row": 127,
+      "cells": {
+        "A": "Step5",
+        "B": "阶次5步长",
+        "C": ""
+      }
+    },
+    {
+      "row": 128,
+      "cells": {
+        "A": "TachofLeaky5",
+        "B": "阶次5性能控制系数转速区间",
+        "C": ""
+      }
+    },
+    {
+      "row": 129,
+      "cells": {
+        "A": "Leaky5",
+        "B": "阶次5性能控制系数",
+        "C": ""
+      }
+    },
+    {
+      "row": 130,
+      "cells": {
+        "A": "ErrWei5",
+        "B": "阶次5误差信号权重",
+        "C": ""
+      }
+    },
+    {
+      "row": 131,
+      "cells": {
+        "A": "Delta5",
+        "B": "阶次5小值、安全值",
+        "C": ""
+      }
+    },
+    {
+      "row": 132,
+      "cells": {
+        "A": "input_Amplitude",
+        "B": "输入信号增益（粗调）",
+        "C": ""
+      }
+    },
+    {
+      "row": 133,
+      "cells": {
+        "A": "fInputPoi",
+        "B": "输入信号序列",
+        "C": ""
+      }
+    },
+    {
+      "row": 134,
+      "cells": {
+        "A": "fOutputPoi",
+        "B": "扬声器输出序列",
+        "C": ""
+      }
+    },
+    {
+      "row": 135,
+      "cells": {
+        "A": "Input_threshold",
+        "B": "RNC参考振动阈值",
+        "C": ""
+      }
+    },
+    {
+      "row": 136,
+      "cells": {
+        "A": "ENC_Mic_Gain",
+        "B": "ENC麦克风增益（细调）",
+        "C": ""
+      }
+    },
+    {
+      "row": 137,
+      "cells": {
+        "A": "OutputCheck",
+        "B": "RNC扬声器输出检测",
+        "C": ""
+      }
+    },
+    {
+      "row": 138,
+      "cells": {
+        "A": "RefCheck",
+        "B": "RNC参考信号检测",
+        "C": ""
+      }
+    },
+    {
+      "row": 139,
+      "cells": {
+        "A": "ErrCheck",
+        "B": "RNC误差Mic检测",
+        "C": ""
+      }
+    },
+    {
+      "row": 140,
+      "cells": {
+        "A": "ENCRefCheckSin",
+        "B": "ENC参考信号Sin检测",
+        "C": ""
+      }
+    },
+    {
+      "row": 141,
+      "cells": {
+        "A": "ENCRefCheckCos",
+        "B": "ENC参考信号Cos检测",
+        "C": ""
+      }
+    },
+    {
+      "row": 142,
+      "cells": {
+        "A": "ENCEngineSpeedCheck",
+        "B": "ENC发动机转速检测",
+        "C": ""
+      }
+    },
+    {
+      "row": 143,
+      "cells": {
+        "A": "ENCErrCheck",
+        "B": "ENC误差Mic检测",
+        "C": ""
+      }
+    },
+    {
+      "row": 144,
+      "cells": {
+        "A": "ENCOutputCheck",
+        "B": "ENC扬声器输出检测",
+        "C": ""
+      }
+    },
+    {
+      "row": 145,
+      "cells": {
+        "A": "HornRefCheck_T",
+        "B": "鸣笛时域信号检测",
+        "C": ""
+      }
+    },
+    {
+      "row": 146,
+      "cells": {
+        "A": "HornRefCheck_F",
+        "B": "鸣笛频域信号检测",
+        "C": ""
+      }
+    },
+    {
+      "row": 147,
+      "cells": {
+        "A": "SpeakerFre",
+        "B": "ENC扬声器分频",
+        "C": ""
+      }
+    },
+    {
+      "row": 148,
+      "cells": {
+        "A": "SpeakerFreGain",
+        "B": "ENC扬声器分频系数",
+        "C": ""
+      }
+    },
+    {
+      "row": 149,
+      "cells": {
+        "A": "SpecRadius",
+        "B": "RNC谱半径",
+        "C": ""
+      }
+    },
+    {
+      "row": 150,
+      "cells": {
+        "A": "ernc_Switch_State",
+        "B": "ERNC模块运行状态",
+        "C": ""
+      }
+    },
+    {
+      "row": 151,
+      "cells": {
+        "A": "xPowCheck",
+        "B": "RNC xPowCheck",
+        "C": ""
+      }
+    },
+    {
+      "row": 152,
+      "cells": {
+        "A": "ErrPowRNC",
+        "B": "RNC ErrPowCheck",
+        "C": ""
+      }
+    },
+    {
+      "row": 153,
+      "cells": {
+        "A": "MiuCheck",
+        "B": "RNC MiuCheck",
+        "C": ""
+      }
+    },
+    {
+      "row": 154,
+      "cells": {
+        "A": "ENCEchoGainCheck",
+        "B": "ENC EchoGainCheck",
+        "C": ""
+      }
+    },
+    {
+      "row": 155,
+      "cells": {
+        "A": "SPEAKER_Gain",
+        "B": "RNC扬声器输出增益",
+        "C": ""
+      }
+    },
+    {
+      "row": 156,
+      "cells": {
+        "A": "ENC_SPEAKER_Gain",
+        "B": "ENC扬声器输出增益",
+        "C": ""
+      }
+    },
+    {
+      "row": 157,
+      "cells": {
+        "A": "ENC_Divergence_Con_Flag",
+        "B": "ENC发散控制模块开闭开关(1开启 0关闭)",
+        "C": ""
+      }
+    },
+    {
+      "row": 158,
+      "cells": {
+        "A": "ENC_Divergence_Counting",
+        "B": "ENC超阈值持续点数",
+        "C": ""
+      }
+    },
+    {
+      "row": 159,
+      "cells": {
+        "A": "ENCOutputMax",
+        "B": "ENC发散特征值检查",
+        "C": ""
+      }
+    },
+    {
+      "row": 160,
+      "cells": {
+        "A": "RNC_Divergence_Con_Flag",
+        "B": "RNC发散控制模块开闭开关(1开启 0关闭)",
+        "C": ""
+      }
+    },
+    {
+      "row": 161,
+      "cells": {
+        "A": "RNC_Divergence_Counting",
+        "B": "RNC超阈值持续点数",
+        "C": ""
+      }
+    },
+    {
+      "row": 162,
+      "cells": {
+        "A": "RNC_Divergence_OFF_Time",
+        "B": "RNC发散触发临界时间T(发散模块被触发时，若系统运行时间小于T，系统关闭，反之系统重启)",
+        "C": ""
+      }
+    },
+    {
+      "row": 163,
+      "cells": {
+        "A": "RNCSpkFAdapMax",
+        "B": "RNC发散特征值检查",
+        "C": ""
+      }
+    },
+    {
+      "row": 164,
+      "cells": {
+        "A": "StoreANCDivergenceThreshold",
+        "B": "保存发散特征值",
+        "C": ""
+      }
+    },
+    {
+      "row": 165,
+      "cells": {
+        "A": "SpkState",
+        "B": "扬声器状态(开机自检)",
+        "C": ""
+      }
+    },
+    {
+      "row": 166,
+      "cells": {
+        "A": "MicState",
+        "B": "麦克风状态(开机自检)",
+        "C": ""
+      }
+    },
+    {
+      "row": 167,
+      "cells": {
+        "A": "SpkandMicBreakControlFlag",
+        "B": "扬声器及麦克风断路控制模块(开机自检控制)",
+        "C": ""
+      }
+    },
+    {
+      "row": 168,
+      "cells": {
+        "A": "CheckENCWFlag",
+        "B": "ENC WCheck开关(1开启 0关闭)",
+        "C": ""
+      }
+    },
+    {
+      "row": 169,
+      "cells": {
+        "A": "CheckOrder",
+        "B": "Check阶次序号(0-4)",
+        "C": ""
+      }
+    },
+    {
+      "row": 170,
+      "cells": {
+        "A": "DataSpeedCheck",
+        "B": "Check转速",
+        "C": ""
+      }
+    },
+    {
+      "row": 171,
+      "cells": {
+        "A": "DataSinCheck",
+        "B": "Check Sin相关",
+        "C": ""
+      }
+    },
+    {
+      "row": 172,
+      "cells": {
+        "A": "DataCosCheck",
+        "B": "Check Cos相关",
+        "C": ""
+      }
+    },
+    {
+      "row": 173,
+      "cells": {
+        "A": "RNCAdapCheckRefNum",
+        "B": "滤波器频域检查参考通道序号",
+        "C": ""
+      }
+    },
+    {
+      "row": 174,
+      "cells": {
+        "A": "RNCAdapCheckSpkNum",
+        "B": "滤波器频域检查扬声器序号",
+        "C": ""
+      }
+    },
+    {
+      "row": 175,
+      "cells": {
+        "A": "RNCAdapCheck",
+        "B": "滤波器频域系数检查",
+        "C": ""
+      }
+    },
+    {
+      "row": 176,
+      "cells": {
+        "A": "Datarecordflag",
+        "B": "数据录取功能开闭",
+        "C": ""
+      }
+    }
+  ]
+}

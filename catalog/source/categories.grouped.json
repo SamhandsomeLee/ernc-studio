@@ -1,0 +1,429 @@
+{
+  "kind": "derived",
+  "sheet": "工作表1",
+  "rule": "从第 2 行起，遇到非空 A 列就更新当前分类；B 列去掉首尾空白后仍非空的行计为一个分组项。填充结果不写回原始行。",
+  "groups": [
+    {
+      "category": "ERNC_Flag",
+      "count": 6,
+      "items": [
+        {
+          "row": 3,
+          "name": "ANC_OFF"
+        },
+        {
+          "row": 4,
+          "name": "ENC_OFF"
+        },
+        {
+          "row": 5,
+          "name": "RNC_OFF"
+        },
+        {
+          "row": 6,
+          "name": "RNC_refresh"
+        },
+        {
+          "row": 7,
+          "name": "SpeakerCheckValue"
+        },
+        {
+          "row": 8,
+          "name": "Bypass_mod"
+        }
+      ]
+    },
+    {
+      "category": "ERNC_IN_OUT",
+      "count": 12,
+      "items": [
+        {
+          "row": 9,
+          "name": "Refer_Num"
+        },
+        {
+          "row": 10,
+          "name": "Err_Num"
+        },
+        {
+          "row": 11,
+          "name": "Spk_Num"
+        },
+        {
+          "row": 12,
+          "name": "InputPoi"
+        },
+        {
+          "row": 13,
+          "name": "OutputPoi"
+        },
+        {
+          "row": 14,
+          "name": "input_Amplitude"
+        },
+        {
+          "row": 15,
+          "name": "output_Amplitude"
+        },
+        {
+          "row": 16,
+          "name": "ACC_Gain"
+        },
+        {
+          "row": 17,
+          "name": "RNC_MIC_Gain"
+        },
+        {
+          "row": 18,
+          "name": "SPEAKER_Gain"
+        },
+        {
+          "row": 19,
+          "name": "ENC_Mic_Gain"
+        },
+        {
+          "row": 20,
+          "name": "ENC_SPEAKER_Gain"
+        }
+      ]
+    },
+    {
+      "category": "Check",
+      "count": 5,
+      "items": [
+        {
+          "row": 21,
+          "name": "TranFuncFlag"
+        },
+        {
+          "row": 22,
+          "name": "ERNC_TF"
+        },
+        {
+          "row": 23,
+          "name": "check_mod"
+        },
+        {
+          "row": 24,
+          "name": "check_date"
+        },
+        {
+          "row": 25,
+          "name": "CAN_Msg"
+        }
+      ]
+    },
+    {
+      "category": "ENC_Param",
+      "count": 32,
+      "items": [
+        {
+          "row": 26,
+          "name": "OrderOne_Flag"
+        },
+        {
+          "row": 27,
+          "name": "OrderTwo_Flag"
+        },
+        {
+          "row": 28,
+          "name": "OrderThree_Flag"
+        },
+        {
+          "row": 29,
+          "name": "OrderOne"
+        },
+        {
+          "row": 30,
+          "name": "OrderTwo"
+        },
+        {
+          "row": 31,
+          "name": "OrderThree"
+        },
+        {
+          "row": 32,
+          "name": "MinEngineSpeed"
+        },
+        {
+          "row": 33,
+          "name": "MaxEngineSpeed"
+        },
+        {
+          "row": 34,
+          "name": "TachofAmp1"
+        },
+        {
+          "row": 35,
+          "name": "Amp1"
+        },
+        {
+          "row": 36,
+          "name": "TachofStep1"
+        },
+        {
+          "row": 37,
+          "name": "Step1"
+        },
+        {
+          "row": 38,
+          "name": "TachofLeaky1"
+        },
+        {
+          "row": 39,
+          "name": "Leaky1"
+        },
+        {
+          "row": 40,
+          "name": "ErrWei1"
+        },
+        {
+          "row": 41,
+          "name": "Delta1"
+        },
+        {
+          "row": 42,
+          "name": "TachofAmp2"
+        },
+        {
+          "row": 43,
+          "name": "Amp2"
+        },
+        {
+          "row": 44,
+          "name": "TachofStep2"
+        },
+        {
+          "row": 45,
+          "name": "Step2"
+        },
+        {
+          "row": 46,
+          "name": "TachofLeaky2"
+        },
+        {
+          "row": 47,
+          "name": "Leaky2"
+        },
+        {
+          "row": 48,
+          "name": "ErrWei2"
+        },
+        {
+          "row": 49,
+          "name": "Delta2"
+        },
+        {
+          "row": 50,
+          "name": "TachofAmp3"
+        },
+        {
+          "row": 51,
+          "name": "Amp3"
+        },
+        {
+          "row": 52,
+          "name": "TachofStep3"
+        },
+        {
+          "row": 53,
+          "name": "Step3"
+        },
+        {
+          "row": 54,
+          "name": "TachofLeaky3"
+        },
+        {
+          "row": 55,
+          "name": "Leaky3"
+        },
+        {
+          "row": 56,
+          "name": "ErrWei3"
+        },
+        {
+          "row": 57,
+          "name": "Delta3"
+        }
+      ]
+    },
+    {
+      "category": "RNC_Param",
+      "count": 23,
+      "items": [
+        {
+          "row": 58,
+          "name": "Step"
+        },
+        {
+          "row": 59,
+          "name": "start_fre_num"
+        },
+        {
+          "row": 60,
+          "name": "first_fre_num"
+        },
+        {
+          "row": 61,
+          "name": "second_fre_num"
+        },
+        {
+          "row": 62,
+          "name": "third_fre_num"
+        },
+        {
+          "row": 63,
+          "name": "forth_fre_num"
+        },
+        {
+          "row": 64,
+          "name": "alpha1"
+        },
+        {
+          "row": 65,
+          "name": "alpha2"
+        },
+        {
+          "row": 66,
+          "name": "alpha3"
+        },
+        {
+          "row": 67,
+          "name": "alpha4"
+        },
+        {
+          "row": 68,
+          "name": "alpha5"
+        },
+        {
+          "row": 69,
+          "name": "alpha1_10"
+        },
+        {
+          "row": 70,
+          "name": "alpha2_10"
+        },
+        {
+          "row": 71,
+          "name": "alpha3_10"
+        },
+        {
+          "row": 72,
+          "name": "alpha4_10"
+        },
+        {
+          "row": 73,
+          "name": "alpha5_10"
+        },
+        {
+          "row": 74,
+          "name": "ERNC_TF.SpecRadius"
+        },
+        {
+          "row": 75,
+          "name": "LeakyRNCFre"
+        },
+        {
+          "row": 76,
+          "name": "LeakyRNC"
+        },
+        {
+          "row": 77,
+          "name": "eta"
+        },
+        {
+          "row": 78,
+          "name": "delta"
+        },
+        {
+          "row": 79,
+          "name": "running_time"
+        },
+        {
+          "row": 80,
+          "name": "max_time"
+        }
+      ]
+    },
+    {
+      "category": "Threshold",
+      "count": 16,
+      "items": [
+        {
+          "row": 81,
+          "name": "ENCEchoControlFlag"
+        },
+        {
+          "row": 82,
+          "name": "ENCEchoGainThreshold"
+        },
+        {
+          "row": 83,
+          "name": "ENC_Divergence_Con_Flag"
+        },
+        {
+          "row": 84,
+          "name": "SpkOrderAmpThre"
+        },
+        {
+          "row": 85,
+          "name": "horn_control"
+        },
+        {
+          "row": 86,
+          "name": "RefChooseFloat"
+        },
+        {
+          "row": 87,
+          "name": "HornRefThreshold"
+        },
+        {
+          "row": 88,
+          "name": "HornOFFContinueTime"
+        },
+        {
+          "row": 89,
+          "name": "horn_trigger"
+        },
+        {
+          "row": 90,
+          "name": "RNC_Divergence_Con_Flag"
+        },
+        {
+          "row": 91,
+          "name": "RNC_Divergence_Counting"
+        },
+        {
+          "row": 92,
+          "name": "RNC_Divergence_OFF_Time"
+        },
+        {
+          "row": 93,
+          "name": "RNCSpkFAdapMax"
+        },
+        {
+          "row": 94,
+          "name": "RNC_Divergence_threshold"
+        },
+        {
+          "row": 95,
+          "name": "Input_threshold"
+        },
+        {
+          "row": 96,
+          "name": "Output_Threshold"
+        }
+      ]
+    }
+  ],
+  "category_rows_without_name": [
+    {
+      "row": 2,
+      "category": "ALL"
+    },
+    {
+      "row": 97,
+      "category": "ERNC_Switch_State"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "source": {
+    "path": "docs/baseline/requirements/ERNC优化.xlsx",
+    "sha256": "1022f10dfae27fde38f21089229f13fd210e7600523ae06cdc670fac4760be1f",
+    "tracked": false
+  },
+  "counts": {
+    "grouped_items": 94,
+    "descriptions": 175,
+    "can_names": 36
+  },
+  "files": [
+    "categories.raw.json",
+    "categories.grouped.json",
+    "descriptions.raw.json",
+    "can_names.raw.json",
+    "IMPORT-REPORT.md"
+  ]
+}
