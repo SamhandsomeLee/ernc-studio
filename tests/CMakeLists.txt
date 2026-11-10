@@ -107,6 +107,33 @@ foreach(ernc_runtime_case IN LISTS ernc_runtime_cases)
     )
 endforeach()
 
+add_executable(ernc_validation_tests
+    validation_test.cpp
+)
+
+target_link_libraries(ernc_validation_tests PRIVATE ernc_domain)
+
+set(ernc_validation_cases
+    step_rejected
+    command_rejected
+    read_write_float_accepted
+    type_mismatch_rejected
+    non_finite_rejected
+    integer_kinds_accepted
+    missing_access_rejected
+    undeclared_type_accepted
+    catalog_types_match_header
+)
+
+foreach(ernc_validation_case IN LISTS ernc_validation_cases)
+    add_test(
+        NAME "validation.${ernc_validation_case}"
+        COMMAND ernc_validation_tests
+            "${ernc_validation_case}"
+            "${CMAKE_SOURCE_DIR}/catalog/parameter_catalog.json"
+    )
+endforeach()
+
 foreach(ernc_layout_case IN LISTS ernc_layout_cases)
     add_test(
         NAME "firmware_layout.${ernc_layout_case}"

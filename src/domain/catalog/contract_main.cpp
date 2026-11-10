@@ -92,11 +92,11 @@ bool checkCatalogFile(const char* path) {
     };
     const Expected expected[] = {
         {"ANC_OFF", "ANC_OFF", "ERNC_Flag", "ERNC总开关，0开启，1关闭", DataType::Float32,
-            EditorKind::Toggle, false, AccessMode::ReadOnly, true},
+            EditorKind::Toggle, true, AccessMode::ReadWrite, true},
         {"ENC_OFF", "ENC_OFF", "ERNC_Flag", "ENC开关，0开启，1关闭", DataType::Float32,
-            EditorKind::Toggle, false, AccessMode::ReadOnly, true},
+            EditorKind::Toggle, true, AccessMode::ReadWrite, true},
         {"RNC_OFF", "RNC_OFF", "ERNC_Flag", "RNC开关，0开启，1关闭", DataType::Float32,
-            EditorKind::Toggle, false, AccessMode::ReadOnly, true},
+            EditorKind::Toggle, true, AccessMode::ReadWrite, true},
         {"Step", "Step", "RNC_Param", "实时步长显示", DataType::Float32, EditorKind::ReadOnly, true,
             AccessMode::ReadOnly, false},
         {"RNC_refresh", "RNC_refresh", "ERNC_Flag",
@@ -156,6 +156,12 @@ bool checkCatalogFile(const char* path) {
     for (const auto& entry : catalog.entries()) {
         if (!entry.firmwarePath || entry.firmwarePath->empty()) {
             return fail("struct-path");
+        }
+        if (entry.id.text() == "Step" || entry.id.text() == "RNC_refresh") {
+            continue;
+        }
+        if (!entry.access || *entry.access != AccessMode::ReadWrite) {
+            return fail("read-write");
         }
     }
     return true;

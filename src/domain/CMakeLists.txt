@@ -4,6 +4,7 @@ add_library(ernc_domain STATIC
     catalog/alias_resolver.cpp
     firmware_layout/firmware_layout.cpp
     parameter/runtime_store.cpp
+    validation/validation.cpp
 )
 
 target_include_directories(ernc_domain PUBLIC
