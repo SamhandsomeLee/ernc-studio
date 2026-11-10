@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "aliases": [
+    {
+      "name": "Refer_Num",
+      "category": "ERNC_IN_OUT",
+      "status": "unique",
+      "firmware_path": "RNC_param.refernum"
+    },
+    {
+      "name": "Err_Num",
+      "category": "ERNC_IN_OUT",
+      "status": "unique",
+      "firmware_path": "RNC_param.errnum"
+    },
+    {
+      "name": "Spk_Num",
+      "category": "ERNC_IN_OUT",
+      "status": "unique",
+      "firmware_path": "RNC_param.spknum"
+    },
+    {
+      "name": "RNC_Divergence_Con_Flag",
+      "category": "Threshold",
+      "status": "unique",
+      "firmware_path": "rnc_dicergence.rnc_divergence_con_flag"
+    },
+    {
+      "name": "RNC_Divergence_Counting",
+      "category": "Threshold",
+      "status": "unique",
+      "firmware_path": "rnc_dicergence.rnc_divergence_counting"
+    },
+    {
+      "name": "RNC_Divergence_OFF_Time",
+      "category": "Threshold",
+      "status": "unique",
+      "firmware_path": "rnc_dicergence.rnc_divergence_off_time"
+    },
+    {
+      "name": "RNC_Divergence_threshold",
+      "category": "Threshold",
+      "status": "unique",
+      "firmware_path": "rnc_dicergence.rnc_diverge_threshold"
+    },
+    {
+      "name": "RNCSpkFAdapMax",
+      "category": "Threshold",
+      "status": "unique",
+      "firmware_path": "rnc_dicergence.RNCSpkFAdapMax"
+    },
+    {
+      "name": "CAN_Msg",
+      "category": "Check",
+      "status": "unresolved",
+      "reason": "36 个 CAN 名称没有 Can_Msg 槽位，不能把 CAN_Msg 收成数组元素路径。"
+    },
+    {
+      "name": "MiuControlFlag",
+      "category": "高级参数",
+      "status": "unique",
+      "firmware_path": "MiuControlFlag"
+    },
+    {
+      "name": "TestMode",
+      "category": "高级参数",
+      "status": "unique",
+      "firmware_path": "TestMode"
+    },
+    {
+      "name": "RNC_MIC_Gain_BT",
+      "category": "高级参数",
+      "status": "unique",
+      "firmware_path": "RNC_MIC_Gain_BT"
+    },
+    {
+      "name": "Datarecordflag",
+      "category": "高级参数",
+      "status": "unique",
+      "firmware_path": "Datarecordflag"
+    },
+    {
+      "name": "OrderFour_Flag",
+      "status": "unresolved",
+      "reason": "OrderFour_Flag 不在 manifest 字段树里。"
+    }
+  ]
+}

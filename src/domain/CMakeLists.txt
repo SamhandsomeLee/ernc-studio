@@ -1,6 +1,7 @@
 add_library(ernc_domain STATIC
     types/types.cpp
     catalog/catalog.cpp
+    catalog/alias_resolver.cpp
     firmware_layout/firmware_layout.cpp
 )
 
@@ -18,6 +19,17 @@ target_link_libraries(ernc_catalog_contract PRIVATE ernc_domain)
 
 set_target_properties(ernc_catalog_contract PROPERTIES
     OUTPUT_NAME "ernc-catalog-contract"
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+)
+
+add_executable(ernc_alias_contract
+    catalog/alias_contract_main.cpp
+)
+
+target_link_libraries(ernc_alias_contract PRIVATE ernc_domain)
+
+set_target_properties(ernc_alias_contract PROPERTIES
+    OUTPUT_NAME "ernc-alias-contract"
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
 )
 
