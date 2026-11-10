@@ -378,3 +378,26 @@ foreach(ernc_response_validator_case IN LISTS ernc_response_validator_cases)
         COMMAND ernc_response_validator_tests "${ernc_response_validator_case}"
     )
 endforeach()
+
+add_executable(ernc_wire_parser_tests
+    wire_parser_test.cpp
+)
+
+target_link_libraries(ernc_wire_parser_tests PRIVATE ernc_protocol)
+
+set(ernc_wire_parser_cases
+    chunk_matches_byte_feed
+    sticky_frames_in_order
+    garbage_bytes_dropped
+    half_frame_waits
+    bad_crc_is_not_a_frame
+    declared_length_waits
+    clear_drops_partial_frame
+)
+
+foreach(ernc_wire_parser_case IN LISTS ernc_wire_parser_cases)
+    add_test(
+        NAME "wire_parser.${ernc_wire_parser_case}"
+        COMMAND ernc_wire_parser_tests "${ernc_wire_parser_case}"
+    )
+endforeach()
