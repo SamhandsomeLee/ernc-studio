@@ -237,3 +237,23 @@ foreach(ernc_crc16_case IN LISTS ernc_crc16_cases)
         COMMAND ernc_crc16_tests "${ernc_crc16_case}"
     )
 endforeach()
+
+add_executable(ernc_wire_encoder_tests
+    wire_encoder_test.cpp
+)
+
+target_link_libraries(ernc_wire_encoder_tests PRIVATE ernc_protocol)
+
+set(ernc_wire_encoder_cases
+    eight_byte_frame_prefixed
+    max_frame_encodes
+    over_max_rejected
+    empty_frame_is_zero_length
+)
+
+foreach(ernc_wire_encoder_case IN LISTS ernc_wire_encoder_cases)
+    add_test(
+        NAME "wire_encoder.${ernc_wire_encoder_case}"
+        COMMAND ernc_wire_encoder_tests "${ernc_wire_encoder_case}"
+    )
+endforeach()

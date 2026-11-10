@@ -1,5 +1,6 @@
 add_library(ernc_protocol STATIC
     crc16.cpp
+    wire_encoder.cpp
 )
 
 target_include_directories(ernc_protocol PUBLIC
