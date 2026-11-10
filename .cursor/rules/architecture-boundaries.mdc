@@ -1,0 +1,17 @@
+---
+description: "ERNC Studio 模块依赖、运行状态、Qt 线程、数据持久化和工具链边界"
+alwaysApply: true
+---
+
+# Architecture & Runtime Boundaries
+
+依据 `docs/architecture/README.md` 和当前源码，当前是 C++20 + Qt 6 Widgets 的 Windows 工程工作站；计划采用模块化单体。**未创建的 Domain/Protocol/Device 目标只能称为计划。**
+
+- 依赖方向：`Presentation → Application → Domain`；Application 通过 Ports 调用 Infrastructure Adapters。Domain 不依赖 Qt Widgets、QSerialPort、SQLite 或 Qwt。
+- UI 仅提交参数 ID 和用户动作；不直接持有 QSerialPort、构建 Modbus 帧或访问数据库。Protocol/Codec 不访问 QWidget。
+- Qt UI 主线程管理 QWidget；串口在 Device Worker 所属线程创建、使用和关闭。分析/存储后台工作不得直接操作 QWidget。
+- 参数 `deviceValue` 与 `stagedValue` 独立；Sent、Acked、Verified 不等价；断连后读数 Stale；超时/取消/部分写入不可伪装成功。
+- 工程 `.erncproj` 是产品项目数据，不是 CMake 项目或 Git 仓库；打开工程或导入 JSON/TXT 不自动向硬件写参数。
+- 当前正式构建以 `CMakePresets.json` 为准，`D:/msys64/mingw64`、GCC、Ninja。配置 Gate 明确拒绝 MSVC、UCRT64、CLANG64 和无凭据的静默工具链切换。
+- 项目实际使用哪一层才添加对应 CMake target；不要提前生成大量空目录或为简单任务引入服务化/插件系统。
+- 改动公共接口、线程所有权、协议格式、持久化 schema 前，说明调用方、状态语义、兼容性和最小回归测试；跨界变更需负责人决策。

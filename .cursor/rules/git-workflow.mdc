@@ -1,0 +1,15 @@
+---
+description: "ERNC Studio 一任务一逻辑提交、ES/QA 分支、PR 审查与 Git 写操作授权"
+alwaysApply: true
+---
+
+# Git / PR Contract
+
+- 当前先读取 `git status --short`、`git branch --show-current`、`git remote -v`；**不根据历史聊天假设 GitHub/Gitee 哪个是主远端**。仓库 URL 不是自动推送授权。
+- 生产 ES 任务分支：`feat/es-xxx-short-title`；新人测试：`test/qa-xxx-short-title`；修复：`fix/bug-xxx-short-title`；配置/文档：`docs/short-title` 或 `chore/short-title`。
+- 一个 ES/QA-ID 对应一个逻辑变更和原子 Commit；若 PR 内临时有多个提交，合并前按负责人约定整理。禁止把无关重构、功能和测试数据真值修改混在一起。
+- Commit 使用英文 Conventional Commits：`feat(ES-025): implement typed value codec`、`test(QA-008): add typed codec fixtures`、`docs(cursor): add human-led mentor rules`。摘要清楚，正文解释决策原因。
+- **只有当前用户明确要求**才执行 `git add/commit/push`、建远端分支、提交 PR 或合并；讨论认可、分析 diff、审查结论、用户说“继续”均不算提交授权。
+- 不执行 `reset --hard`、`clean -fd`、force-push、覆盖别人提交或自动合并。遇到未提交工作、非预期 diff 或远端前进，先报告冲突并停下写操作。
+- 新人 PR 默认只包含白名单测试路径，负责人审查断言、Fixture 来源和 CI 结果；生产缺陷由负责人独立修复，不能通过修改 Golden 或停用已生效测试“修绿”。
+- Git 规则是协作约定，需配合受保护主分支、PR Reviewer、CI 和代码所有权管理；`.cursor` 不具备技术权限隔离能力。

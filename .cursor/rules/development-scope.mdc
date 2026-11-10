@@ -1,0 +1,14 @@
+---
+description: "以当前仓库事实和 ES/QA 执行切片为准，避免过期设计、虚构任务或跨阶段施工"
+alwaysApply: true
+---
+
+# Current Scope & Evidence
+
+- 每轮先核对当前分支、已提交文件和本轮任务。**当前基线**在 `app/main.cpp` 只有 Qt Widgets 最小入口；`CMakePresets.json` 已有三种 MINGW64 Preset。不要称尚不存在的 `ernc_protocol`、`ernc_comm_lab`、生产测试目标为已实现。
+- `docs/architecture/README.md` 是仓库共享架构边界；`CMakePresets.json` 与 `docs/dev/ENVIRONMENT.md` 是当前工具链事实；`README.md` 提供产品和分支约定。
+- 若本机存在 `docs/baseline/implementation/ERNC-Studio-Implementation-Plan-v1.2.md`，按指定 ES-ID 读取具体前置、改动范围、验收。若不存在，报告缺失，并使用用户贴出的任务原文或 Issue；**不要凭记忆编造 ES/QA 的详细验收标准**。
+- 同理，设计文档、QA 计划和 `ERNC优化.xlsx` 可能只在负责人本地存在；文件不存在不是“内容为空”。未经确认不写固件偏移、CAN 索引、阈值公式、枚举或默认值。
+- 任务边界：先明确 `ES-ID / QA-ID`、当前行为、目标契约、非目标、前置 Gate、预期修改文件、验证命令；一次聚焦一个功能点。
+- 仅当当前功能实际需要时才创建模块/测试接入点；拒绝为后续 Phase 预建空实现。并行 QA 不阻塞正常 ES 开发，但既有必过 Gate 失败不能忽略。
+- 新仓库与旧版 `CHNB-NEW-6MIC` 独立：旧版仅提供有出处的行为和黄金样本，不能直接复制 Python 主窗口架构或把旧代码当作新实现。
