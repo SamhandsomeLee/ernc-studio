@@ -1,0 +1,2222 @@
+{
+  "profile": "6mic",
+  "alignment": 4,
+  "base": 0,
+  "status": "pack4-sequential",
+  "writable": false,
+  "total_size": 123608,
+  "total_slots": 30902,
+  "evidence": {
+    "kind": "pack4-sequential",
+    "header": "param/param.h",
+    "struct": "ERNCUppInit_Para",
+    "repository": "SamhandsomeLee/CHNB",
+    "branch": "CHNB-NEW-6MIC",
+    "revision": "fbecac9f54d378d212794fd937e950d9d2acd58d",
+    "header_sha256": "9a81d349e048ac888a0b835f7ab7c6935f5068096fe822e41fe608439e6175cf",
+    "rule": "四字节对齐，从地址 0 按结构体声明顺序连续排列。"
+  },
+  "landmarks": {
+    "ANC_OFF": 0,
+    "Step": 28,
+    "check_data": 2672,
+    "Can_Msg": 59476,
+    "ERNC_TF": 59764,
+    "init_param_flag": 123604
+  },
+  "unresolved": [
+    {
+      "name": "OrderFour_Flag",
+      "status": "unresolved",
+      "writable": false,
+      "reason": "ENC_order 只声明了 OrderOne_Flag 到 OrderThree_Flag。ENC_params 里的 TachofAmp4 等数组有布局，这个控制名没有。"
+    },
+    {
+      "name": "OrderFive_Flag",
+      "status": "unresolved",
+      "writable": false,
+      "reason": "ENC_order 没有 OrderFive_Flag。ENC_params 里的 5 阶系数数组有布局，这个控制名没有。"
+    },
+    {
+      "name": "Can_Msg slot map",
+      "status": "unresolved",
+      "writable": false,
+      "reason": "Can_Msg 是 float[72]，起始偏移由结构顺序确定。Excel 的 36 个名称没有对应到这些槽位。"
+    }
+  ],
+  "fields": [
+    {
+      "path": "ANC_OFF",
+      "offset": 0,
+      "size": 4,
+      "slot": 0,
+      "slot_count": 1,
+      "type": "float",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "ENC_OFF",
+      "offset": 4,
+      "size": 4,
+      "slot": 1,
+      "slot_count": 1,
+      "type": "float",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "RNC_OFF",
+      "offset": 8,
+      "size": 4,
+      "slot": 2,
+      "slot_count": 1,
+      "type": "float",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "check_mod",
+      "offset": 12,
+      "size": 4,
+      "slot": 3,
+      "slot_count": 1,
+      "type": "float",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "RNC_refresh",
+      "offset": 16,
+      "size": 4,
+      "slot": 4,
+      "slot_count": 1,
+      "type": "int32_t",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "SpeakerCheckValue",
+      "offset": 20,
+      "size": 4,
+      "slot": 5,
+      "slot_count": 1,
+      "type": "uint32_t",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "TranFuncFlag",
+      "offset": 24,
+      "size": 4,
+      "slot": 6,
+      "slot_count": 1,
+      "type": "float",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "Step",
+      "offset": 28,
+      "size": 4,
+      "slot": 7,
+      "slot_count": 1,
+      "type": "float",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "Bypass_mod",
+      "offset": 32,
+      "size": 4,
+      "slot": 8,
+      "slot_count": 1,
+      "type": "uint32_t",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "RNC_param",
+      "offset": 36,
+      "size": 140,
+      "slot": 9,
+      "slot_count": 35,
+      "type": "RNC_params",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false,
+      "children": [
+        {
+          "path": "RNC_param.alpha1",
+          "offset": 36,
+          "size": 4,
+          "slot": 9,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "RNC_param.alpha1_10",
+          "offset": 40,
+          "size": 4,
+          "slot": 10,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "RNC_param.alpha2",
+          "offset": 44,
+          "size": 4,
+          "slot": 11,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "RNC_param.alpha2_10",
+          "offset": 48,
+          "size": 4,
+          "slot": 12,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "RNC_param.alpha3",
+          "offset": 52,
+          "size": 4,
+          "slot": 13,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "RNC_param.alpha3_10",
+          "offset": 56,
+          "size": 4,
+          "slot": 14,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "RNC_param.alpha4",
+          "offset": 60,
+          "size": 4,
+          "slot": 15,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "RNC_param.alpha4_10",
+          "offset": 64,
+          "size": 4,
+          "slot": 16,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "RNC_param.alpha5",
+          "offset": 68,
+          "size": 4,
+          "slot": 17,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "RNC_param.alpha5_10",
+          "offset": 72,
+          "size": 4,
+          "slot": 18,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "RNC_param.LeakyRNCFre",
+          "offset": 76,
+          "size": 40,
+          "slot": 19,
+          "slot_count": 10,
+          "type": "float",
+          "shape": [
+            10
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "RNC_param.LeakyRNC",
+          "offset": 116,
+          "size": 40,
+          "slot": 29,
+          "slot_count": 10,
+          "type": "float",
+          "shape": [
+            10
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "RNC_param.eta",
+          "offset": 156,
+          "size": 4,
+          "slot": 39,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "RNC_param.delta",
+          "offset": 160,
+          "size": 4,
+          "slot": 40,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "RNC_param.refernum",
+          "offset": 164,
+          "size": 4,
+          "slot": 41,
+          "slot_count": 1,
+          "type": "int32_t",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "RNC_param.errnum",
+          "offset": 168,
+          "size": 4,
+          "slot": 42,
+          "slot_count": 1,
+          "type": "int32_t",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "RNC_param.spknum",
+          "offset": 172,
+          "size": 4,
+          "slot": 43,
+          "slot_count": 1,
+          "type": "int32_t",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        }
+      ]
+    },
+    {
+      "path": "ERNC_Switch_State",
+      "offset": 176,
+      "size": 12,
+      "slot": 44,
+      "slot_count": 3,
+      "type": "int32_t",
+      "shape": [
+        3
+      ],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "ErrPowRNC",
+      "offset": 188,
+      "size": 480,
+      "slot": 47,
+      "slot_count": 120,
+      "type": "float",
+      "shape": [
+        120
+      ],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "input_Amplitude",
+      "offset": 668,
+      "size": 72,
+      "slot": 167,
+      "slot_count": 18,
+      "type": "int32_t",
+      "shape": [
+        18
+      ],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "output_Amplitude",
+      "offset": 740,
+      "size": 4,
+      "slot": 185,
+      "slot_count": 1,
+      "type": "float",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "Output_Threshold",
+      "offset": 744,
+      "size": 4,
+      "slot": 186,
+      "slot_count": 1,
+      "type": "float",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "InputPoi",
+      "offset": 748,
+      "size": 80,
+      "slot": 187,
+      "slot_count": 20,
+      "type": "uint32_t",
+      "shape": [
+        20
+      ],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "OutputPoi",
+      "offset": 828,
+      "size": 32,
+      "slot": 207,
+      "slot_count": 8,
+      "type": "uint32_t",
+      "shape": [
+        8
+      ],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "start_fre_num",
+      "offset": 860,
+      "size": 4,
+      "slot": 215,
+      "slot_count": 1,
+      "type": "uint32_t",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "first_fre_num",
+      "offset": 864,
+      "size": 4,
+      "slot": 216,
+      "slot_count": 1,
+      "type": "uint32_t",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "second_fre_num",
+      "offset": 868,
+      "size": 4,
+      "slot": 217,
+      "slot_count": 1,
+      "type": "uint32_t",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "third_fre_num",
+      "offset": 872,
+      "size": 4,
+      "slot": 218,
+      "slot_count": 1,
+      "type": "uint32_t",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "forth_fre_num",
+      "offset": 876,
+      "size": 4,
+      "slot": 219,
+      "slot_count": 1,
+      "type": "uint32_t",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "HornTime",
+      "offset": 880,
+      "size": 4,
+      "slot": 220,
+      "slot_count": 1,
+      "type": "float",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "max_time",
+      "offset": 884,
+      "size": 4,
+      "slot": 221,
+      "slot_count": 1,
+      "type": "float",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "HornPower",
+      "offset": 888,
+      "size": 4,
+      "slot": 222,
+      "slot_count": 1,
+      "type": "float",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "horn_control",
+      "offset": 892,
+      "size": 4,
+      "slot": 223,
+      "slot_count": 1,
+      "type": "float",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "horn_trigger",
+      "offset": 896,
+      "size": 4,
+      "slot": 224,
+      "slot_count": 1,
+      "type": "float",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "RefChooseFloat",
+      "offset": 900,
+      "size": 4,
+      "slot": 225,
+      "slot_count": 1,
+      "type": "float",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "HornRefThreshold",
+      "offset": 904,
+      "size": 4,
+      "slot": 226,
+      "slot_count": 1,
+      "type": "float",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "HornOFFContinueTime",
+      "offset": 908,
+      "size": 4,
+      "slot": 227,
+      "slot_count": 1,
+      "type": "float",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "ACC_Gain",
+      "offset": 912,
+      "size": 4,
+      "slot": 228,
+      "slot_count": 1,
+      "type": "float",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "RNC_MIC_Gain",
+      "offset": 916,
+      "size": 4,
+      "slot": 229,
+      "slot_count": 1,
+      "type": "float",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "Input_threshold",
+      "offset": 920,
+      "size": 48,
+      "slot": 230,
+      "slot_count": 12,
+      "type": "float",
+      "shape": [
+        12
+      ],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "running_time",
+      "offset": 968,
+      "size": 4,
+      "slot": 242,
+      "slot_count": 1,
+      "type": "float",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "MiuControlFlag",
+      "offset": 972,
+      "size": 4,
+      "slot": 243,
+      "slot_count": 1,
+      "type": "float",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "MiuThreshold",
+      "offset": 976,
+      "size": 4,
+      "slot": 244,
+      "slot_count": 1,
+      "type": "float",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "TestMode",
+      "offset": 980,
+      "size": 4,
+      "slot": 245,
+      "slot_count": 1,
+      "type": "float",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "RNC_MIC_Gain_BT",
+      "offset": 984,
+      "size": 4,
+      "slot": 246,
+      "slot_count": 1,
+      "type": "float",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "ENC_Mic_Gain_BT",
+      "offset": 988,
+      "size": 4,
+      "slot": 247,
+      "slot_count": 1,
+      "type": "float",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "ENC_Mic_Gain",
+      "offset": 992,
+      "size": 24,
+      "slot": 248,
+      "slot_count": 6,
+      "type": "float",
+      "shape": [
+        6
+      ],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "enc_order",
+      "offset": 1016,
+      "size": 24,
+      "slot": 254,
+      "slot_count": 6,
+      "type": "ENC_order",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false,
+      "children": [
+        {
+          "path": "enc_order.OrderOne_Flag",
+          "offset": 1016,
+          "size": 4,
+          "slot": 254,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "enc_order.OrderTwo_Flag",
+          "offset": 1020,
+          "size": 4,
+          "slot": 255,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "enc_order.OrderThree_Flag",
+          "offset": 1024,
+          "size": 4,
+          "slot": 256,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "enc_order.OrderOne_Type",
+          "offset": 1028,
+          "size": 4,
+          "slot": 257,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "enc_order.OrderTwo_Type",
+          "offset": 1032,
+          "size": 4,
+          "slot": 258,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "enc_order.OrderThree_Type",
+          "offset": 1036,
+          "size": 4,
+          "slot": 259,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        }
+      ]
+    },
+    {
+      "path": "ENC_param",
+      "offset": 1040,
+      "size": 1508,
+      "slot": 260,
+      "slot_count": 377,
+      "type": "ENC_params",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false,
+      "children": [
+        {
+          "path": "ENC_param.TachofAmp1",
+          "offset": 1040,
+          "size": 40,
+          "slot": 260,
+          "slot_count": 10,
+          "type": "float",
+          "shape": [
+            10
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.Amp1",
+          "offset": 1080,
+          "size": 40,
+          "slot": 270,
+          "slot_count": 10,
+          "type": "float",
+          "shape": [
+            10
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.TachofStep1",
+          "offset": 1120,
+          "size": 40,
+          "slot": 280,
+          "slot_count": 10,
+          "type": "float",
+          "shape": [
+            10
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.Step1",
+          "offset": 1160,
+          "size": 40,
+          "slot": 290,
+          "slot_count": 10,
+          "type": "float",
+          "shape": [
+            10
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.TachofLeaky1",
+          "offset": 1200,
+          "size": 40,
+          "slot": 300,
+          "slot_count": 10,
+          "type": "float",
+          "shape": [
+            10
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.Leaky1",
+          "offset": 1240,
+          "size": 40,
+          "slot": 310,
+          "slot_count": 10,
+          "type": "float",
+          "shape": [
+            10
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.ErrWei1",
+          "offset": 1280,
+          "size": 4,
+          "slot": 320,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.Delta1",
+          "offset": 1284,
+          "size": 4,
+          "slot": 321,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.TachofAmp2",
+          "offset": 1288,
+          "size": 40,
+          "slot": 322,
+          "slot_count": 10,
+          "type": "float",
+          "shape": [
+            10
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.Amp2",
+          "offset": 1328,
+          "size": 40,
+          "slot": 332,
+          "slot_count": 10,
+          "type": "float",
+          "shape": [
+            10
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.TachofStep2",
+          "offset": 1368,
+          "size": 40,
+          "slot": 342,
+          "slot_count": 10,
+          "type": "float",
+          "shape": [
+            10
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.Step2",
+          "offset": 1408,
+          "size": 40,
+          "slot": 352,
+          "slot_count": 10,
+          "type": "float",
+          "shape": [
+            10
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.TachofLeaky2",
+          "offset": 1448,
+          "size": 40,
+          "slot": 362,
+          "slot_count": 10,
+          "type": "float",
+          "shape": [
+            10
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.Leaky2",
+          "offset": 1488,
+          "size": 40,
+          "slot": 372,
+          "slot_count": 10,
+          "type": "float",
+          "shape": [
+            10
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.ErrWei2",
+          "offset": 1528,
+          "size": 4,
+          "slot": 382,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.Delta2",
+          "offset": 1532,
+          "size": 4,
+          "slot": 383,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.TachofAmp3",
+          "offset": 1536,
+          "size": 40,
+          "slot": 384,
+          "slot_count": 10,
+          "type": "float",
+          "shape": [
+            10
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.Amp3",
+          "offset": 1576,
+          "size": 40,
+          "slot": 394,
+          "slot_count": 10,
+          "type": "float",
+          "shape": [
+            10
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.TachofStep3",
+          "offset": 1616,
+          "size": 40,
+          "slot": 404,
+          "slot_count": 10,
+          "type": "float",
+          "shape": [
+            10
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.Step3",
+          "offset": 1656,
+          "size": 40,
+          "slot": 414,
+          "slot_count": 10,
+          "type": "float",
+          "shape": [
+            10
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.TachofLeaky3",
+          "offset": 1696,
+          "size": 40,
+          "slot": 424,
+          "slot_count": 10,
+          "type": "float",
+          "shape": [
+            10
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.Leaky3",
+          "offset": 1736,
+          "size": 40,
+          "slot": 434,
+          "slot_count": 10,
+          "type": "float",
+          "shape": [
+            10
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.ErrWei3",
+          "offset": 1776,
+          "size": 4,
+          "slot": 444,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.Delta3",
+          "offset": 1780,
+          "size": 4,
+          "slot": 445,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.TachofAmp4",
+          "offset": 1784,
+          "size": 40,
+          "slot": 446,
+          "slot_count": 10,
+          "type": "float",
+          "shape": [
+            10
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.Amp4",
+          "offset": 1824,
+          "size": 40,
+          "slot": 456,
+          "slot_count": 10,
+          "type": "float",
+          "shape": [
+            10
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.TachofStep4",
+          "offset": 1864,
+          "size": 40,
+          "slot": 466,
+          "slot_count": 10,
+          "type": "float",
+          "shape": [
+            10
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.Step4",
+          "offset": 1904,
+          "size": 40,
+          "slot": 476,
+          "slot_count": 10,
+          "type": "float",
+          "shape": [
+            10
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.TachofLeaky4",
+          "offset": 1944,
+          "size": 40,
+          "slot": 486,
+          "slot_count": 10,
+          "type": "float",
+          "shape": [
+            10
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.Leaky4",
+          "offset": 1984,
+          "size": 40,
+          "slot": 496,
+          "slot_count": 10,
+          "type": "float",
+          "shape": [
+            10
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.ErrWei4",
+          "offset": 2024,
+          "size": 4,
+          "slot": 506,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.Delta4",
+          "offset": 2028,
+          "size": 4,
+          "slot": 507,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.TachofAmp5",
+          "offset": 2032,
+          "size": 40,
+          "slot": 508,
+          "slot_count": 10,
+          "type": "float",
+          "shape": [
+            10
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.Amp5",
+          "offset": 2072,
+          "size": 40,
+          "slot": 518,
+          "slot_count": 10,
+          "type": "float",
+          "shape": [
+            10
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.TachofStep5",
+          "offset": 2112,
+          "size": 40,
+          "slot": 528,
+          "slot_count": 10,
+          "type": "float",
+          "shape": [
+            10
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.Step5",
+          "offset": 2152,
+          "size": 40,
+          "slot": 538,
+          "slot_count": 10,
+          "type": "float",
+          "shape": [
+            10
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.TachofLeaky5",
+          "offset": 2192,
+          "size": 40,
+          "slot": 548,
+          "slot_count": 10,
+          "type": "float",
+          "shape": [
+            10
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.Leaky5",
+          "offset": 2232,
+          "size": 40,
+          "slot": 558,
+          "slot_count": 10,
+          "type": "float",
+          "shape": [
+            10
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.ErrWei5",
+          "offset": 2272,
+          "size": 4,
+          "slot": 568,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.Delta5",
+          "offset": 2276,
+          "size": 4,
+          "slot": 569,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.SpeakerFre",
+          "offset": 2280,
+          "size": 96,
+          "slot": 570,
+          "slot_count": 24,
+          "type": "float",
+          "shape": [
+            6,
+            4
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.SpeakerFreGain",
+          "offset": 2376,
+          "size": 96,
+          "slot": 594,
+          "slot_count": 24,
+          "type": "float",
+          "shape": [
+            6,
+            4
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.OrderOne",
+          "offset": 2472,
+          "size": 4,
+          "slot": 618,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.OrderTwo",
+          "offset": 2476,
+          "size": 4,
+          "slot": 619,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.OrderThree",
+          "offset": 2480,
+          "size": 4,
+          "slot": 620,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.MaxEngineSpeed",
+          "offset": 2484,
+          "size": 4,
+          "slot": 621,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.MinEngineSpeed",
+          "offset": 2488,
+          "size": 4,
+          "slot": 622,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.MaxAcSpeed",
+          "offset": 2492,
+          "size": 4,
+          "slot": 623,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.MinAcSpeed",
+          "offset": 2496,
+          "size": 4,
+          "slot": 624,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.MaxFanSpeed",
+          "offset": 2500,
+          "size": 4,
+          "slot": 625,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.MinFanSpeed",
+          "offset": 2504,
+          "size": 4,
+          "slot": 626,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.MaxPumpSpeedAC",
+          "offset": 2508,
+          "size": 4,
+          "slot": 627,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.MinPumpSpeedAC",
+          "offset": 2512,
+          "size": 4,
+          "slot": 628,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.MaxPumpSpeedBattery",
+          "offset": 2516,
+          "size": 4,
+          "slot": 629,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.MinPumpSpeedBattery",
+          "offset": 2520,
+          "size": 4,
+          "slot": 630,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.MaxPumpSpeedHot",
+          "offset": 2524,
+          "size": 4,
+          "slot": 631,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.MinPumpSpeedHot",
+          "offset": 2528,
+          "size": 4,
+          "slot": 632,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.MaxFrontShaft",
+          "offset": 2532,
+          "size": 4,
+          "slot": 633,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.MinFrontShaft",
+          "offset": 2536,
+          "size": 4,
+          "slot": 634,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.MaxRearShaft",
+          "offset": 2540,
+          "size": 4,
+          "slot": 635,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ENC_param.MinRearShaft",
+          "offset": 2544,
+          "size": 4,
+          "slot": 636,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        }
+      ]
+    },
+    {
+      "path": "ENCEchoControlFlag",
+      "offset": 2548,
+      "size": 4,
+      "slot": 637,
+      "slot_count": 1,
+      "type": "float",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "ENCEchoGainThreshold",
+      "offset": 2552,
+      "size": 4,
+      "slot": 638,
+      "slot_count": 1,
+      "type": "float",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "K_AC_speed",
+      "offset": 2556,
+      "size": 4,
+      "slot": 639,
+      "slot_count": 1,
+      "type": "float",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "B_AC_speed",
+      "offset": 2560,
+      "size": 4,
+      "slot": 640,
+      "slot_count": 1,
+      "type": "float",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "K_Pump_speed_ac",
+      "offset": 2564,
+      "size": 4,
+      "slot": 641,
+      "slot_count": 1,
+      "type": "float",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "B_Pump_speed_ac",
+      "offset": 2568,
+      "size": 4,
+      "slot": 642,
+      "slot_count": 1,
+      "type": "float",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "K_Pump_speed_battery",
+      "offset": 2572,
+      "size": 4,
+      "slot": 643,
+      "slot_count": 1,
+      "type": "float",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "B_Pump_speed_battery",
+      "offset": 2576,
+      "size": 4,
+      "slot": 644,
+      "slot_count": 1,
+      "type": "float",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "K_Pump_speed_hot",
+      "offset": 2580,
+      "size": 4,
+      "slot": 645,
+      "slot_count": 1,
+      "type": "float",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "B_Pump_speed_hot",
+      "offset": 2584,
+      "size": 4,
+      "slot": 646,
+      "slot_count": 1,
+      "type": "float",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "K_Fan_speed",
+      "offset": 2588,
+      "size": 4,
+      "slot": 647,
+      "slot_count": 1,
+      "type": "float",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "B_Fan_speed",
+      "offset": 2592,
+      "size": 4,
+      "slot": 648,
+      "slot_count": 1,
+      "type": "float",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "SPEAKER_Gain",
+      "offset": 2596,
+      "size": 24,
+      "slot": 649,
+      "slot_count": 6,
+      "type": "float",
+      "shape": [
+        6
+      ],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "ENC_SPEAKER_Gain",
+      "offset": 2620,
+      "size": 24,
+      "slot": 655,
+      "slot_count": 6,
+      "type": "float",
+      "shape": [
+        6
+      ],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "ENC_Divergence_Con_Flag",
+      "offset": 2644,
+      "size": 4,
+      "slot": 661,
+      "slot_count": 1,
+      "type": "float",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "SpkOrderAmpThre",
+      "offset": 2648,
+      "size": 12,
+      "slot": 662,
+      "slot_count": 3,
+      "type": "float",
+      "shape": [
+        3
+      ],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "SpkandMicBreakControlFlag",
+      "offset": 2660,
+      "size": 4,
+      "slot": 665,
+      "slot_count": 1,
+      "type": "float",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "CheckENCWFlag",
+      "offset": 2664,
+      "size": 4,
+      "slot": 666,
+      "slot_count": 1,
+      "type": "float",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "CheckOrder",
+      "offset": 2668,
+      "size": 4,
+      "slot": 667,
+      "slot_count": 1,
+      "type": "float",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "check_data",
+      "offset": 2672,
+      "size": 50868,
+      "slot": 668,
+      "slot_count": 12717,
+      "type": "Check_data",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false,
+      "children": [
+        {
+          "path": "check_data.OutputCheck",
+          "offset": 2672,
+          "size": 4800,
+          "slot": 668,
+          "slot_count": 1200,
+          "type": "float",
+          "shape": [
+            6,
+            200
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "check_data.RefCheck",
+          "offset": 7472,
+          "size": 9600,
+          "slot": 1868,
+          "slot_count": 2400,
+          "type": "float",
+          "shape": [
+            12,
+            200
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "check_data.ErrCheck",
+          "offset": 17072,
+          "size": 4800,
+          "slot": 4268,
+          "slot_count": 1200,
+          "type": "float",
+          "shape": [
+            6,
+            200
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "check_data.ENCRefCheckSin",
+          "offset": 21872,
+          "size": 800,
+          "slot": 5468,
+          "slot_count": 200,
+          "type": "float",
+          "shape": [
+            200
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "check_data.ENCRefCheckCos",
+          "offset": 22672,
+          "size": 800,
+          "slot": 5668,
+          "slot_count": 200,
+          "type": "float",
+          "shape": [
+            200
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "check_data.ENCEngineSpeedCheck",
+          "offset": 23472,
+          "size": 800,
+          "slot": 5868,
+          "slot_count": 200,
+          "type": "float",
+          "shape": [
+            200
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "check_data.ENCErrCheck",
+          "offset": 24272,
+          "size": 4800,
+          "slot": 6068,
+          "slot_count": 1200,
+          "type": "float",
+          "shape": [
+            6,
+            200
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "check_data.ENCOutputCheck",
+          "offset": 29072,
+          "size": 4800,
+          "slot": 7268,
+          "slot_count": 1200,
+          "type": "float",
+          "shape": [
+            6,
+            200
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "check_data.HornRefCheck_T",
+          "offset": 33872,
+          "size": 800,
+          "slot": 8468,
+          "slot_count": 200,
+          "type": "float",
+          "shape": [
+            200
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "check_data.HornRefCheck_F",
+          "offset": 34672,
+          "size": 1000,
+          "slot": 8668,
+          "slot_count": 250,
+          "type": "float",
+          "shape": [
+            250
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "check_data.xPowCheck",
+          "offset": 35672,
+          "size": 480,
+          "slot": 8918,
+          "slot_count": 120,
+          "type": "float",
+          "shape": [
+            120
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "check_data.MiuCheck",
+          "offset": 36152,
+          "size": 480,
+          "slot": 9038,
+          "slot_count": 120,
+          "type": "float",
+          "shape": [
+            120
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "check_data.ENCEchoGainCheck",
+          "offset": 36632,
+          "size": 800,
+          "slot": 9158,
+          "slot_count": 200,
+          "type": "float",
+          "shape": [
+            200
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "check_data.OrderSpkoutmaxCheck",
+          "offset": 37432,
+          "size": 20,
+          "slot": 9358,
+          "slot_count": 5,
+          "type": "float",
+          "shape": [
+            5
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "check_data.DataSpeedCheck",
+          "offset": 37452,
+          "size": 1200,
+          "slot": 9363,
+          "slot_count": 300,
+          "type": "float",
+          "shape": [
+            300
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "check_data.DataSinCheck",
+          "offset": 38652,
+          "size": 7200,
+          "slot": 9663,
+          "slot_count": 1800,
+          "type": "float",
+          "shape": [
+            6,
+            300
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "check_data.DataCosCheck",
+          "offset": 45852,
+          "size": 7200,
+          "slot": 11463,
+          "slot_count": 1800,
+          "type": "float",
+          "shape": [
+            6,
+            300
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "check_data.RNCAdapCheckRefNum",
+          "offset": 53052,
+          "size": 4,
+          "slot": 13263,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "check_data.RNCAdapCheckSpkNum",
+          "offset": 53056,
+          "size": 4,
+          "slot": 13264,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "check_data.RNCAdapCheck",
+          "offset": 53060,
+          "size": 480,
+          "slot": 13265,
+          "slot_count": 120,
+          "type": "float",
+          "shape": [
+            120
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        }
+      ]
+    },
+    {
+      "path": "rnc_dicergence",
+      "offset": 53540,
+      "size": 5772,
+      "slot": 13385,
+      "slot_count": 1443,
+      "type": "rnc_divergence_control",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false,
+      "children": [
+        {
+          "path": "rnc_dicergence.rnc_divergence_con_flag",
+          "offset": 53540,
+          "size": 4,
+          "slot": 13385,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "rnc_dicergence.rnc_divergence_counting",
+          "offset": 53544,
+          "size": 4,
+          "slot": 13386,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "rnc_dicergence.rnc_divergence_off_time",
+          "offset": 53548,
+          "size": 4,
+          "slot": 13387,
+          "slot_count": 1,
+          "type": "float",
+          "shape": [],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "rnc_dicergence.rnc_diverge_threshold",
+          "offset": 53552,
+          "size": 2880,
+          "slot": 13388,
+          "slot_count": 720,
+          "type": "float",
+          "shape": [
+            6,
+            120
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "rnc_dicergence.RNCSpkFAdapMax",
+          "offset": 56432,
+          "size": 2880,
+          "slot": 14108,
+          "slot_count": 720,
+          "type": "float",
+          "shape": [
+            6,
+            120
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        }
+      ]
+    },
+    {
+      "path": "SpkState",
+      "offset": 59312,
+      "size": 80,
+      "slot": 14828,
+      "slot_count": 20,
+      "type": "float",
+      "shape": [
+        20
+      ],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "MicState",
+      "offset": 59392,
+      "size": 80,
+      "slot": 14848,
+      "slot_count": 20,
+      "type": "float",
+      "shape": [
+        20
+      ],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "Datarecordflag",
+      "offset": 59472,
+      "size": 4,
+      "slot": 14868,
+      "slot_count": 1,
+      "type": "float",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "Can_Msg",
+      "offset": 59476,
+      "size": 288,
+      "slot": 14869,
+      "slot_count": 72,
+      "type": "float",
+      "shape": [
+        72
+      ],
+      "status": "pack4-sequential",
+      "writable": false
+    },
+    {
+      "path": "ERNC_TF",
+      "offset": 59764,
+      "size": 63840,
+      "slot": 14941,
+      "slot_count": 15960,
+      "type": "ANC_TransFunc_f",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false,
+      "children": [
+        {
+          "path": "ERNC_TF.fSecPathTransR",
+          "offset": 59764,
+          "size": 17280,
+          "slot": 14941,
+          "slot_count": 4320,
+          "type": "float",
+          "shape": [
+            6,
+            6,
+            120
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ERNC_TF.fSecPathTransI",
+          "offset": 77044,
+          "size": 17280,
+          "slot": 19261,
+          "slot_count": 4320,
+          "type": "float",
+          "shape": [
+            6,
+            6,
+            120
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ERNC_TF.SpecRadius",
+          "offset": 94324,
+          "size": 480,
+          "slot": 23581,
+          "slot_count": 120,
+          "type": "float",
+          "shape": [
+            120
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        },
+        {
+          "path": "ERNC_TF.ENCTF",
+          "offset": 94804,
+          "size": 28800,
+          "slot": 23701,
+          "slot_count": 7200,
+          "type": "float",
+          "shape": [
+            6,
+            6,
+            200
+          ],
+          "status": "pack4-sequential",
+          "writable": false
+        }
+      ]
+    },
+    {
+      "path": "init_param_flag",
+      "offset": 123604,
+      "size": 4,
+      "slot": 30901,
+      "slot_count": 1,
+      "type": "float",
+      "shape": [],
+      "status": "pack4-sequential",
+      "writable": false
+    }
+  ]
+}
