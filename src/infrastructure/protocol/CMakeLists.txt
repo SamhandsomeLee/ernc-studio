@@ -4,6 +4,7 @@ add_library(ernc_protocol STATIC
     modbus_fc03.cpp
     modbus_fc16.cpp
     typed_codec.cpp
+    response_validator.cpp
 )
 
 target_include_directories(ernc_protocol PUBLIC

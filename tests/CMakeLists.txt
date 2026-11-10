@@ -348,3 +348,33 @@ foreach(ernc_typed_codec_case IN LISTS ernc_typed_codec_cases)
         COMMAND ernc_typed_codec_tests "${ernc_typed_codec_case}"
     )
 endforeach()
+
+add_executable(ernc_response_validator_tests
+    response_validator_test.cpp
+)
+
+target_link_libraries(ernc_response_validator_tests PRIVATE ernc_protocol)
+
+set(ernc_response_validator_cases
+    read_payload_accepted
+    read_slave_mismatch
+    read_length_mismatch
+    wrong_function_rejected
+    crc_rejected
+    frame_length_rejected
+    write_ack_accepted
+    write_address_mismatch
+    write_count_mismatch
+    read_exception_keeps_code
+    write_exception_keeps_code
+    read_rejects_write_exception
+    exception_slave_mismatch
+    command_range_rejected
+)
+
+foreach(ernc_response_validator_case IN LISTS ernc_response_validator_cases)
+    add_test(
+        NAME "response_validator.${ernc_response_validator_case}"
+        COMMAND ernc_response_validator_tests "${ernc_response_validator_case}"
+    )
+endforeach()
