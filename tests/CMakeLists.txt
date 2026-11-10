@@ -288,3 +288,33 @@ foreach(ernc_modbus_fc03_case IN LISTS ernc_modbus_fc03_cases)
         COMMAND ernc_modbus_fc03_tests "${ernc_modbus_fc03_case}"
     )
 endforeach()
+
+add_executable(ernc_modbus_fc16_tests
+    modbus_fc16_test.cpp
+)
+
+target_link_libraries(ernc_modbus_fc16_tests PRIVATE ernc_protocol)
+
+set(ernc_modbus_fc16_cases
+    one_slot_write
+    payload_bytes_keep_order
+    sixty_slot_write
+    sixty_one_slot_write
+    sixty_two_slots_rejected
+    zero_slots_rejected
+    payload_size_rejected
+    register_span_rejected
+    slave_argument_is_written
+    ack_matches_address_and_count
+    ack_count_mismatch
+    ack_address_mismatch
+    exception_code_is_kept
+    tampered_crc_rejected
+)
+
+foreach(ernc_modbus_fc16_case IN LISTS ernc_modbus_fc16_cases)
+    add_test(
+        NAME "modbus_fc16.${ernc_modbus_fc16_case}"
+        COMMAND ernc_modbus_fc16_tests "${ernc_modbus_fc16_case}"
+    )
+endforeach()

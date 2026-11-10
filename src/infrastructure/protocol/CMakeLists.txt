@@ -2,6 +2,7 @@ add_library(ernc_protocol STATIC
     crc16.cpp
     wire_encoder.cpp
     modbus_fc03.cpp
+    modbus_fc16.cpp
 )
 
 target_include_directories(ernc_protocol PUBLIC
