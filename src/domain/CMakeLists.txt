@@ -8,6 +8,7 @@ add_library(ernc_domain STATIC
     validation/validation.cpp
     control_semantics/toggle_semantics.cpp
     control_semantics/command_policy.cpp
+    transfer/chunk_plan.cpp
 )
 
 target_include_directories(ernc_domain PUBLIC

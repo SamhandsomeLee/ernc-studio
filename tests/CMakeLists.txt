@@ -214,6 +214,46 @@ foreach(ernc_layout_case IN LISTS ernc_layout_cases)
     )
 endforeach()
 
+add_executable(ernc_chunk_plan_tests
+    chunk_plan_test.cpp
+)
+
+target_link_libraries(ernc_chunk_plan_tests PRIVATE ernc_domain)
+
+set(ernc_chunk_plan_cases
+    read_720_default
+    read_tail_forty
+    write_sixty_two_default
+    write_sixty_two_at_max
+    read_sixty_two_exact
+    read_sixty_two_uses_default
+    zero_count_is_empty
+    zero_chunk_size_rejected
+    read_oversize_chunk_clamped
+    write_oversize_chunk_clamped
+    write_one_hundred_twenty_two_at_max
+    single_slot
+    read_exactly_sixty
+    read_sixty_one_default_tail
+    write_sixty_one_default_tail
+    write_sixty_one_exact
+    read_sixty_three_default
+    read_sixty_three_at_max
+    chunk_size_one
+    nonzero_start_is_contiguous
+    last_uint32_slot
+    range_past_uint32_rejected
+    full_read_chunk_ending_at_max
+    write_range_at_uint32_edge
+)
+
+foreach(ernc_chunk_plan_case IN LISTS ernc_chunk_plan_cases)
+    add_test(
+        NAME "chunk_plan.${ernc_chunk_plan_case}"
+        COMMAND ernc_chunk_plan_tests "${ernc_chunk_plan_case}"
+    )
+endforeach()
+
 add_executable(ernc_crc16_tests
     crc16_test.cpp
 )
