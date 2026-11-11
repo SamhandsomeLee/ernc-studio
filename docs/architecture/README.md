@@ -56,6 +56,12 @@ Presentation 只把参数 ID 和用户动作交给 Application。设备当前值
 
 `ERNC_BUILD_TESTS` 只在 `tests/CMakeLists.txt` 已经存在时加入该目录。`ERNC_BUILD_COMM_LAB` 只在 `tools/ernc-comm-lab/CMakeLists.txt` 已经存在时加入该目录。
 
+### 当前接线状态
+
+P7 分析组件（`PlotWorkspace`、`ErncTfPlot`、`CheckDataPlot`、`SpecRadiusPlot`、`DatasetManager`）只在测试目标里编译，**尚未接入 `ernc_app` 主窗口**。主窗口的「视图 → 曲线分析」目前只是布局预设，不是真实页面。P6 的 `RegionWorkspace`、`SpecRadiusPage` 同样未接入主窗口。
+
+接入主窗口是独立的后续切片，至少包含：`ernc_app` 链接 Qwt、加入分析源文件，以及数据桥接（Region 字节 → `decodeErncTf` / `decodeCheckData` → `AnalysisDataset` → 分析控件）。
+
 ## 工具链
 
 正式构建只用 `CMakePresets.json` 里的 `mingw64-comm`、`mingw64-dev`、`mingw64-release`。编译器、Ninja 和 `CMAKE_PREFIX_PATH` 锁定到同一个 MINGW64 根目录。配置阶段拒绝 MSVC、Visual Studio 生成器、UCRT64、CLANG64，以及目标三元组不是 `x86_64-w64-mingw32` 的编译器。
