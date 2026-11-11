@@ -3,6 +3,7 @@ add_library(ernc_device STATIC
     scheduler.cpp
     retry_policy.cpp
     write_verification.cpp
+    cancellation.cpp
 )
 
 target_include_directories(ernc_device PUBLIC

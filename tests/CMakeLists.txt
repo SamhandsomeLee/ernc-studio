@@ -585,3 +585,23 @@ foreach(ernc_write_verification_case IN LISTS ernc_write_verification_cases)
         COMMAND ernc_write_verification_tests "${ernc_write_verification_case}"
     )
 endforeach()
+
+add_executable(ernc_cancellation_tests
+    cancellation_test.cpp
+)
+
+target_link_libraries(ernc_cancellation_tests PRIVATE ernc_device)
+
+set(ernc_cancellation_cases
+    dispose_drops_stale_frame
+    cancel_does_not_send_the_rest
+    late_frame_after_cancel_stays_cancelled
+    late_frame_does_not_update_new_session
+)
+
+foreach(ernc_cancellation_case IN LISTS ernc_cancellation_cases)
+    add_test(
+        NAME "cancellation.${ernc_cancellation_case}"
+        COMMAND ernc_cancellation_tests "${ernc_cancellation_case}"
+    )
+endforeach()

@@ -1,3 +1,4 @@
+#include "cancellation.hpp"
 #include "scheduler.hpp"
 
 #include "ernc/protocol/modbus_fc03.hpp"
@@ -130,6 +131,21 @@ std::optional<CommandOutcome> CommandScheduler::takeResult(CommandId id) {
     return std::nullopt;
 }
 
+void CommandScheduler::cancel() {
+    if (inflight_.has_value()) {
+        discardNextFrame_ = true;
+    }
+    parser_.clear();
+    if (inflight_.has_value()) {
+        failInFlight(ErrorCode::OperationCancelled);
+    }
+    while (!waiting_.empty()) {
+        const PendingCommand command = std::move(waiting_.front());
+        waiting_.pop_front();
+        completeFailure(command, ErrorCode::OperationCancelled);
+    }
+}
+
 std::optional<CommandId> CommandScheduler::allocateId() {
     if (nextRaw_ == 0) {
         return std::nullopt;
@@ -157,6 +173,7 @@ void CommandScheduler::enqueueWaiting(PendingCommand command) {
 
 void CommandScheduler::dropRejected() {
     if (inflight_.has_value() && !session_.acceptResult(inflight_->session)) {
+        discardNextFrame_ = true;
         parser_.clear();
         failInFlight(ErrorCode::DeviceDisconnected);
     }
@@ -187,7 +204,10 @@ void CommandScheduler::readAvailable() {
             }
             continue;
         }
-        if (!inflight_.has_value() || step.bytes.empty()) {
+        if (step.bytes.empty()) {
+            continue;
+        }
+        if (!discardNextFrame_ && !inflight_.has_value()) {
             continue;
         }
         parser_.append(step.bytes);
@@ -204,14 +224,20 @@ void CommandScheduler::consumeParser() {
         if (step.kind == ParseStep::Kind::LengthDropped) {
             continue;
         }
-        if (step.kind == ParseStep::Kind::CrcRejected) {
-            if (inflight_.has_value()) {
-                failInFlight(ErrorCode::CrcMismatch);
+        if (step.kind == ParseStep::Kind::CrcRejected || step.kind == ParseStep::Kind::Frame) {
+            const FrameDisposition disposition = disposeFrame(discardNextFrame_, inflight_.has_value());
+            if (disposition.dropFrame) {
+                if (discardNextFrame_) {
+                    discardNextFrame_ = false;
+                }
+                return;
             }
-            return;
-        }
-        if (step.kind == ParseStep::Kind::Frame && inflight_.has_value()) {
+            if (step.kind == ParseStep::Kind::CrcRejected) {
+                failInFlight(ErrorCode::CrcMismatch);
+                return;
+            }
             matchFrame(step.frame);
+            return;
         }
         return;
     }

@@ -208,6 +208,12 @@ public:
     /// 仍在等待、仍在途或代号未知时为空。
     std::optional<CommandOutcome> takeResult(CommandId id);
 
+    /// @brief 取消还没结束的命令，并且不再提交等待中的后续命令。
+    ///
+    /// 不关闭会话，也不调用端口的 close。已经 submit、尚未被一帧接受的命令会让下一帧完整响应被丢掉。
+    /// 在途命令和等待命令都以 OperationCancelled 结束。这次调用不会接着发送下一条。
+    void cancel();
+
 private:
     /// 一条已接受、尚未结束的命令。wire 是编码后的整帧。
     struct PendingCommand {
@@ -302,6 +308,9 @@ private:
 
     /// 下一次分配的命令代号。从 1 开始。变为 0 表示数值已经用尽。
     std::uint64_t nextRaw_{1};
+
+    /// 为 true 时，下一帧完整响应或 CRC 拒绝不记到任何命令上。半帧不消耗它。
+    bool discardNextFrame_{false};
 };
 
 }  // namespace ernc::application
