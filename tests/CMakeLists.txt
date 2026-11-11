@@ -268,6 +268,19 @@ foreach(ernc_decode_case IN ITEMS
     )
 endforeach()
 
+add_executable(ernc_region_reader_tests
+    region_reader_test.cpp
+)
+
+target_link_libraries(ernc_region_reader_tests PRIVATE ernc_application ernc_simulator)
+
+foreach(ernc_region_read_case IN ITEMS pack4_region_does_not_enqueue empty_region_is_complete tail_snapshot_is_complete missing_chunk_is_not_complete duplicate_result_does_not_advance other_command_is_ignored)
+    add_test(
+        NAME "region_reader.${ernc_region_read_case}"
+        COMMAND ernc_region_reader_tests "${ernc_region_read_case}" "${ernc_layout_manifest}"
+    )
+endforeach()
+
 add_executable(ernc_read_parameter_tests
     read_parameter_test.cpp
 )
