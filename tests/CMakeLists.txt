@@ -662,6 +662,12 @@ if(TARGET ernc_comm_lab)
         serial_blocked
         unknown_scenario
         missing_profile
+        smoke
+        bulk
+        fault_injection
+        serial_bulk_blocked
+        iterations_zero
+        iterations_101
     )
 
     foreach(ernc_comm_lab_case IN LISTS ernc_comm_lab_cases)

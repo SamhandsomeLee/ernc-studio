@@ -403,11 +403,149 @@ bool expectSerialBlocked(const std::string& labPath) {
                      {"\"status\":\"BLOCKED\"", "\"reads\":0", "\"writes\":0"}, {});
 }
 
-/// @brief 核对未知场景 bulk 被拒绝，退出码为 2。
+/// @brief 核对未知场景 soak 被拒绝，退出码为 2。
 /// @param labPath 实验台可执行文件路径，只在本次调用期间借用。本用例不读 JSON 文件。
-/// @return 实验台退出 2 时为 true。
+/// @return 实验台退出 2 时为 true。soak 仍未实现，不能把已实现的 bulk 当成未知场景。
 bool expectUnknownScenario(const std::string& labPath) {
-    return expectLab(labPath, "unknown_scenario", {"--scenario", "bulk"}, 2, {}, {}, {});
+    return expectLab(labPath, "unknown_scenario", {"--scenario", "soak"}, 2, {}, {}, {});
+}
+
+/// @brief 从一行 JSON 里读取一个整数键。
+/// @param report 报告全文，只在本次调用期间借用。键按 "name": 匹配，冒号后允许空白。
+/// @param key JSON 键名，不含引号。只在本次调用期间借用。
+/// @param value 找到时写入该十进制整数。调用方拥有。找不到或数字溢出时不修改。
+/// @return 键存在且后面是连续数字时为 true。
+bool readJsonInt(std::string_view report, std::string_view key, int& value) {
+    const std::string pattern = std::string{"\""} + std::string{key} + "\":";
+    const std::size_t at = report.find(pattern);
+    if (at == std::string_view::npos) {
+        return false;
+    }
+    std::size_t index = at + pattern.size();
+    while (index < report.size() && isJsonSpace(report[index])) {
+        ++index;
+    }
+    if (index >= report.size() || report[index] < '0' || report[index] > '9') {
+        return false;
+    }
+    int parsed = 0;
+    while (index < report.size() && report[index] >= '0' && report[index] <= '9') {
+        const int digit = report[index] - '0';
+        if (parsed > (2147483647 - digit) / 10) {
+            return false;
+        }
+        parsed = parsed * 10 + digit;
+        ++index;
+    }
+    value = parsed;
+    return true;
+}
+
+/// @brief 核对 smoke 场景：退出 0，报告是一次只读通过。
+/// @param labPath 实验台可执行文件路径，只在本次调用期间借用。
+/// @return 报告含 reads 1、writes 0、数据 78563412、passed 1、failed 0 和 PASS 时为 true。
+bool expectSmoke(const std::string& labPath) {
+    constexpr std::string_view kFile = "comm-lab-smoke.json";
+    return expectLab(labPath, "smoke", {"--scenario", "smoke", "--output", kFile}, 0, kFile,
+                     {"\"reads\":1", "\"writes\":0", "\"data\":\"78563412\"", "\"passed\":1", "\"failed\":0",
+                      "\"status\":\"PASS\""},
+                     {});
+}
+
+/// @brief 核对 bulk 一轮写入：退出 0，写次数至少为 1，且没有失败。
+/// @param labPath 实验台可执行文件路径，只在本次调用期间借用。
+/// @return 报告含 failed 0、PASS，并且 writes 大于等于 1 时为 true。
+bool expectBulk(const std::string& labPath) {
+    constexpr std::string_view kFile = "comm-lab-bulk.json";
+    if (!expectLab(labPath, "bulk", {"--scenario", "bulk", "--iterations", "1", "--output", kFile}, 0, kFile,
+                   {"\"failed\":0", "\"status\":\"PASS\""}, {})) {
+        return false;
+    }
+    std::string report;
+    if (!readOutputFile(kFile, report)) {
+        return failCase("bulk", "cannot read report");
+    }
+    int writes = 0;
+    if (!readJsonInt(report, "writes", writes) || writes < 1) {
+        return failCase("bulk", "writes is not at least 1");
+    }
+    return true;
+}
+
+/// @brief 比较两份报告里的同一个故障计数字段。
+/// @param left 第一次运行的报告全文，只在本次调用期间借用。
+/// @param right 第二次运行的报告全文，只在本次调用期间借用。
+/// @param key 计数字段名，不含引号。只在本次调用期间借用。
+/// @param detail 缺失或不一致时写入原因。调用方拥有。一致时不修改。
+/// @return 两个整数相等时为 true。不要求该计数大于 0。
+bool sameFaultCount(std::string_view left, std::string_view right, std::string_view key, std::string& detail) {
+    int leftValue = 0;
+    int rightValue = 0;
+    if (!readJsonInt(left, key, leftValue) || !readJsonInt(right, key, rightValue)) {
+        detail = std::string{"missing fault count "} + std::string{key};
+        return false;
+    }
+    if (leftValue != rightValue) {
+        detail = std::string{key} + " " + std::to_string(leftValue) + " then " + std::to_string(rightValue);
+        return false;
+    }
+    return true;
+}
+
+/// @brief 用同一种子把 fault-injection 跑两次，并核对六种故障计数一致。
+/// @param labPath 实验台可执行文件路径，只在本次调用期间借用。
+/// @return 两次都退出 0，且 none、drop、delay、badFrame、badCrc、disconnect 各自相等时为 true。
+bool expectFaultInjection(const std::string& labPath) {
+    constexpr std::string_view kFirst = "comm-lab-fault-a.json";
+    constexpr std::string_view kSecond = "comm-lab-fault-b.json";
+    constexpr std::string_view kCase = "fault_injection";
+    const std::initializer_list<std::string_view> kFirstArgs = {
+        "--scenario", "fault-injection", "--seed", "305419896", "--iterations", "8", "--output", kFirst};
+    const std::initializer_list<std::string_view> kSecondArgs = {
+        "--scenario", "fault-injection", "--seed", "305419896", "--iterations", "8", "--output", kSecond};
+    if (!expectLab(labPath, kCase, kFirstArgs, 0, kFirst, {}, {})) {
+        return false;
+    }
+    if (!expectLab(labPath, kCase, kSecondArgs, 0, kSecond, {}, {})) {
+        return false;
+    }
+    std::string firstReport;
+    std::string secondReport;
+    if (!readOutputFile(kFirst, firstReport) || !readOutputFile(kSecond, secondReport)) {
+        return failCase(kCase, "cannot read fault reports");
+    }
+    constexpr std::string_view kKeys[] = {"none", "drop", "delay", "badFrame", "badCrc", "disconnect"};
+    for (const std::string_view key : kKeys) {
+        std::string detail;
+        if (!sameFaultCount(firstReport, secondReport, key, detail)) {
+            return failCase(kCase, detail);
+        }
+    }
+    return true;
+}
+
+/// @brief 核对串口上的 bulk 仍被阻断：退出 3，报告状态是 BLOCKED。
+/// @param labPath 实验台可执行文件路径，只在本次调用期间借用。本用例不写真实串口。
+/// @return 退出码为 3 且报告含 BLOCKED 时为 true。
+bool expectSerialBulkBlocked(const std::string& labPath) {
+    constexpr std::string_view kFile = "comm-lab-serial-bulk.json";
+    return expectLab(labPath, "serial_bulk_blocked",
+                     {"--transport", "serial", "--scenario", "bulk", "--output", kFile}, 3, kFile,
+                     {"\"status\":\"BLOCKED\""}, {});
+}
+
+/// @brief 核对迭代次数 0 被拒绝，退出码为 2。
+/// @param labPath 实验台可执行文件路径，只在本次调用期间借用。本用例不读 JSON 文件。
+/// @return 实验台退出 2 时为 true。允许范围从 1 开始。
+bool expectIterationsZero(const std::string& labPath) {
+    return expectLab(labPath, "iterations_zero", {"--iterations", "0"}, 2, {}, {}, {});
+}
+
+/// @brief 核对迭代次数 101 被拒绝，退出码为 2。
+/// @param labPath 实验台可执行文件路径，只在本次调用期间借用。本用例不读 JSON 文件。
+/// @return 实验台退出 2 时为 true。允许范围到 100 为止。
+bool expectIterationsTooLarge(const std::string& labPath) {
+    return expectLab(labPath, "iterations_101", {"--iterations", "101"}, 2, {}, {}, {});
 }
 
 /// @brief 核对外部 Profile 不可用，退出码为 2。
@@ -441,6 +579,24 @@ bool runCase(const std::string& labPath, std::string_view name, bool& recognized
     }
     if (name == "missing_profile") {
         return expectMissingProfile(labPath);
+    }
+    if (name == "smoke") {
+        return expectSmoke(labPath);
+    }
+    if (name == "bulk") {
+        return expectBulk(labPath);
+    }
+    if (name == "fault_injection") {
+        return expectFaultInjection(labPath);
+    }
+    if (name == "serial_bulk_blocked") {
+        return expectSerialBulkBlocked(labPath);
+    }
+    if (name == "iterations_zero") {
+        return expectIterationsZero(labPath);
+    }
+    if (name == "iterations_101") {
+        return expectIterationsTooLarge(labPath);
     }
     recognized = false;
     return false;

@@ -1,5 +1,6 @@
 add_executable(ernc_comm_lab
     main.cpp
+    scenarios/scenario.cpp
 )
 
 target_link_libraries(ernc_comm_lab PRIVATE ernc_device ernc_simulator)
