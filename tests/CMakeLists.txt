@@ -537,3 +537,29 @@ foreach(ernc_scheduler_case IN LISTS ernc_scheduler_cases)
         COMMAND ernc_scheduler_tests "${ernc_scheduler_case}"
     )
 endforeach()
+
+add_executable(ernc_retry_policy_tests
+    retry_policy_test.cpp
+)
+
+target_link_libraries(ernc_retry_policy_tests PRIVATE ernc_device)
+
+set(ernc_retry_policy_cases
+    waiting_before_deadline
+    resubmit_before_last_attempt
+    single_attempt_timeout
+    exhausted_after_resend
+    invalid_limit
+    scheduler_times_out_once
+    scheduler_resubmits_same_frame
+    response_cancels_retry
+    write_ignores_read_deadline
+    late_frame_keeps_timeout
+)
+
+foreach(ernc_retry_policy_case IN LISTS ernc_retry_policy_cases)
+    add_test(
+        NAME "retry_policy.${ernc_retry_policy_case}"
+        COMMAND ernc_retry_policy_tests "${ernc_retry_policy_case}"
+    )
+endforeach()

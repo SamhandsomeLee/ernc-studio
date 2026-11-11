@@ -3,6 +3,7 @@
 #include "ernc/domain/types.hpp"
 #include "ernc/ports/device_transport.hpp"
 #include "ernc/protocol/wire_parser.hpp"
+#include "retry_policy.hpp"
 #include "session.hpp"
 
 #include <cstddef>
@@ -176,7 +177,16 @@ public:
     ///
     /// 会话不再接受在途命令的代号时，该命令以 DeviceDisconnected 结束。
     /// 半帧留在解析器里，在途数量保持为 1。CRC 被解析器拒绝时，在途命令以 CrcMismatch 结束并且不重发。
+    /// 这个重载不读取时钟，因此不会因为等待过久而重发或结束读命令。
     void pump();
+
+    /// @brief 在取走已到达字节之后，按调用方给出的时刻处理在途读命令。
+    ///
+    /// 第一次对某条读调用时，把 sentAt 记成 now，并把已提交次数记成 1。同一次调用不会因为这个起点而超时。
+    /// 写命令不使用 limit。完整读响应、CRC 失败和断连仍按无参 pump 的规则结束，不再重发。
+    /// @param now 调用方给出的当前时刻。函数不读取系统钟。
+    /// @param limit 这一次判断使用的等待长度和次数。0 值会让在途读以 InvalidParameter 结束。
+    void pump(RetryTime now, const ReadRetryLimit& limit);
 
     /// @brief 已经交给端口、尚未结束的命令数量。
     /// @return 0 或 1。等待队列里的命令不算在内。
@@ -200,8 +210,14 @@ private:
         /// 入队请求的副本。
         CommandRequest request{};
 
-        /// 待提交的长度前缀帧。调度器拥有这份副本。
+        /// 待提交的长度前缀帧。调度器拥有这份副本。重发读命令时仍使用这同一帧。
         std::vector<std::uint8_t> wire;
+
+        /// 最近一次 submit 的时刻。attempt 为 0 时表示带时间的 pump 还没为这条读开始计时。
+        RetryTime sentAt{};
+
+        /// 已经 submit 的次数，含第一次。0 表示这条读的计时还没开始。写命令保持 0。
+        std::uint8_t attempt{0};
     };
 
     /// @brief 分配下一个不复用的命令代号。
@@ -227,6 +243,11 @@ private:
 
     /// @brief 在没有在途命令时提交等待队列中的下一条可发送命令。
     void startNext();
+
+    /// @brief 对仍没有完整响应的在途读命令应用重试判断。
+    /// @param now 调用方给出的当前时刻。函数不读取系统钟。
+    /// @param limit 等待长度和允许的 submit 次数。只在本次调用期间借用。
+    void applyReadRetry(RetryTime now, const ReadRetryLimit& limit);
 
     /// @brief 把一条命令记成失败。
     /// @param command 要结束的命令，只在本次调用期间借用。

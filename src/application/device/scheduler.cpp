@@ -91,6 +91,14 @@ void CommandScheduler::pump() {
     startNext();
 }
 
+void CommandScheduler::pump(RetryTime now, const ReadRetryLimit& limit) {
+    dropRejected();
+    readAvailable();
+    dropRejected();
+    applyReadRetry(now, limit);
+    startNext();
+}
+
 std::size_t CommandScheduler::inFlightCount() const noexcept {
     return inflight_.has_value() ? 1U : 0U;
 }
@@ -254,6 +262,33 @@ void CommandScheduler::matchFrame(std::span<const std::uint8_t> frame) {
     outcome.session = command.session;
     outcome.body = std::move(written);
     finished_.push_back(std::move(outcome));
+}
+
+void CommandScheduler::applyReadRetry(RetryTime now, const ReadRetryLimit& limit) {
+    if (!inflight_.has_value() || inflight_->request.op != CommandOp::Read) {
+        return;
+    }
+    if (inflight_->attempt == 0) {
+        inflight_->attempt = 1;
+        inflight_->sentAt = now;
+    }
+    const ReadRetryStep step = decideReadRetry(limit, inflight_->sentAt, now, inflight_->attempt);
+    if (step.decision == ReadRetryDecision::Waiting) {
+        return;
+    }
+    if (step.decision == ReadRetryDecision::Resubmit) {
+        parser_.clear();
+        const Result<void> sent = transport_.submit(inflight_->wire);
+        if (!sent.ok()) {
+            failInFlight(codeOf(sent));
+            return;
+        }
+        inflight_->attempt = static_cast<std::uint8_t>(inflight_->attempt + 1);
+        inflight_->sentAt = now;
+        return;
+    }
+    parser_.clear();
+    failInFlight(step.terminal);
 }
 
 void CommandScheduler::startNext() {
