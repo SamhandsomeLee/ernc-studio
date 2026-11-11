@@ -1,6 +1,7 @@
 #include "workspace/editor_tabs.hpp"
 
 #include "controls/parameter_delegates.hpp"
+#include "pages/can_names.hpp"
 #include "pages/check.hpp"
 #include "pages/switch_state.hpp"
 #include "pages/enc_param.hpp"
@@ -175,12 +176,18 @@ EditorTabs::EditorTabs(const ernc::domain::ParameterCatalog* catalog, ernc::doma
     checkPage_->setSelectionObserver([this](const ernc::domain::ParameterId& id) {
         selectParameter(QString::fromStdString(id.text()));
     });
+    checkPage_->setCanOpener([this] { showCanCatalog(); });
     checkPage_->hide();
     switchPage_ = new SwitchStatePage(functionView);
     if (auto* functionLayout = qobject_cast<QVBoxLayout*>(functionView->layout())) {
         functionLayout->insertWidget(6, switchPage_, 1);
     }
     switchPage_->hide();
+    canPage_ = new CanNamePage(functionView);
+    if (auto* functionLayout = qobject_cast<QVBoxLayout*>(functionView->layout())) {
+        functionLayout->insertWidget(7, canPage_, 1);
+    }
+    canPage_->hide();
     addTab(functionView, QStringLiteral("Function View"));
     auto* parameterView = makeParameterView(this, catalog, store, layout, parameterSearch_, parameterProxy_, parameterModel_);
     addTab(parameterView, QStringLiteral("Parameter View"));
@@ -220,7 +227,24 @@ void EditorTabs::selectParameter(const QString& parameterId) {
     }
 }
 
+void EditorTabs::showCanCatalog() {
+    canShown_ = true;
+    refresh();
+}
+
+void EditorTabs::hideCanCatalog() {
+    canShown_ = false;
+    refresh();
+}
+
+void EditorTabs::setCanNamesPath(const QString& path) {
+    if (canPage_ != nullptr) {
+        canPage_->loadFile(path);
+    }
+}
+
 void EditorTabs::selectPage(const QString& pageId) {
+    canShown_ = false;
     selection_.selectPage(pageId.toStdString());
     if (parameterProxy_ != nullptr) {
         parameterProxy_->setPage(pageId);
@@ -283,9 +307,10 @@ void EditorTabs::refresh() {
     const bool showInOut = selection_.pageId() == "ERNC_IN_OUT";
     const bool showEnc = selection_.pageId() == "ENC_Param";
     const bool showRnc = selection_.pageId() == "RNC_Param";
-    const bool showCheck = selection_.pageId() == "Check";
+    const bool showCheck = selection_.pageId() == "Check" && !canShown_;
     const bool showSwitch = selection_.pageId() == "ERNC_Switch_State";
-    functionLabel_->setVisible(!showFlag && !showInOut && !showEnc && !showRnc && !showCheck && !showSwitch);
+    const bool showCan = selection_.pageId() == "Check" && canShown_;
+    functionLabel_->setVisible(!showFlag && !showInOut && !showEnc && !showRnc && !showCheck && !showSwitch && !showCan);
     if (flagPage_ != nullptr) {
         flagPage_->setVisible(showFlag);
         if (showFlag) {
@@ -319,17 +344,21 @@ void EditorTabs::refresh() {
     if (switchPage_ != nullptr) {
         switchPage_->setVisible(showSwitch);
     }
+    if (canPage_ != nullptr) {
+        canPage_->setVisible(showCan);
+    }
     if (QWidget* functionView = functionLabel_->parentWidget()) {
         if (auto* functionLayout = qobject_cast<QVBoxLayout*>(functionView->layout())) {
-            const bool showPage = showFlag || showInOut || showEnc || showRnc || showCheck || showSwitch;
-            if (functionLayout->count() > 7) {
+            const bool showPage = showFlag || showInOut || showEnc || showRnc || showCheck || showSwitch || showCan;
+            if (functionLayout->count() > 8) {
                 functionLayout->setStretch(1, showFlag ? 1 : 0);
                 functionLayout->setStretch(2, showInOut ? 1 : 0);
                 functionLayout->setStretch(3, showEnc ? 1 : 0);
                 functionLayout->setStretch(4, showRnc ? 1 : 0);
                 functionLayout->setStretch(5, showCheck ? 1 : 0);
                 functionLayout->setStretch(6, showSwitch ? 1 : 0);
-                functionLayout->setStretch(7, showPage ? 0 : 1);
+                functionLayout->setStretch(7, showCan ? 1 : 0);
+                functionLayout->setStretch(8, showPage ? 0 : 1);
             }
         }
     }

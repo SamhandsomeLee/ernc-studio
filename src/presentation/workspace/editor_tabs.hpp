@@ -7,6 +7,7 @@
 #include "ernc/domain/runtime_store.hpp"
 
 #include <QModelIndex>
+#include <QString>
 #include <QTabWidget>
 
 #include <functional>
@@ -16,6 +17,7 @@ class QLabel;
 class QLineEdit;
 
 namespace ernc::presentation {
+class CanNamePage;
 class CheckPage;
 class SwitchStatePage;
 class EncParamPage;
@@ -60,6 +62,19 @@ public:
     /// @brief 把参数 id 写进两页共用的选择。
     /// @param parameterId 目录主键。空文本不改变已有选择。调用方拥有原件，本函数只复制它。
     void selectParameter(const QString& parameterId);
+
+    /// @brief 打开 CAN 名称目录。只在当前树页是 Check 时显示。
+    /// @note 不读取 Can_Msg。只在 UI 主线程调用。
+    void showCanCatalog();
+
+    /// @brief 关闭 CAN 名称目录。
+    /// @note 不改变参数 ID。只在 UI 主线程调用。
+    void hideCanCatalog();
+
+    /// @brief 读取 CAN 名称文件。
+    /// @param path Excel 导出的 JSON。调用方拥有原件。空路径清空目录。
+    /// @note 不把行号写成槽位。只在 UI 主线程调用。
+    void setCanNamesPath(const QString& path);
 
     /// @brief 更新当前页面，保留已经选中的参数 id。
     /// @param pageId 项目树页面 id。空文本不改变已有选择。调用方拥有原件，本函数只复制它。
@@ -119,6 +134,12 @@ private:
 
     /// 开关状态页。由 Function View 通过 Qt 父子关系拥有。其它页面隐藏它。
     SwitchStatePage* switchPage_ = nullptr;
+
+    /// CAN 名称页。由 Function View 通过 Qt 父子关系拥有。只从 Check 打开。
+    CanNamePage* canPage_ = nullptr;
+
+    /// 为 true 时，Check 树页显示 CAN 名称而不是检测页。
+    bool canShown_{false};
 
     /// 参数表模型。由参数表通过 Qt 父子关系拥有。功能页暂存后用它重画同一行。
     ParameterTableModel* parameterModel_ = nullptr;

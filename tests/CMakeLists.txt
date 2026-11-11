@@ -915,6 +915,7 @@ if(ERNC_BUILD_UI)
         ../src/presentation/pages/rnc_param.cpp
         ../src/presentation/pages/check.cpp
         ../src/presentation/pages/switch_state.cpp
+        ../src/presentation/pages/can_names.cpp
         ../src/presentation/workspace/editor_tabs.cpp
         ../src/presentation/parameters/parameter_table_model.cpp
         ../src/presentation/parameters/parameter_filter_proxy.cpp
@@ -955,6 +956,7 @@ if(ERNC_BUILD_UI)
         ../src/presentation/pages/rnc_param.cpp
         ../src/presentation/pages/check.cpp
         ../src/presentation/pages/switch_state.cpp
+        ../src/presentation/pages/can_names.cpp
         ../src/presentation/workspace/editor_tabs.cpp
         ../src/presentation/parameters/parameter_table_model.cpp
         ../src/presentation/parameters/parameter_filter_proxy.cpp
@@ -992,6 +994,7 @@ if(ERNC_BUILD_UI)
         ../src/presentation/pages/rnc_param.cpp
         ../src/presentation/pages/check.cpp
         ../src/presentation/pages/switch_state.cpp
+        ../src/presentation/pages/can_names.cpp
         ../src/presentation/pages/ernc_flag.cpp
         ../src/presentation/pages/ernc_in_out.cpp
         ../src/presentation/workspace/editor_tabs.cpp
@@ -1029,6 +1032,7 @@ if(ERNC_BUILD_UI)
         ../src/presentation/pages/rnc_param.cpp
         ../src/presentation/pages/check.cpp
         ../src/presentation/pages/switch_state.cpp
+        ../src/presentation/pages/can_names.cpp
         ../src/presentation/pages/enc_param.cpp
         ../src/presentation/pages/ernc_flag.cpp
         ../src/presentation/pages/ernc_in_out.cpp
@@ -1067,6 +1071,7 @@ if(ERNC_BUILD_UI)
         check_page_test.cpp
         ../src/presentation/pages/check.cpp
         ../src/presentation/pages/switch_state.cpp
+        ../src/presentation/pages/can_names.cpp
         ../src/presentation/pages/rnc_param.cpp
         ../src/presentation/pages/enc_param.cpp
         ../src/presentation/pages/ernc_flag.cpp
@@ -1103,6 +1108,7 @@ if(ERNC_BUILD_UI)
     add_executable(ernc_switch_state_page_tests
         switch_state_page_test.cpp
         ../src/presentation/pages/switch_state.cpp
+        ../src/presentation/pages/can_names.cpp
         ../src/presentation/pages/check.cpp
         ../src/presentation/pages/rnc_param.cpp
         ../src/presentation/pages/enc_param.cpp
@@ -1128,6 +1134,39 @@ if(ERNC_BUILD_UI)
                 "${ernc_switch_case}"
                 "${CMAKE_SOURCE_DIR}/catalog/parameter_catalog.json"
                 "${CMAKE_SOURCE_DIR}/firmware/layout_manifest.json"
+        )
+    endforeach()
+
+    add_executable(ernc_can_names_page_tests
+        can_names_page_test.cpp
+        ../src/presentation/pages/can_names.cpp
+        ../src/presentation/pages/switch_state.cpp
+        ../src/presentation/pages/check.cpp
+        ../src/presentation/pages/rnc_param.cpp
+        ../src/presentation/pages/enc_param.cpp
+        ../src/presentation/pages/ernc_flag.cpp
+        ../src/presentation/pages/ernc_in_out.cpp
+        ../src/presentation/workspace/editor_tabs.cpp
+        ../src/presentation/parameters/parameter_table_model.cpp
+        ../src/presentation/parameters/parameter_filter_proxy.cpp
+        ../src/presentation/parameters/write_plan_dialog.cpp
+        ../src/presentation/controls/parameter_delegates.cpp
+    )
+
+    target_include_directories(ernc_can_names_page_tests PRIVATE
+        "${CMAKE_SOURCE_DIR}/src/presentation"
+    )
+
+    target_link_libraries(ernc_can_names_page_tests PRIVATE Qt6::Widgets ernc_domain ernc_application)
+
+    foreach(ernc_can_case IN ITEMS can_names_stay_unmapped can_catalog_opens_from_check)
+        add_test(
+            NAME "can_names.${ernc_can_case}"
+            COMMAND ernc_can_names_page_tests
+                "${ernc_can_case}"
+                "${CMAKE_SOURCE_DIR}/catalog/parameter_catalog.json"
+                "${CMAKE_SOURCE_DIR}/firmware/layout_manifest.json"
+                "${CMAKE_SOURCE_DIR}/catalog/source/can_names.raw.json"
         )
     endforeach()
 endif()

@@ -120,6 +120,9 @@ MainWindow::MainWindow(ernc::domain::CatalogLoad catalog, QString catalogPath, Q
 #endif
     const ernc::domain::FirmwareLayout* layout = firmwareLayout_ ? &*firmwareLayout_ : nullptr;
     auto* editorTabs = new EditorTabs(loadedCatalog, &parameterStore_, layout, workArea);
+#ifdef ERNC_CAN_NAMES_PATH
+    editorTabs->setCanNamesPath(QString::fromUtf8(ERNC_CAN_NAMES_PATH));
+#endif
     editorTabs_ = editorTabs;
     workLayout->addWidget(editorTabs);
     setCentralWidget(workArea);
