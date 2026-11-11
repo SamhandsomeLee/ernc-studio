@@ -29,6 +29,11 @@ set(ernc_layout_cases
     malformed_document
     empty_document
     missing_file
+    locate_pack4_anc
+    locate_pack4_can_msg
+    locate_missing
+    locate_pack4_out_of_range
+    locate_verified_keeps_geometry
 )
 
 add_test(
@@ -211,6 +216,32 @@ foreach(ernc_layout_case IN LISTS ernc_layout_cases)
     add_test(
         NAME "firmware_layout.${ernc_layout_case}"
         COMMAND ernc_firmware_layout_tests "${ernc_layout_case}" "${ernc_layout_manifest}"
+    )
+endforeach()
+
+add_executable(ernc_read_parameter_tests
+    read_parameter_test.cpp
+)
+
+target_link_libraries(ernc_read_parameter_tests PRIVATE ernc_application ernc_simulator)
+
+set(ernc_read_parameter_cases
+    anc_off_observes_scalar
+    can_msg_reads_seventy_two
+    unknown_id_does_not_enqueue
+    check_data_does_not_enqueue
+    disconnected_does_not_enqueue
+    second_read_while_busy
+    stale_session_does_not_observe
+)
+
+foreach(ernc_read_parameter_case IN LISTS ernc_read_parameter_cases)
+    add_test(
+        NAME "read_parameter.${ernc_read_parameter_case}"
+        COMMAND ernc_read_parameter_tests
+            "${ernc_read_parameter_case}"
+            "${CMAKE_SOURCE_DIR}/catalog/parameter_catalog.json"
+            "${ernc_layout_manifest}"
     )
 endforeach()
 

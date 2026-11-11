@@ -327,6 +327,107 @@ bool missingFile() {
     return true;
 }
 
+/// @brief 正式 manifest 里的 ANC_OFF 可以被 locate，同时 resolve 仍拒绝它。
+/// @param manifestPath 正式 manifest 路径，只在本次调用期间借用。
+/// @return locate 得到 slot 0、1 个 slot、float，并且证据是 pack4-sequential 时为 true。
+bool locatePack4Anc(const char* manifestPath) {
+    const LayoutLoad loaded = FirmwareLayoutLoader::loadFile(manifestPath);
+    if (!loaded.ok()) {
+        return fail("locate_pack4_anc");
+    }
+    if (!expectResolve(loaded.layout(), "ANC_OFF", LayoutError::Unverified, "locate_pack4_anc")) {
+        return false;
+    }
+    const LayoutResolve located = loaded.layout().locate("ANC_OFF");
+    if (!located.ok()) {
+        return fail("locate_pack4_anc");
+    }
+    const FieldLayout& field = located.field();
+    if (field.slot != 0 || field.slotCount != 1 || field.size != 4 || field.typeName != "float"
+        || !field.scalarType || *field.scalarType != DataType::Float32
+        || field.evidence != ernc::domain::LayoutEvidence::Pack4Sequential) {
+        return fail("locate_pack4_anc");
+    }
+    return true;
+}
+
+/// @brief Can_Msg 的 locate 返回整段 72 个 float slot。
+/// @param manifestPath 正式 manifest 路径，只在本次调用期间借用。
+/// @return slot 为 14869、slot 数为 72、长度为 288 时为 true。
+bool locatePack4CanMsg(const char* manifestPath) {
+    const LayoutLoad loaded = FirmwareLayoutLoader::loadFile(manifestPath);
+    if (!loaded.ok()) {
+        return fail("locate_pack4_can_msg");
+    }
+    const LayoutResolve located = loaded.layout().locate("Can_Msg");
+    if (!located.ok()) {
+        return fail("locate_pack4_can_msg");
+    }
+    const FieldLayout& field = located.field();
+    if (field.slot != 14869 || field.slotCount != 72 || field.size != 288 || field.typeName != "float"
+        || !field.scalarType || *field.scalarType != DataType::Float32
+        || field.evidence != ernc::domain::LayoutEvidence::Pack4Sequential) {
+        return fail("locate_pack4_can_msg");
+    }
+    return true;
+}
+
+/// @brief 不在字段表里的名字 locate 不到几何。
+/// @param manifestPath 正式 manifest 路径，只在本次调用期间借用。
+/// @return OrderFour_Flag 为 NotFound 时为 true。
+bool locateMissing(const char* manifestPath) {
+    const LayoutLoad loaded = FirmwareLayoutLoader::loadFile(manifestPath);
+    if (!loaded.ok()) {
+        return fail("locate_missing");
+    }
+    const LayoutResolve located = loaded.layout().locate("OrderFour_Flag");
+    if (located.ok() || located.tryError() == nullptr || *located.tryError() != LayoutError::NotFound
+        || located.tryField() != nullptr) {
+        return fail("locate_missing");
+    }
+    return true;
+}
+
+/// @brief pack4-sequential 几何越界时 locate 返回越界，不把坏几何交出去。
+/// @return locate 为 OutOfRange，并且 resolve 仍是 Unverified 时为 true。
+bool locatePack4OutOfRange() {
+    const LayoutLoad loaded = FirmwareLayoutLoader::loadText(manifest(
+        R"({"path":"ANC_OFF","offset":0,"size":3,"slot":0,"slot_count":1,"type":"float","shape":[],"status":"pack4-sequential","writable":false})"));
+    if (!loaded.ok()) {
+        return fail("locate_pack4_out_of_range");
+    }
+    if (!expectResolve(loaded.layout(), "ANC_OFF", LayoutError::Unverified, "locate_pack4_out_of_range")) {
+        return false;
+    }
+    const LayoutResolve located = loaded.layout().locate("ANC_OFF");
+    if (located.ok() || located.tryError() == nullptr || *located.tryError() != LayoutError::OutOfRange) {
+        return fail("locate_pack4_out_of_range");
+    }
+    return true;
+}
+
+/// @brief 已核验字段的 locate 与 resolve 给出同一几何，证据为 verified。
+/// @return slot、类型和证据都匹配时为 true。
+bool locateVerifiedKeepsGeometry() {
+    const LayoutLoad loaded = FirmwareLayoutLoader::loadText(manifest(
+        R"({"path":"ANC_OFF","offset":0,"size":4,"slot":0,"slot_count":1,"type":"float","shape":[],"status":"verified","writable":false})"));
+    if (!loaded.ok()) {
+        return fail("locate_verified_keeps_geometry");
+    }
+    const LayoutResolve located = loaded.layout().locate("ANC_OFF");
+    const LayoutResolve resolved = loaded.layout().resolve("ANC_OFF");
+    if (!located.ok() || !resolved.ok()) {
+        return fail("locate_verified_keeps_geometry");
+    }
+    const FieldLayout& field = located.field();
+    if (field.slot != resolved.field().slot || field.slotCount != resolved.field().slotCount || field.size != resolved.field().size
+        || field.evidence != ernc::domain::LayoutEvidence::Verified
+        || resolved.field().evidence != ernc::domain::LayoutEvidence::Verified) {
+        return fail("locate_verified_keeps_geometry");
+    }
+    return true;
+}
+
 /// @brief 按用例名运行一个检查。
 /// @param name CTest 传入的用例名。
 /// @param manifestPath 正式 manifest 路径。只被读取正式文件的用例使用。
@@ -399,6 +500,21 @@ bool runCase(std::string_view name, const char* manifestPath, bool& recognized) 
     }
     if (name == "missing_file") {
         return missingFile();
+    }
+    if (name == "locate_pack4_anc") {
+        return locatePack4Anc(manifestPath);
+    }
+    if (name == "locate_pack4_can_msg") {
+        return locatePack4CanMsg(manifestPath);
+    }
+    if (name == "locate_missing") {
+        return locateMissing(manifestPath);
+    }
+    if (name == "locate_pack4_out_of_range") {
+        return locatePack4OutOfRange();
+    }
+    if (name == "locate_verified_keeps_geometry") {
+        return locateVerifiedKeepsGeometry();
     }
     recognized = false;
     return false;

@@ -20,6 +20,7 @@ constexpr int kMaxJsonDepth = 32;
 constexpr std::size_t kMaxNumberLength = 64;
 constexpr std::uint32_t kSlotBytes = 4;
 constexpr std::string_view kVerifiedStatus = "verified";
+constexpr std::string_view kPack4Status = "pack4-sequential";
 
 struct Json {
     enum class Kind { Null, Bool, Number, String, Array, Object };
@@ -767,45 +768,74 @@ std::size_t FirmwareLayout::fieldCount() const noexcept {
     return fields_.size();
 }
 
-LayoutResolve FirmwareLayout::resolve(std::string_view firmwarePath) const {
+const FirmwareLayout::StoredField* FirmwareLayout::findStored(std::string_view firmwarePath) const {
     if (isBlank(firmwarePath)) {
-        return LayoutResolve::failure(LayoutError::NotFound);
+        return nullptr;
     }
-    const StoredField* found = nullptr;
     for (const StoredField& field : fields_) {
         if (field.path == firmwarePath) {
-            found = &field;
-            break;
+            return &field;
         }
     }
+    return nullptr;
+}
+
+std::optional<LayoutError> FirmwareLayout::geometryError(const StoredField& found) const {
+    const RawField geometry{
+        found.path,
+        found.offset,
+        found.size,
+        found.slot,
+        found.slotCount,
+        found.typeName,
+        found.shape,
+        found.status,
+        found.writable};
+    return checkGeometry(geometry, base_, totalSize_, totalSlots_);
+}
+
+FieldLayout FirmwareLayout::toField(const StoredField& found, LayoutEvidence evidence) const {
+    FieldLayout layout;
+    layout.slot = found.slot;
+    layout.slotCount = found.slotCount;
+    layout.size = found.size;
+    layout.offset = found.offset;
+    layout.typeName = found.typeName;
+    layout.scalarType = scalarTypeFor(found.typeName);
+    layout.writable = found.writable;
+    layout.evidence = evidence;
+    return layout;
+}
+
+LayoutResolve FirmwareLayout::resolve(std::string_view firmwarePath) const {
+    const StoredField* found = findStored(firmwarePath);
     if (found == nullptr) {
         return LayoutResolve::failure(LayoutError::NotFound);
     }
     if (found->status != kVerifiedStatus) {
         return LayoutResolve::failure(LayoutError::Unverified);
     }
-    RawField geometry{
-        found->path,
-        found->offset,
-        found->size,
-        found->slot,
-        found->slotCount,
-        found->typeName,
-        found->shape,
-        found->status,
-        found->writable};
-    if (const std::optional<LayoutError> error = checkGeometry(geometry, base_, totalSize_, totalSlots_)) {
+    if (const std::optional<LayoutError> error = geometryError(*found)) {
         return LayoutResolve::failure(*error);
     }
-    FieldLayout layout;
-    layout.slot = found->slot;
-    layout.slotCount = found->slotCount;
-    layout.size = found->size;
-    layout.offset = found->offset;
-    layout.typeName = found->typeName;
-    layout.scalarType = scalarTypeFor(found->typeName);
-    layout.writable = found->writable;
-    return LayoutResolve::success(std::move(layout));
+    return LayoutResolve::success(toField(*found, LayoutEvidence::Verified));
+}
+
+LayoutResolve FirmwareLayout::locate(std::string_view firmwarePath) const {
+    const StoredField* found = findStored(firmwarePath);
+    if (found == nullptr) {
+        return LayoutResolve::failure(LayoutError::NotFound);
+    }
+    LayoutEvidence evidence = LayoutEvidence::Verified;
+    if (found->status == kPack4Status) {
+        evidence = LayoutEvidence::Pack4Sequential;
+    } else if (found->status != kVerifiedStatus) {
+        return LayoutResolve::failure(LayoutError::Unverified);
+    }
+    if (const std::optional<LayoutError> error = geometryError(*found)) {
+        return LayoutResolve::failure(*error);
+    }
+    return LayoutResolve::success(toField(*found, evidence));
 }
 
 LayoutLoad FirmwareLayoutLoader::loadText(std::string_view jsonText) {

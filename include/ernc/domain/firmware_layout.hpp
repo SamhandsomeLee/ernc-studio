@@ -18,7 +18,8 @@ enum class LayoutError {
     /// firmwarePath 在 manifest 的 fields 树里没有同名路径。别名和 unresolved 名单不在这里展开。
     NotFound,
 
-    /// 找到了字段，但 status 不是本切片承认的已核验状态。pack4-sequential 属于这一类。
+    /// 找到了字段，但 status 不是调用方承认的状态。
+    /// resolve() 把 pack4-sequential 算在这里。locate() 接受 pack4-sequential 和 verified，其他原文仍算在这里。
     Unverified,
 
     /// 字段已核验，但 offset、size、slot 或 shape 与 manifest 声明的总范围、4 字节对齐不一致。
@@ -26,6 +27,15 @@ enum class LayoutError {
 
     /// JSON 无法解析，或 manifest 缺少对齐、总大小或字段必需成员。不返回部分布局。
     InvalidDocument
+};
+
+/// 字段几何的证据等级。它不是写入许可。
+enum class LayoutEvidence {
+    /// manifest 的 status 原文是 pack4-sequential。几何可以读取，不能当成已核验的真实写入许可。
+    Pack4Sequential,
+
+    /// manifest 的 status 原文是 verified。
+    Verified
 };
 
 /// 一次成功解析得到的字段几何。字节序和 Modbus 寄存器地址不在这里计算。
@@ -50,6 +60,9 @@ struct FieldLayout {
 
     /// 字段自己的 writable。false 表示这份布局不能授权真实写入；解析成功不等于已经写设备。
     bool writable{false};
+
+    /// 这份几何的证据等级。resolve() 成功时为 Verified。locate() 会保留 Pack4Sequential。
+    LayoutEvidence evidence{LayoutEvidence::Verified};
 };
 
 namespace detail {
@@ -140,7 +153,8 @@ class FirmwareLayoutLoader;
 
 /// @brief 一份已通过文档结构校验的固件布局。
 ///
-/// 对象拥有从 manifest 展平后的字段。resolve 按路径原文查找，不读取 Excel，也不把候选别名改写成路径。
+/// 对象拥有从 manifest 展平后的字段。resolve 和 locate 按路径原文查找，不读取 Excel，也不把候选别名改写成路径。
+/// resolve 只交出 verified。locate 还交出几何合法的 pack4-sequential。两者都不写设备。
 /// 没有后台线程；调用方负责不在移动本对象的同时从另一个线程读取它。
 class FirmwareLayout {
     friend class FirmwareLayoutLoader;
@@ -148,8 +162,17 @@ class FirmwareLayout {
 public:
     /// @brief 把固件路径解析成 slot、字节长度和类型。
     /// @param firmwarePath manifest 中的完整路径，只在本次调用期间借用。空文本和不存在的文本都找不到。
-    /// @return 找到、已核验且几何一致时包含 FieldLayout。否则只有一个 LayoutError，没有部分几何。
+    /// @return 找到、已核验且几何一致时包含 FieldLayout，evidence 为 Verified。
+    /// pack4-sequential 仍是 Unverified，不带几何。越界时为 OutOfRange。
     LayoutResolve resolve(std::string_view firmwarePath) const;
+
+    /// @brief 按路径取出可读几何，包括 pack4-sequential。
+    ///
+    /// 不把 pack4-sequential 提升为 verified，也不读取 writable 来拒绝。找不到、越界和其他 status 不带几何。
+    /// @param firmwarePath manifest 中的完整路径，只在本次调用期间借用。空文本和不存在的文本都找不到。
+    /// @return 路径存在、状态是 pack4-sequential 或 verified、并且几何落在镜像内时包含 FieldLayout。
+    /// evidence 记录实际 status。否则只有一个 LayoutError。
+    LayoutResolve locate(std::string_view firmwarePath) const;
 
     /// @brief 展平后的字段数量，包含 children 里的完整路径。
     /// @return 可被 resolve 查找的路径数。0 表示文档合法但没有字段。
@@ -161,7 +184,7 @@ public:
     FirmwareLayout& operator=(FirmwareLayout&&) noexcept = default;
 
 private:
-    /// 索引中的一条字段。几何是否越界留到 resolve，因为未核验字段要先返回 Unverified。
+    /// 索引中的一条字段。几何是否越界留到 resolve 和 locate。resolve 在未核验时不检查几何。
     struct StoredField {
         /// manifest 的 path 原文。children 里也必须是完整路径。
         std::string path;
@@ -184,12 +207,28 @@ private:
         /// shape 各维长度。空表示 manifest 没有给出数组维度。
         std::vector<std::uint32_t> shape;
 
-        /// status 原文。只有 verified 可以通过核验检查。
+        /// status 原文。resolve() 只承认 verified。locate() 还承认 pack4-sequential。
         std::string status;
 
         /// 字段级 writable。文档级 writable 不代替它。
         bool writable{false};
     };
+
+    /// @brief 按路径原文查找已索引字段。
+    /// @param firmwarePath manifest 路径，只在本次调用期间借用。空文本视为找不到。
+    /// @return 指向内部字段的指针。没有匹配时为空。指针不转移所有权。
+    const StoredField* findStored(std::string_view firmwarePath) const;
+
+    /// @brief 检查已索引字段的几何是否落在这份布局里。
+    /// @param found 内部字段，只在本次调用期间借用。
+    /// @return 几何一致时为空。越界或和 4 字节 slot 矛盾时为 OutOfRange。
+    std::optional<LayoutError> geometryError(const StoredField& found) const;
+
+    /// @brief 把已通过几何检查的字段做成对外几何。
+    /// @param found 内部字段，只在本次调用期间借用。
+    /// @param evidence 调用方已经按 status 判定的证据等级。
+    /// @return 调用方拥有的 FieldLayout。不访问设备。
+    FieldLayout toField(const StoredField& found, LayoutEvidence evidence) const;
 
     /// @brief 接管已经索引好的字段。
     /// @param base 布局起点，单位是字节。
