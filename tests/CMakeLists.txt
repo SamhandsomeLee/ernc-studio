@@ -514,3 +514,26 @@ foreach(ernc_device_session_case IN LISTS ernc_device_session_cases)
         COMMAND ernc_device_session_tests "${ernc_device_session_case}"
     )
 endforeach()
+
+add_executable(ernc_scheduler_tests
+    scheduler_test.cpp
+)
+
+target_link_libraries(ernc_scheduler_tests PRIVATE ernc_device)
+
+set(ernc_scheduler_cases
+    two_enqueues_one_submit
+    response_releases_next
+    high_waits_behind_inflight
+    disconnect_drops_inflight
+    empty_read_rejected
+    write_ack_is_not_verified
+    half_frame_stays_inflight
+)
+
+foreach(ernc_scheduler_case IN LISTS ernc_scheduler_cases)
+    add_test(
+        NAME "scheduler.${ernc_scheduler_case}"
+        COMMAND ernc_scheduler_tests "${ernc_scheduler_case}"
+    )
+endforeach()
