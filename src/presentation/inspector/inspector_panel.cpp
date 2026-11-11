@@ -6,6 +6,7 @@
 #include "theme/theme_tokens.hpp"
 
 #include <QLabel>
+#include <QPushButton>
 #include <QTabWidget>
 #include <QVBoxLayout>
 
@@ -43,8 +44,18 @@ InspectorPanel::InspectorPanel(const ernc::domain::ParameterCatalog* catalog, QW
         QStringLiteral("Properties"));
     tabs->addTab(makePage(QStringLiteral("erncInspectorInfo"), tabs, infoLabel_),
         QStringLiteral("Info"));
-    tabs->addTab(makePage(QStringLiteral("erncInspectorDiagnostics"), tabs, diagnosticsLabel_),
-        QStringLiteral("Diagnostics"));
+    auto* diagnosticsPage = makePage(QStringLiteral("erncInspectorDiagnostics"), tabs, diagnosticsLabel_);
+    auto* openOperationCenter = new QPushButton(QStringLiteral("操作中心"), diagnosticsPage);
+    openOperationCenter->setObjectName(QStringLiteral("erncOpenOperationCenter"));
+    if (auto* pageLayout = qobject_cast<QVBoxLayout*>(diagnosticsPage->layout())) {
+        pageLayout->insertWidget(1, openOperationCenter, 0, Qt::AlignLeft);
+    }
+    connect(openOperationCenter, &QPushButton::clicked, this, [this] {
+        if (operationCenterOpener_) {
+            operationCenterOpener_();
+        }
+    });
+    tabs->addTab(diagnosticsPage, QStringLiteral("Diagnostics"));
     layout->addWidget(tabs);
     showParameter({});
 }
@@ -59,6 +70,10 @@ void InspectorPanel::showParameter(std::string_view parameterId) {
     propertiesLabel_->setText(QString::fromStdString(text.properties));
     infoLabel_->setText(QString::fromStdString(text.info));
     diagnosticsLabel_->setText(QString::fromStdString(text.diagnostics));
+}
+
+void InspectorPanel::setOperationCenterOpener(std::function<void()> opener) {
+    operationCenterOpener_ = std::move(opener);
 }
 
 } // namespace ernc::presentation

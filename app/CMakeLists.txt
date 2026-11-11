@@ -13,6 +13,8 @@ qt_add_executable(ernc_app
     ../src/presentation/parameters/parameter_table_model.cpp
     ../src/presentation/inspector/inspector_context.cpp
     ../src/presentation/inspector/inspector_panel.cpp
+    ../src/presentation/task_cards/task_card_panel.cpp
+    ../src/presentation/operation_center/operation_center_panel.cpp
 )
 
 qt_add_resources(ernc_app "ernc_themes"

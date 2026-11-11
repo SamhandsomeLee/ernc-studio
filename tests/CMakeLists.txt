@@ -685,3 +685,22 @@ foreach(ernc_inspector_context_case IN LISTS ernc_inspector_context_cases)
         COMMAND ernc_inspector_context_tests "${ernc_inspector_context_case}"
     )
 endforeach()
+
+add_executable(ernc_operation_log_tests
+    operation_log_test.cpp
+)
+
+target_include_directories(ernc_operation_log_tests PRIVATE
+    "${CMAKE_SOURCE_DIR}/src/presentation"
+)
+
+set(ernc_operation_log_cases
+    keeps_newest_lines
+)
+
+foreach(ernc_operation_log_case IN LISTS ernc_operation_log_cases)
+    add_test(
+        NAME "operation_log.${ernc_operation_log_case}"
+        COMMAND ernc_operation_log_tests "${ernc_operation_log_case}"
+    )
+endforeach()

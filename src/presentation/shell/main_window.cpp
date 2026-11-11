@@ -2,6 +2,8 @@
 
 #include "inspector/inspector_panel.hpp"
 #include "navigator/navigator_model.hpp"
+#include "operation_center/operation_center_panel.hpp"
+#include "task_cards/task_card_panel.hpp"
 #include "theme/theme_tokens.hpp"
 #include "workspace/editor_tabs.hpp"
 
@@ -68,8 +70,12 @@ MainWindow::MainWindow(ernc::domain::CatalogLoad catalog, QString catalogPath, Q
         QStringLiteral("erncDockInspector"), QStringLiteral("检查器"), Qt::BottomDockWidgetArea);
     QDockWidget* taskCards = addPlaceholderDock(
         QStringLiteral("erncDockTaskCards"), QStringLiteral("任务卡"), Qt::RightDockWidgetArea);
+    QDockWidget* operationCenter = addPlaceholderDock(
+        QStringLiteral("erncDockOperationCenter"), QStringLiteral("操作中心"), Qt::RightDockWidgetArea);
     resizeDocks({projectTree, taskCards}, {kProjectTreeWidth, kTaskCardsWidth}, Qt::Horizontal);
     resizeDocks({inspector}, {kInspectorHeight}, Qt::Vertical);
+    tabifyDockWidget(taskCards, operationCenter);
+    taskCards->raise();
 
     const ernc::domain::ParameterCatalog* loadedCatalog = nullptr;
     if (!catalog.ok()) {
@@ -105,6 +111,20 @@ MainWindow::MainWindow(ernc::domain::CatalogLoad catalog, QString catalogPath, Q
     editorTabs->setParameterObserver([inspectorPanel](std::string_view parameterId) {
         inspectorPanel->showParameter(parameterId);
     });
+    inspectorPanel->setOperationCenterOpener([operationCenter] {
+        operationCenter->show();
+        operationCenter->raise();
+    });
+
+    auto* taskCardPanel = new TaskCardPanel(taskCards);
+    QWidget* previousTasks = taskCards->widget();
+    taskCards->setWidget(taskCardPanel);
+    delete previousTasks;
+
+    auto* operationPanel = new OperationCenterPanel(operationCenter);
+    QWidget* previousOperation = operationCenter->widget();
+    operationCenter->setWidget(operationPanel);
+    delete previousOperation;
 
     QStatusBar* bar = statusBar();
     bar->setObjectName(QStringLiteral("erncStatusBar"));
@@ -114,6 +134,7 @@ MainWindow::MainWindow(ernc::domain::CatalogLoad catalog, QString catalogPath, Q
     viewMenu->addAction(projectTree->toggleViewAction());
     viewMenu->addAction(inspector->toggleViewAction());
     viewMenu->addAction(taskCards->toggleViewAction());
+    viewMenu->addAction(operationCenter->toggleViewAction());
 }
 
 QDockWidget* MainWindow::addPlaceholderDock(
