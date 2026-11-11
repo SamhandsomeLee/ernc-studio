@@ -2,6 +2,7 @@
 
 #include "controls/parameter_delegates.hpp"
 #include "pages/check.hpp"
+#include "pages/switch_state.hpp"
 #include "pages/enc_param.hpp"
 #include "pages/rnc_param.hpp"
 #include "pages/ernc_flag.hpp"
@@ -175,6 +176,11 @@ EditorTabs::EditorTabs(const ernc::domain::ParameterCatalog* catalog, ernc::doma
         selectParameter(QString::fromStdString(id.text()));
     });
     checkPage_->hide();
+    switchPage_ = new SwitchStatePage(functionView);
+    if (auto* functionLayout = qobject_cast<QVBoxLayout*>(functionView->layout())) {
+        functionLayout->insertWidget(6, switchPage_, 1);
+    }
+    switchPage_->hide();
     addTab(functionView, QStringLiteral("Function View"));
     auto* parameterView = makeParameterView(this, catalog, store, layout, parameterSearch_, parameterProxy_, parameterModel_);
     addTab(parameterView, QStringLiteral("Parameter View"));
@@ -278,7 +284,8 @@ void EditorTabs::refresh() {
     const bool showEnc = selection_.pageId() == "ENC_Param";
     const bool showRnc = selection_.pageId() == "RNC_Param";
     const bool showCheck = selection_.pageId() == "Check";
-    functionLabel_->setVisible(!showFlag && !showInOut && !showEnc && !showRnc && !showCheck);
+    const bool showSwitch = selection_.pageId() == "ERNC_Switch_State";
+    functionLabel_->setVisible(!showFlag && !showInOut && !showEnc && !showRnc && !showCheck && !showSwitch);
     if (flagPage_ != nullptr) {
         flagPage_->setVisible(showFlag);
         if (showFlag) {
@@ -309,16 +316,20 @@ void EditorTabs::refresh() {
             checkPage_->reload();
         }
     }
+    if (switchPage_ != nullptr) {
+        switchPage_->setVisible(showSwitch);
+    }
     if (QWidget* functionView = functionLabel_->parentWidget()) {
         if (auto* functionLayout = qobject_cast<QVBoxLayout*>(functionView->layout())) {
-            const bool showPage = showFlag || showInOut || showEnc || showRnc || showCheck;
-            if (functionLayout->count() > 6) {
+            const bool showPage = showFlag || showInOut || showEnc || showRnc || showCheck || showSwitch;
+            if (functionLayout->count() > 7) {
                 functionLayout->setStretch(1, showFlag ? 1 : 0);
                 functionLayout->setStretch(2, showInOut ? 1 : 0);
                 functionLayout->setStretch(3, showEnc ? 1 : 0);
                 functionLayout->setStretch(4, showRnc ? 1 : 0);
                 functionLayout->setStretch(5, showCheck ? 1 : 0);
-                functionLayout->setStretch(6, showPage ? 0 : 1);
+                functionLayout->setStretch(6, showSwitch ? 1 : 0);
+                functionLayout->setStretch(7, showPage ? 0 : 1);
             }
         }
     }

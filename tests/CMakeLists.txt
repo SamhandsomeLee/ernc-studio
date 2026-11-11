@@ -914,6 +914,7 @@ if(ERNC_BUILD_UI)
         ../src/presentation/pages/enc_param.cpp
         ../src/presentation/pages/rnc_param.cpp
         ../src/presentation/pages/check.cpp
+        ../src/presentation/pages/switch_state.cpp
         ../src/presentation/workspace/editor_tabs.cpp
         ../src/presentation/parameters/parameter_table_model.cpp
         ../src/presentation/parameters/parameter_filter_proxy.cpp
@@ -953,6 +954,7 @@ if(ERNC_BUILD_UI)
         ../src/presentation/pages/enc_param.cpp
         ../src/presentation/pages/rnc_param.cpp
         ../src/presentation/pages/check.cpp
+        ../src/presentation/pages/switch_state.cpp
         ../src/presentation/workspace/editor_tabs.cpp
         ../src/presentation/parameters/parameter_table_model.cpp
         ../src/presentation/parameters/parameter_filter_proxy.cpp
@@ -989,6 +991,7 @@ if(ERNC_BUILD_UI)
         ../src/presentation/pages/enc_param.cpp
         ../src/presentation/pages/rnc_param.cpp
         ../src/presentation/pages/check.cpp
+        ../src/presentation/pages/switch_state.cpp
         ../src/presentation/pages/ernc_flag.cpp
         ../src/presentation/pages/ernc_in_out.cpp
         ../src/presentation/workspace/editor_tabs.cpp
@@ -1025,6 +1028,7 @@ if(ERNC_BUILD_UI)
         rnc_param_page_test.cpp
         ../src/presentation/pages/rnc_param.cpp
         ../src/presentation/pages/check.cpp
+        ../src/presentation/pages/switch_state.cpp
         ../src/presentation/pages/enc_param.cpp
         ../src/presentation/pages/ernc_flag.cpp
         ../src/presentation/pages/ernc_in_out.cpp
@@ -1062,6 +1066,7 @@ if(ERNC_BUILD_UI)
     add_executable(ernc_check_page_tests
         check_page_test.cpp
         ../src/presentation/pages/check.cpp
+        ../src/presentation/pages/switch_state.cpp
         ../src/presentation/pages/rnc_param.cpp
         ../src/presentation/pages/enc_param.cpp
         ../src/presentation/pages/ernc_flag.cpp
@@ -1090,6 +1095,37 @@ if(ERNC_BUILD_UI)
             NAME "check.${ernc_check_page_case}"
             COMMAND ernc_check_page_tests
                 "${ernc_check_page_case}"
+                "${CMAKE_SOURCE_DIR}/catalog/parameter_catalog.json"
+                "${CMAKE_SOURCE_DIR}/firmware/layout_manifest.json"
+        )
+    endforeach()
+
+    add_executable(ernc_switch_state_page_tests
+        switch_state_page_test.cpp
+        ../src/presentation/pages/switch_state.cpp
+        ../src/presentation/pages/check.cpp
+        ../src/presentation/pages/rnc_param.cpp
+        ../src/presentation/pages/enc_param.cpp
+        ../src/presentation/pages/ernc_flag.cpp
+        ../src/presentation/pages/ernc_in_out.cpp
+        ../src/presentation/workspace/editor_tabs.cpp
+        ../src/presentation/parameters/parameter_table_model.cpp
+        ../src/presentation/parameters/parameter_filter_proxy.cpp
+        ../src/presentation/parameters/write_plan_dialog.cpp
+        ../src/presentation/controls/parameter_delegates.cpp
+    )
+
+    target_include_directories(ernc_switch_state_page_tests PRIVATE
+        "${CMAKE_SOURCE_DIR}/src/presentation"
+    )
+
+    target_link_libraries(ernc_switch_state_page_tests PRIVATE Qt6::Widgets ernc_domain ernc_application)
+
+    foreach(ernc_switch_case IN ITEMS switch_state_is_unnamed switch_page_follows_tree)
+        add_test(
+            NAME "switch_state.${ernc_switch_case}"
+            COMMAND ernc_switch_state_page_tests
+                "${ernc_switch_case}"
                 "${CMAKE_SOURCE_DIR}/catalog/parameter_catalog.json"
                 "${CMAKE_SOURCE_DIR}/firmware/layout_manifest.json"
         )
