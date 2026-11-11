@@ -18,6 +18,7 @@ class QLineEdit;
 
 namespace ernc::presentation {
 class CanNamePage;
+class ThresholdPage;
 class CheckPage;
 class SwitchStatePage;
 class EncParamPage;
@@ -137,6 +138,9 @@ private:
 
     /// CAN 名称页。由 Function View 通过 Qt 父子关系拥有。只从 Check 打开。
     CanNamePage* canPage_ = nullptr;
+
+    /// 阈值页。由 Function View 通过 Qt 父子关系拥有。其它页面隐藏它。
+    ThresholdPage* thresholdPage_ = nullptr;
 
     /// 为 true 时，Check 树页显示 CAN 名称而不是检测页。
     bool canShown_{false};

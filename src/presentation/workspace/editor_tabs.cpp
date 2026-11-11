@@ -4,6 +4,7 @@
 #include "pages/can_names.hpp"
 #include "pages/check.hpp"
 #include "pages/switch_state.hpp"
+#include "pages/threshold.hpp"
 #include "pages/enc_param.hpp"
 #include "pages/rnc_param.hpp"
 #include "pages/ernc_flag.hpp"
@@ -188,6 +189,19 @@ EditorTabs::EditorTabs(const ernc::domain::ParameterCatalog* catalog, ernc::doma
         functionLayout->insertWidget(7, canPage_, 1);
     }
     canPage_->hide();
+    thresholdPage_ = new ThresholdPage(catalog, store, layout, functionView);
+    if (auto* functionLayout = qobject_cast<QVBoxLayout*>(functionView->layout())) {
+        functionLayout->insertWidget(8, thresholdPage_, 1);
+    }
+    thresholdPage_->setEditObserver([this](const ernc::domain::ParameterId& id) {
+        if (parameterModel_ != nullptr) {
+            parameterModel_->noteLocalEdit(id);
+        }
+    });
+    thresholdPage_->setSelectionObserver([this](const ernc::domain::ParameterId& id) {
+        selectParameter(QString::fromStdString(id.text()));
+    });
+    thresholdPage_->hide();
     addTab(functionView, QStringLiteral("Function View"));
     auto* parameterView = makeParameterView(this, catalog, store, layout, parameterSearch_, parameterProxy_, parameterModel_);
     addTab(parameterView, QStringLiteral("Parameter View"));
@@ -310,7 +324,9 @@ void EditorTabs::refresh() {
     const bool showCheck = selection_.pageId() == "Check" && !canShown_;
     const bool showSwitch = selection_.pageId() == "ERNC_Switch_State";
     const bool showCan = selection_.pageId() == "Check" && canShown_;
-    functionLabel_->setVisible(!showFlag && !showInOut && !showEnc && !showRnc && !showCheck && !showSwitch && !showCan);
+    const bool showThreshold = selection_.pageId() == "Threshold";
+    functionLabel_->setVisible(!showFlag && !showInOut && !showEnc && !showRnc && !showCheck && !showSwitch && !showCan
+        && !showThreshold);
     if (flagPage_ != nullptr) {
         flagPage_->setVisible(showFlag);
         if (showFlag) {
@@ -347,10 +363,17 @@ void EditorTabs::refresh() {
     if (canPage_ != nullptr) {
         canPage_->setVisible(showCan);
     }
+    if (thresholdPage_ != nullptr) {
+        thresholdPage_->setVisible(showThreshold);
+        if (showThreshold) {
+            thresholdPage_->reload();
+        }
+    }
     if (QWidget* functionView = functionLabel_->parentWidget()) {
         if (auto* functionLayout = qobject_cast<QVBoxLayout*>(functionView->layout())) {
-            const bool showPage = showFlag || showInOut || showEnc || showRnc || showCheck || showSwitch || showCan;
-            if (functionLayout->count() > 8) {
+            const bool showPage = showFlag || showInOut || showEnc || showRnc || showCheck || showSwitch || showCan
+                || showThreshold;
+            if (functionLayout->count() > 9) {
                 functionLayout->setStretch(1, showFlag ? 1 : 0);
                 functionLayout->setStretch(2, showInOut ? 1 : 0);
                 functionLayout->setStretch(3, showEnc ? 1 : 0);
@@ -358,7 +381,8 @@ void EditorTabs::refresh() {
                 functionLayout->setStretch(5, showCheck ? 1 : 0);
                 functionLayout->setStretch(6, showSwitch ? 1 : 0);
                 functionLayout->setStretch(7, showCan ? 1 : 0);
-                functionLayout->setStretch(8, showPage ? 0 : 1);
+                functionLayout->setStretch(8, showThreshold ? 1 : 0);
+                functionLayout->setStretch(9, showPage ? 0 : 1);
             }
         }
     }
