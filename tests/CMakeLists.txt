@@ -1461,6 +1461,39 @@ if(ERNC_BUILD_UI)
         )
     endforeach()
 
+    add_executable(ernc_dataset_manager_tests
+        dataset_manager_test.cpp
+        ../src/presentation/analysis/dataset_manager.cpp
+        ../src/presentation/analysis/plot_workspace.cpp
+    )
+
+    target_include_directories(ernc_dataset_manager_tests PRIVATE
+        "${CMAKE_SOURCE_DIR}/src/presentation"
+        "${ernc_qwt_include}"
+    )
+
+    target_link_libraries(ernc_dataset_manager_tests PRIVATE
+        Qt6::Widgets
+        Qt6::Concurrent
+        Qt6::PrintSupport
+        Qt6::Svg
+        Qt6::OpenGL
+        ernc_domain
+        "${ernc_qwt_library}"
+    )
+
+    foreach(ernc_dataset_manager_case IN ITEMS
+        add_and_name_is_unique
+        stable_color_after_visibility_toggle
+        overlay_remove_and_hide
+        downsample_keeps_raw_export
+        units_stay_blank)
+        add_test(
+            NAME "dataset_manager.${ernc_dataset_manager_case}"
+            COMMAND ernc_dataset_manager_tests "${ernc_dataset_manager_case}"
+        )
+    endforeach()
+
     add_executable(ernc_tf_plot_tests
         ernc_tf_plot_test.cpp
         ../src/presentation/analysis/ernc_tf_plot.cpp

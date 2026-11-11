@@ -78,6 +78,30 @@ ernc::domain::Result<void> PlotWorkspace::setDataset(const ernc::domain::Analysi
     return ernc::domain::Result<void>::success();
 }
 
+ernc::domain::Result<void> PlotWorkspace::setOverlayCurves(const std::vector<OverlayCurve>& curves, const QString& tabTitle) {
+    plot_->detachItems(QwtPlotItem::Rtti_PlotCurve, true);
+    curves_.clear();
+    curves_.reserve(curves.size());
+    for (const OverlayCurve& spec : curves) {
+        QVector<QPointF> samples;
+        samples.reserve(static_cast<int>(spec.points.size()));
+        for (const QPointF& point : spec.points) {
+            samples.append(point);
+        }
+        auto* curve = new QwtPlotCurve(spec.title);
+        curve->setSamples(samples);
+        curve->setPen(spec.color, 1.0);
+        curve->attach(plot_);
+        curves_.push_back(curve);
+    }
+    if (!tabTitle.isEmpty()) {
+        tabs_->setTabText(0, tabTitle);
+    }
+    plot_->replot();
+    zoomer_->setZoomBase(false);
+    return ernc::domain::Result<void>::success();
+}
+
 int PlotWorkspace::tabCount() const {
     return tabs_->count();
 }
