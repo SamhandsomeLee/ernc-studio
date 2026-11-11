@@ -5,6 +5,7 @@
 #include "ernc/protocol/wire_parser.hpp"
 #include "retry_policy.hpp"
 #include "session.hpp"
+#include "write_verification.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -51,6 +52,9 @@ struct CommandRequest {
 
     /// 写命令的数据区。长度必须是 slotCount 乘 4。读命令忽略它。调用方拥有入队前的这份数据。
     std::vector<std::uint8_t> payload;
+
+    /// 为 true 时，匹配 ACK 之后再读同一范围。默认 false，ACK 本身就结束命令。
+    bool readBack{false};
 
     /// 写入请求帧的从站地址。默认是已确认的 0x01。
     std::uint8_t slaveAddress{0x01};
@@ -129,7 +133,7 @@ struct FailedCommand {
 
 /// @brief 一条已经结束的命令及其所属会话。
 ///
-/// body 恰好是读数据、写回显或失败三者之一。调用方取走后拥有这份副本。
+/// body 恰好是读数据、写回显、读回对照或失败之一。调用方取走后拥有这份副本。
 struct CommandOutcome {
     /// 入队时分配的命令代号。
     CommandId id{CommandId::none()};
@@ -137,8 +141,8 @@ struct CommandOutcome {
     /// 入队时记录的会话代号。断连后它不再被会话接受。
     ernc::domain::SessionId session{ernc::domain::SessionId::none()};
 
-    /// 读数据、写回显或失败。
-    std::variant<ReadCommandResult, WriteCommandResult, FailedCommand> body{FailedCommand{}};
+    /// 读数据、写回显、读回对照或失败。
+    std::variant<ReadCommandResult, WriteCommandResult, WriteVerification, FailedCommand> body{FailedCommand{}};
 };
 
 /// @brief 同一会话上串行提交命令，并只让一条留在端口上。
@@ -146,7 +150,7 @@ struct CommandOutcome {
 /// 持有会话和端口的引用，不拥有它们。二者必须是同一条端口，并且比本对象活得久。
 /// 不创建线程，不加锁。调用必须和端口在同一个线程。
 /// 等待队列可以有多条。已经 submit、尚未结束的命令最多一条。
-/// 不设置超时，不重发，也不把写 ACK 升级成 Verified。
+/// readBack 为 false 时，写 ACK 不升级成 Verified。为 true 时，ACK 之后还要读回同一范围。
 class CommandScheduler {
 public:
     /// @brief 绑定会话和它使用的端口。
@@ -192,6 +196,12 @@ public:
     /// @return 0 或 1。等待队列里的命令不算在内。
     std::size_t inFlightCount() const noexcept;
 
+    /// @brief 查看一条要求读回的写命令现在的阶段。
+    /// @param id 入队时返回的代号，按值传入。
+    /// @return 命令仍在途或仍在等待，并且 readBack 为 true 时，返回 Sent、Acked 或 Verifying。
+    /// 已经结束、不是读回写命令或代号未知时为空。
+    std::optional<WritePhase> phaseOf(CommandId id) const;
+
     /// @brief 取走一条已经结束的命令结果。
     /// @param id 入队时返回的代号，按值传入。
     /// @return 已经结束时，调用方得到结果副本，调度器不再保留它。
@@ -210,13 +220,16 @@ private:
         /// 入队请求的副本。
         CommandRequest request{};
 
-        /// 待提交的长度前缀帧。调度器拥有这份副本。重发读命令时仍使用这同一帧。
+        /// 待提交或最近一次提交的长度前缀帧。读回开始后这里换成 FC03，不再保存 FC16。
         std::vector<std::uint8_t> wire;
 
-        /// 最近一次 submit 的时刻。attempt 为 0 时表示带时间的 pump 还没为这条读开始计时。
+        /// 要求读回的写命令阶段。普通读和未要求读回的写保持 Sent，不对外报告。
+        WritePhase writePhase{WritePhase::Sent};
+
+        /// 最近一次 submit 的时刻。attempt 为 0 时表示带时间的 pump 还没开始计时。
         RetryTime sentAt{};
 
-        /// 已经 submit 的次数，含第一次。0 表示这条读的计时还没开始。写命令保持 0。
+        /// 当前这一帧已经 submit 的次数，含第一次。进入读回时清回 0，让读回单独计时。
         std::uint8_t attempt{0};
     };
 
@@ -244,10 +257,18 @@ private:
     /// @brief 在没有在途命令时提交等待队列中的下一条可发送命令。
     void startNext();
 
-    /// @brief 对仍没有完整响应的在途读命令应用重试判断。
+    /// @brief 对仍没有完整响应的在途读命令，或读回中的 FC03，应用重试判断。
     /// @param now 调用方给出的当前时刻。函数不读取系统钟。
     /// @param limit 等待长度和允许的 submit 次数。只在本次调用期间借用。
     void applyReadRetry(RetryTime now, const ReadRetryLimit& limit);
+
+    /// @brief 对仍在等待 ACK 的读回写命令应用超时。超时不再次提交 FC16。
+    /// @param now 调用方给出的当前时刻。函数不读取系统钟。
+    /// @param limit 只使用其中的 timeout。maxAttempts 不使 FC16 重发。
+    void applyWriteAckWait(RetryTime now, const ReadRetryLimit& limit);
+
+    /// @brief 把已经 Acked 的写命令推进到 Verifying，并提交读回帧。
+    void promoteAcked();
 
     /// @brief 把一条命令记成失败。
     /// @param command 要结束的命令，只在本次调用期间借用。

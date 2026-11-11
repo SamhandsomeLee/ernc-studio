@@ -563,3 +563,25 @@ foreach(ernc_retry_policy_case IN LISTS ernc_retry_policy_cases)
         COMMAND ernc_retry_policy_tests "${ernc_retry_policy_case}"
     )
 endforeach()
+
+add_executable(ernc_write_verification_tests
+    write_verification_test.cpp
+)
+
+target_link_libraries(ernc_write_verification_tests PRIVATE ernc_device)
+
+set(ernc_write_verification_cases
+    compare_match
+    compare_mismatch
+    ack_without_readback
+    ack_stops_before_read
+    next_pump_verifies_with_read
+    write_ack_timeout_does_not_resend
+)
+
+foreach(ernc_write_verification_case IN LISTS ernc_write_verification_cases)
+    add_test(
+        NAME "write_verification.${ernc_write_verification_case}"
+        COMMAND ernc_write_verification_tests "${ernc_write_verification_case}"
+    )
+endforeach()
