@@ -298,6 +298,31 @@ foreach(ernc_write_parameter_case IN LISTS ernc_write_parameter_cases)
     )
 endforeach()
 
+add_executable(ernc_batch_read_tests
+    batch_read_test.cpp
+)
+
+target_link_libraries(ernc_batch_read_tests PRIVATE ernc_application ernc_simulator)
+
+set(ernc_batch_read_cases
+    all_first_frame_is_full
+    flag_switches_share_one_frame
+    gap_is_not_filled
+    selected_pair_updates_values
+    can_msg_uses_full_frames
+    check_data_is_not_in_a_frame
+)
+
+foreach(ernc_batch_read_case IN LISTS ernc_batch_read_cases)
+    add_test(
+        NAME "batch_read.${ernc_batch_read_case}"
+        COMMAND ernc_batch_read_tests
+            "${ernc_batch_read_case}"
+            "${CMAKE_SOURCE_DIR}/catalog/parameter_catalog.json"
+            "${ernc_layout_manifest}"
+    )
+endforeach()
+
 add_executable(ernc_chunk_plan_tests
     chunk_plan_test.cpp
 )
