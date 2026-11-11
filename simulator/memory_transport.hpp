@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ernc/ports/device_transport.hpp"
+#include "faults/fault_sequence.hpp"
 #include "slave_image.hpp"
 
 #include <vector>
@@ -14,9 +15,10 @@ namespace ernc::simulator {
 /// 不创建线程，也不使用 QSerialPort。
 class MemorySlaveTransport final : public ernc::ports::IDeviceTransport {
 public:
-    /// @brief 绑定一块从站内存。初始为关闭。
+    /// @brief 绑定一块从站内存。初始为关闭，不施加故障。
     /// @param image 从站内存，只借用。调用方保证它在本对象存活期间有效。
-    explicit MemorySlaveTransport(SlaveImage& image);
+    /// @param faults 可选的故障来源。为空时每次请求都走正常 exchange。调用方拥有它，并保证它在本对象存活期间有效。
+    explicit MemorySlaveTransport(SlaveImage& image, FaultSource* faults = nullptr);
 
     /// @brief 打开内存端口。
     /// @return 进入打开并成功。成功只表示随后可以 submit。
@@ -45,6 +47,15 @@ private:
 
     /// poll 尚未取走的步骤。
     std::vector<ernc::ports::TransportStep> queued_;
+
+    /// 可选故障来源。为空时不改变正常响应。本对象不拥有它。
+    FaultSource* faults_{nullptr};
+
+    /// Delay 还要空闲的 poll 次数。0 表示没有延迟。
+    std::uint8_t delayRemaining_{0};
+
+    /// Delay 到期后才交还的正常响应。为空表示没有暂存帧。
+    std::vector<std::uint8_t> held_;
 };
 
 }  // namespace ernc::simulator

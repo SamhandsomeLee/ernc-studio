@@ -1,6 +1,8 @@
 add_library(ernc_simulator STATIC
     slave_image.cpp
     memory_transport.cpp
+    faults/fault_sequence.cpp
+    faults/fault_apply.cpp
 )
 
 target_include_directories(ernc_simulator PUBLIC

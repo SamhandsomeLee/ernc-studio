@@ -626,3 +626,25 @@ foreach(ernc_simulator_slave_case IN LISTS ernc_simulator_slave_cases)
         COMMAND ernc_simulator_slave_tests "${ernc_simulator_slave_case}"
     )
 endforeach()
+
+add_executable(ernc_simulator_fault_tests
+    simulator_fault_test.cpp
+)
+
+target_link_libraries(ernc_simulator_fault_tests PRIVATE ernc_simulator)
+
+set(ernc_simulator_fault_cases
+    same_seed_same_sequence
+    drop_leaves_image
+    disconnect_leaves_image
+    bad_crc_is_not_success
+    bad_frame_is_not_success
+    delay_releases_on_second_poll
+)
+
+foreach(ernc_simulator_fault_case IN LISTS ernc_simulator_fault_cases)
+    add_test(
+        NAME "simulator_fault.${ernc_simulator_fault_case}"
+        COMMAND ernc_simulator_fault_tests "${ernc_simulator_fault_case}"
+    )
+endforeach()
