@@ -58,6 +58,10 @@ struct FieldLayout {
     /// type 原文能对应到 float32、int32、uint32 时填写。结构体类型为空，不猜测成标量。
     std::optional<DataType> scalarType;
 
+    /// manifest 的 shape。空表示这份字段没有数组维度。非空时各维乘积等于 slotCount。
+    /// 这里只保存各级长度，不给轴命名。
+    std::vector<std::uint32_t> shape;
+
     /// 字段自己的 writable。false 表示这份布局不能授权真实写入；解析成功不等于已经写设备。
     bool writable{false};
 
@@ -177,6 +181,12 @@ public:
     /// @brief 展平后的字段数量，包含 children 里的完整路径。
     /// @return 可被 resolve 查找的路径数。0 表示文档合法但没有字段。
     std::size_t fieldCount() const noexcept;
+
+    /// @brief 按文档顺序取出某一路径的直接子字段。
+    /// @param parentPath 父字段的完整路径，只在本次调用期间借用。空文本没有子字段。
+    /// @return 调用方拥有的路径列表。只包含多出一段、中间没有再分层的子路径。
+    /// 父路径本身不在里面。顺序与 manifest 中 children 的顺序相同。
+    std::vector<std::string> directChildren(std::string_view parentPath) const;
 
     FirmwareLayout(const FirmwareLayout&) = default;
     FirmwareLayout& operator=(const FirmwareLayout&) = default;

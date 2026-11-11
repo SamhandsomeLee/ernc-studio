@@ -232,6 +232,19 @@ foreach(ernc_layout_case IN LISTS ernc_layout_cases)
     )
 endforeach()
 
+add_executable(ernc_region_catalog_tests
+    region_catalog_test.cpp
+)
+
+target_link_libraries(ernc_region_catalog_tests PRIVATE ernc_domain)
+
+foreach(ernc_region_case IN ITEMS manifest_regions_match_layout gap_rejects_the_catalog verified_write_follows_writable missing_region_rejects_the_catalog)
+    add_test(
+        NAME "region_catalog.${ernc_region_case}"
+        COMMAND ernc_region_catalog_tests "${ernc_region_case}" "${ernc_layout_manifest}"
+    )
+endforeach()
+
 add_executable(ernc_read_parameter_tests
     read_parameter_test.cpp
 )

@@ -768,6 +768,25 @@ std::size_t FirmwareLayout::fieldCount() const noexcept {
     return fields_.size();
 }
 
+std::vector<std::string> FirmwareLayout::directChildren(std::string_view parentPath) const {
+    std::vector<std::string> children;
+    if (parentPath.empty()) {
+        return children;
+    }
+    const std::string prefix = std::string{parentPath} + ".";
+    for (const StoredField& field : fields_) {
+        if (!field.path.starts_with(prefix)) {
+            continue;
+        }
+        const std::string_view remainder{field.path.data() + prefix.size(), field.path.size() - prefix.size()};
+        if (remainder.empty() || remainder.find('.') != std::string_view::npos) {
+            continue;
+        }
+        children.push_back(field.path);
+    }
+    return children;
+}
+
 const FirmwareLayout::StoredField* FirmwareLayout::findStored(std::string_view firmwarePath) const {
     if (isBlank(firmwarePath)) {
         return nullptr;
@@ -802,6 +821,7 @@ FieldLayout FirmwareLayout::toField(const StoredField& found, LayoutEvidence evi
     layout.offset = found.offset;
     layout.typeName = found.typeName;
     layout.scalarType = scalarTypeFor(found.typeName);
+    layout.shape = found.shape;
     layout.writable = found.writable;
     layout.evidence = evidence;
     return layout;
