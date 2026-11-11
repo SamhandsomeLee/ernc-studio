@@ -1,0 +1,71 @@
+/* ERNC Studio 浅色主题。颜色是设计 v1.2 第 17.4 节的建议初值。 */
+
+QWidget {
+    font-family: "Segoe UI", "Microsoft YaHei UI";
+    font-size: 10pt;
+}
+
+QMainWindow#erncMainWindow {
+    background: #F2F4F5;
+    color: #202B33;
+}
+
+QWidget#erncThemeSample {
+    background: #FFFFFF;
+    color: #202B33;
+    border: 1px solid #CFD6DB;
+    border-top: 4px solid #007D88;
+}
+
+QLabel#erncSampleHeader {
+    background: #E7EBEE;
+    color: #202B33;
+    font-size: 9pt;
+    padding: 8px 16px;
+}
+
+QLabel#erncGroupTitle {
+    color: #202B33;
+    font-size: 12pt;
+    padding-top: 4px;
+}
+
+QLabel#erncSecondaryText {
+    color: #5E6C76;
+    font-size: 10pt;
+}
+
+QWidget#erncStatusBadge {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 2px;
+}
+
+QWidget#erncStatusBadge:hover {
+    background: #EAF2F3;
+}
+
+QWidget#erncStatusBadge:focus {
+    background: #D6E9EB;
+    border: 1px solid #005D9B;
+}
+
+QLabel#erncStatusSuccess {
+    color: #167A49;
+}
+
+QLabel#erncStatusWarning {
+    color: #A86609;
+}
+
+QLabel#erncStatusError {
+    color: #B42318;
+}
+
+QLabel#erncStatusInfo {
+    color: #2563A5;
+}
+
+QLabel#erncStatusUnknown {
+    color: #687781;
+}

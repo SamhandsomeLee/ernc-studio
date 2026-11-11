@@ -563,3 +563,28 @@ foreach(ernc_retry_policy_case IN LISTS ernc_retry_policy_cases)
         COMMAND ernc_retry_policy_tests "${ernc_retry_policy_case}"
     )
 endforeach()
+
+add_executable(ernc_theme_tokens_tests
+    theme_tokens_test.cpp
+)
+
+target_include_directories(ernc_theme_tokens_tests PRIVATE
+    "${CMAKE_SOURCE_DIR}/src/presentation"
+)
+
+set(ernc_theme_tokens_cases
+    tokens_match_design
+    qss_contains_tokens
+    missing_token_is_reported
+    status_match_design
+    shared_color_differs_by_icon_and_text
+)
+
+foreach(ernc_theme_tokens_case IN LISTS ernc_theme_tokens_cases)
+    add_test(
+        NAME "theme_tokens.${ernc_theme_tokens_case}"
+        COMMAND ernc_theme_tokens_tests
+            "${ernc_theme_tokens_case}"
+            "${CMAKE_SOURCE_DIR}/resources/themes/ernc-light.qss"
+    )
+endforeach()
