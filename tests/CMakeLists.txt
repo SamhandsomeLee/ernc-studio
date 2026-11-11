@@ -112,6 +112,19 @@ foreach(ernc_runtime_case IN LISTS ernc_runtime_cases)
     )
 endforeach()
 
+add_executable(ernc_array_state_tests
+    array_state_test.cpp
+)
+
+target_link_libraries(ernc_array_state_tests PRIVATE ernc_domain)
+
+foreach(ernc_array_state_case IN ITEMS edit_one_index_keeps_other_read reset_copies_read_into_set type_or_index_mismatch_is_rejected)
+    add_test(
+        NAME "array_state.${ernc_array_state_case}"
+        COMMAND ernc_array_state_tests "${ernc_array_state_case}"
+    )
+endforeach()
+
 add_executable(ernc_validation_tests
     validation_test.cpp
 )
@@ -1209,6 +1222,22 @@ if(ERNC_BUILD_UI)
                 "${CMAKE_SOURCE_DIR}/firmware/layout_manifest.json"
         )
     endforeach()
+
+    add_executable(ernc_array_editor_model_tests
+        array_editor_model_test.cpp
+        ../src/presentation/arrays/array_editor_model.cpp
+    )
+
+    target_include_directories(ernc_array_editor_model_tests PRIVATE
+        "${CMAKE_SOURCE_DIR}/src/presentation"
+    )
+
+    target_link_libraries(ernc_array_editor_model_tests PRIVATE Qt6::Core ernc_domain)
+
+    add_test(
+        NAME "array_editor.set_column_edits_only_that_index"
+        COMMAND ernc_array_editor_model_tests set_column_edits_only_that_index
+    )
 endif()
 
 add_executable(ernc_inspector_context_tests
