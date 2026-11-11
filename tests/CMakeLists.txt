@@ -605,3 +605,24 @@ foreach(ernc_cancellation_case IN LISTS ernc_cancellation_cases)
         COMMAND ernc_cancellation_tests "${ernc_cancellation_case}"
     )
 endforeach()
+
+add_executable(ernc_simulator_slave_tests
+    simulator_slave_test.cpp
+)
+
+target_link_libraries(ernc_simulator_slave_tests PRIVATE ernc_simulator)
+
+set(ernc_simulator_slave_cases
+    read_returns_planted_bytes
+    write_then_read_shows_new_bytes
+    illegal_request_leaves_image
+    same_request_is_deterministic
+    memory_transport_polls_response
+)
+
+foreach(ernc_simulator_slave_case IN LISTS ernc_simulator_slave_cases)
+    add_test(
+        NAME "simulator_slave.${ernc_simulator_slave_case}"
+        COMMAND ernc_simulator_slave_tests "${ernc_simulator_slave_case}"
+    )
+endforeach()
