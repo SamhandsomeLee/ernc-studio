@@ -245,6 +245,24 @@ foreach(ernc_region_case IN ITEMS manifest_regions_match_layout gap_rejects_the_
     )
 endforeach()
 
+add_executable(ernc_region_decode_tests
+    region_decode_test.cpp
+)
+
+target_link_libraries(ernc_region_decode_tests PRIVATE ernc_domain)
+
+foreach(ernc_decode_case IN ITEMS
+    ernc_tf.spec_radius_endpoints
+    ernc_tf.parent_keeps_four_shapes
+    ernc_tf.short_field_rejects
+    ernc_tf.wrong_shape_rejects
+    ernc_tf.check_data_region_rejects)
+    add_test(
+        NAME "region_decode.${ernc_decode_case}"
+        COMMAND ernc_region_decode_tests "${ernc_decode_case}" "${ernc_layout_manifest}"
+    )
+endforeach()
+
 add_executable(ernc_read_parameter_tests
     read_parameter_test.cpp
 )

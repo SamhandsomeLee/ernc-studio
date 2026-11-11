@@ -4,6 +4,7 @@ add_library(ernc_domain STATIC
     catalog/alias_resolver.cpp
     firmware_layout/firmware_layout.cpp
     region/region_catalog.cpp
+    region/ernc_tf_codec.cpp
     parameter/runtime_store.cpp
     parameter/array_state.cpp
     parameter/write_plan.cpp
