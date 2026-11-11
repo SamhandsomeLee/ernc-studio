@@ -12,7 +12,7 @@
 
 namespace ernc::application {
 
-/// 一次区域写现在处在哪一步。完成和失败都不再忙碌。
+/// 一次区域写现在处在哪一步。完成、失败和取消都不再忙碌。
 enum class RegionWriteStatus {
     /// 还没有开始，或上一次开始在入队前就被拒绝。
     Idle,
@@ -24,7 +24,10 @@ enum class RegionWriteStatus {
     Completed,
 
     /// 某一包失败后停住。已 Verified 的前缀不是整块 Verified。
-    Failed
+    Failed,
+
+    /// 调用方取消后停住。已 Verified 的前缀还在，但不能当整块 Verified。
+    Cancelled
 };
 
 /// 预览里的一包。这是逻辑 slot 区间，不是已经发出的帧。
@@ -79,7 +82,7 @@ struct RegionWriteProgress {
     /// 从起点连续 Verified 的 slot 数。等于 verifiedBytes 除以 4。
     std::uint32_t verifiedSlots{0};
 
-    /// Failed 时的错误类别。其他状态为空。
+    /// Failed 或 Cancelled 时的错误类别。其他状态为空。
     std::optional<ernc::domain::ErrorCode> error;
 };
 
@@ -160,8 +163,34 @@ public:
 
     /// @brief 借出整块都已 Verified 的快照。
     /// @return 全部读回对上时指向内部快照，不转移所有权。指针在下一次 start 或本对象销毁后失效。
-    /// 还没写完、失败或尚未开始时为空。
+    /// 还没写完、失败、取消或尚未开始时为空。
     const RegionWriteSnapshot* snapshot() const noexcept;
+
+    /// 取消后保留的已 Verified 前缀。对象按值返回，调用方拥有字节副本。
+    struct RegionWritePrefix {
+        /// 区域路径。
+        std::string path;
+
+        /// 区域起始逻辑 slot。
+        std::uint32_t originSlot{0};
+
+        /// 从起点连续读回对上的 slot 数。
+        std::uint32_t slots{0};
+
+        /// 只覆盖这段前缀的写入字节。
+        std::vector<std::uint8_t> bytes;
+    };
+
+    /// @brief 不再提交后续包。
+    ///
+    /// 不调用调度器的 cancel()，也不清掉已经 Verified 的字节。当前在途的那一包仍等它的真实结果。
+    /// 已经整块 Verified、失败或尚未开始时不改变状态。
+    void cancel() noexcept;
+
+    /// @brief 借出取消后留下的已 Verified 前缀。
+    /// @return 状态是 Cancelled 时，调用方拥有路径和前缀字节。其他状态为空。
+    /// 这不是整块 Verified，不能当完整 BIN。设备上可能只更新了这段。
+    std::optional<RegionWritePrefix> partial() const;
 
 private:
     /// 计划中的一包。起始 slot 已经确认能放进 16 位。
@@ -202,6 +231,9 @@ private:
         /// 已经入队、还没有最终结果的命令号。
         std::optional<CommandId> command;
 
+        /// 为 true 时，当前包结束后不再提交后续包。
+        bool cancel{false};
+
         /// 调用方交给 start 的写入字节。本对象拥有。
         std::vector<std::uint8_t> target;
 
@@ -234,12 +266,15 @@ private:
     /// @return 命令已入队时成功。这不是设备 ACK，也不是读回 Verified。
     ernc::domain::Result<void> submitChunk(std::size_t chunkIndex);
 
-    /// @brief 在当前包 Verified 后提交下一包；队列空时发布整块快照。
+    /// @brief 在当前包 Verified 后提交下一包；取消时留下已 Verified 的前缀。
     void advance();
 
     /// @brief 停住，不再提交后续包，也不发布整块 Verified。
     /// @param code 失败类别。
     void fail(ernc::domain::ErrorCode code);
+
+    /// @brief 把这次写记成取消。已 Verified 的字节保留，整块快照不发布。
+    void stopCancelled();
 
     /// 设备会话。本对象不拥有。
     DeviceSession& session_;

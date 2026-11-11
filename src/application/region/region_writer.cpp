@@ -236,6 +236,10 @@ void RegionWriter::advance() {
     if (!active_) {
         return;
     }
+    if (active_->cancel && active_->next < active_->chunks.size()) {
+        stopCancelled();
+        return;
+    }
     if (active_->next >= active_->chunks.size()) {
         if (active_->verifiedChunks == active_->chunks.size() && active_->verifiedBytes == active_->target.size()) {
             RegionWriteSnapshot snapshot;
@@ -266,6 +270,34 @@ void RegionWriter::fail(ernc::domain::ErrorCode code) {
     }
     active_->error = code;
     active_->status = RegionWriteStatus::Failed;
+    active_->command.reset();
+    active_->snapshot.reset();
+}
+
+void RegionWriter::cancel() noexcept {
+    if (active_ && active_->status == RegionWriteStatus::Running) {
+        active_->cancel = true;
+    }
+}
+
+std::optional<RegionWriter::RegionWritePrefix> RegionWriter::partial() const {
+    if (!active_ || active_->status != RegionWriteStatus::Cancelled) {
+        return std::nullopt;
+    }
+    RegionWritePrefix prefix;
+    prefix.path = active_->path;
+    prefix.originSlot = active_->origin;
+    prefix.slots = static_cast<std::uint32_t>(active_->verifiedBytes / 4U);
+    prefix.bytes.assign(active_->target.begin(), active_->target.begin() + static_cast<std::ptrdiff_t>(active_->verifiedBytes));
+    return prefix;
+}
+
+void RegionWriter::stopCancelled() {
+    if (!active_) {
+        return;
+    }
+    active_->error = ernc::domain::ErrorCode::OperationCancelled;
+    active_->status = RegionWriteStatus::Cancelled;
     active_->command.reset();
     active_->snapshot.reset();
 }

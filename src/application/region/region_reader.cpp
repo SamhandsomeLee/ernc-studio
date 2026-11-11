@@ -199,6 +199,10 @@ void RegionReader::advance() {
     if (!active_) {
         return;
     }
+    if (active_->cancel && active_->next < active_->chunks.size()) {
+        stopCancelled();
+        return;
+    }
     if (active_->next >= active_->chunks.size()) {
         if (active_->filledChunks == active_->chunks.size() && active_->filledBytes == active_->buffer.size()) {
             RegionSnapshot snapshot;
@@ -229,6 +233,34 @@ void RegionReader::fail(ernc::domain::ErrorCode code) {
     }
     active_->error = code;
     active_->status = RegionReadStatus::Failed;
+    active_->command.reset();
+    active_->snapshot.reset();
+}
+
+void RegionReader::cancel() noexcept {
+    if (active_ && active_->status == RegionReadStatus::Running) {
+        active_->cancel = true;
+    }
+}
+
+std::optional<RegionReader::RegionReadPrefix> RegionReader::partial() const {
+    if (!active_ || active_->status != RegionReadStatus::Cancelled) {
+        return std::nullopt;
+    }
+    RegionReadPrefix prefix;
+    prefix.path = active_->path;
+    prefix.originSlot = active_->origin;
+    prefix.slots = static_cast<std::uint32_t>(active_->filledBytes / 4U);
+    prefix.bytes.assign(active_->buffer.begin(), active_->buffer.begin() + static_cast<std::ptrdiff_t>(active_->filledBytes));
+    return prefix;
+}
+
+void RegionReader::stopCancelled() {
+    if (!active_) {
+        return;
+    }
+    active_->error = ernc::domain::ErrorCode::OperationCancelled;
+    active_->status = RegionReadStatus::Cancelled;
     active_->command.reset();
     active_->snapshot.reset();
 }

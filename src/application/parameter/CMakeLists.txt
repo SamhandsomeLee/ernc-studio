@@ -7,6 +7,7 @@ add_library(ernc_application STATIC
     array_operations.cpp
     ../region/region_reader.cpp
     ../region/region_writer.cpp
+    ../region/transfer_cancellation.cpp
 )
 
 target_include_directories(ernc_application PUBLIC

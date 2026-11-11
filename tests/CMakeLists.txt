@@ -294,6 +294,19 @@ foreach(ernc_region_write_case IN ITEMS pack4_preview_does_not_enqueue ack_is_no
     )
 endforeach()
 
+add_executable(ernc_region_cancel_tests
+    region_cancel_test.cpp
+)
+
+target_link_libraries(ernc_region_cancel_tests PRIVATE ernc_application ernc_simulator)
+
+foreach(ernc_region_cancel_case IN ITEMS read_cancel_keeps_prefix write_cancel_keeps_verified_prefix idle_cancel_has_no_record finished_read_stays_complete)
+    add_test(
+        NAME "region_cancel.${ernc_region_cancel_case}"
+        COMMAND ernc_region_cancel_tests "${ernc_region_cancel_case}"
+    )
+endforeach()
+
 add_executable(ernc_read_parameter_tests
     read_parameter_test.cpp
 )
