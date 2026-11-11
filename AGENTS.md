@@ -32,4 +32,7 @@
 
 ## 按需调用技能
 
-- 使用 `$er-task-coach ES-xxx`、`$er-qa-coach QA-xxx`、`$er-codebase-tour` 或 `$er-code-review` 等进入具体流程。项目技能位于 `.agents/skills/`，由用户显式调用。
+- 项目技能位于 `.agents/skills/`，由用户显式调用。OpenCode 入口是 `.opencode/commands/` 里的斜杠命令：`/er-task-coach ES-xxx`、`/er-qa-coach QA-xxx`、`/er-codebase-tour`、`/er-code-review` 等；Cursor 继续使用 `$` 形式。
+- 编辑 C/C++ 前加载 `er-comment-contract`；涉及串口、Modbus、固件布局、Region、CAN 或设备写入前加载 `er-protocol-safety`。
+- 处理 `tests/`、`docs/test/` 或 `tools/test-runner/` 时先读取 `tests/AGENTS.md`。
+- 项目 harness 的结构、权限和迁移状态见 `docs/agent/HARNESS.md`。

@@ -1,0 +1,11 @@
+# Junior QA Boundaries
+
+本文件在读取 `tests/` 下的文件时由 OpenCode 自动加载。它对应原 `.cursor/rules/qa-boundaries.mdc`，是 QA 任务的路径级边界。
+
+- 新人主要维护 `tests/`、`docs/test/`、`tools/test-runner/`；`simulator/scenarios/` 的数据必须先获协议负责人批准。不得直接修改 `src/`、`include/ernc/`、`app/`、生产 CMake Target、串口协议或固件 layout。
+- 先确认 QA-ID 对应的 ES 接口已在当前分支实现；如果目标不存在，标为 **Blocked**，提出最小 Contract Request，而不是伪造 API、空测试或已通过结论。
+- 优先 L1（现有固定输入 + 断言）→ L2（Fake/模拟器场景）；并发、竞态、设备写入、黄金真值和真实硬件测试由负责人设计/审批。
+- 正常测试不连接硬件、不写真实设备；运行命令采用已存在的 CMake/CTest Preset。不存在测试目标时不能把未运行的 CTest 结果记作 PASS。
+- 测试真值必须独立于被测实现；新增或更改 Golden 须有来源/版本/审核记录。禁止通过改预期值、删除断言或关闭已生效测试掩盖生产缺陷。
+- 发现生产缺陷时记录 QA-ID、相关 ES-ID、SHA、重现命令、输入、期望、实际和日志；建 Issue，由负责人单独修改生产代码。
+- QA PR 单独审查，测试首次转为 Required Gate 前评估稳定性、超时和误报；已生效的 Required Gate 失败不得直接跳过。

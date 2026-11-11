@@ -1,0 +1,54 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "default_agent": "build",
+
+  // 规则语义见 AGENTS.md；这里只放可执行的权限边界。
+  "permissions": [
+    // 默认所有 shell 命令都需要确认。
+    { "action": "shell", "resource": "*", "effect": "ask" },
+
+    // 只读 Git 检查放行。
+    { "action": "shell", "resource": "git status *", "effect": "allow" },
+    { "action": "shell", "resource": "git diff *", "effect": "allow" },
+    { "action": "shell", "resource": "git log *", "effect": "allow" },
+    { "action": "shell", "resource": "git show *", "effect": "allow" },
+    { "action": "shell", "resource": "git remote -v", "effect": "allow" },
+    { "action": "shell", "resource": "git branch --show-current", "effect": "allow" },
+    { "action": "shell", "resource": "git branch -a", "effect": "allow" },
+    { "action": "shell", "resource": "git branch -vv", "effect": "allow" },
+
+    // 构建和离线测试放行。
+    { "action": "shell", "resource": "cmake --preset *", "effect": "allow" },
+    { "action": "shell", "resource": "cmake --build *", "effect": "allow" },
+    { "action": "shell", "resource": "ctest *", "effect": "allow" },
+
+    // Git 写操作逐次确认。
+    { "action": "shell", "resource": "git add *", "effect": "ask" },
+    { "action": "shell", "resource": "git commit *", "effect": "ask" },
+
+    // 危险操作直接拒绝。
+    { "action": "shell", "resource": "git push *", "effect": "deny" },
+    { "action": "shell", "resource": "git reset --hard *", "effect": "deny" },
+    { "action": "shell", "resource": "git clean -fd *", "effect": "deny" },
+
+    // 生产代码默认询问；测试和文档可直接编辑。
+    { "action": "edit", "resource": "src/**", "effect": "ask" },
+    { "action": "edit", "resource": "include/**", "effect": "ask" },
+    { "action": "edit", "resource": "app/**", "effect": "ask" },
+    { "action": "edit", "resource": "tests/**", "effect": "allow" },
+    { "action": "edit", "resource": "docs/**", "effect": "allow" },
+
+    // 技能、子代理和提问不需要额外确认。
+    { "action": "skill", "resource": "*", "effect": "allow" },
+    { "action": "subagent", "resource": "*", "effect": "allow" },
+    { "action": "question", "resource": "*", "effect": "allow" },
+
+    // 项目外目录访问需要确认。
+    { "action": "external_directory", "resource": "*", "effect": "ask" }
+  ],
+
+  // 构建产物不参与文件监听。
+  "watcher": {
+    "ignore": ["build/**", "out/**", ".cache/**"]
+  }
+}

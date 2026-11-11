@@ -1,0 +1,17 @@
+---
+name: er-protocol-safety
+description: "当涉及 ERNC 串口、Modbus、固件布局、参数写入、CAN、阈值、RNC_refresh 或通信测试时加载的安全契约"
+---
+
+# Protocol / Firmware / Hardware Safety
+
+- 当前旧版协议参考：外层为 **`[1 byte length][Modbus RTU frame]`**，不是固定补齐 256 bytes；FC03 读、FC16 (`0x10`) 写，CRC16-Modbus。一个逻辑 slot = 4 bytes = 两个 16-bit 寄存器，寄存器起址 `slot * 2`。
+- 旧版限制：FC03 单包最多 **62 slots**；FC16 单包最多 **61 slots**；读默认 **60 slots**。首期保留单设备会话最多一个 in-flight 请求，直到有协议证据说明可改变。
+- 旧版 typed payload 对 float32/int32/uint32 使用 little-endian，而 Modbus 报文头使用网络顺序；**这些是旧版行为参考，不是已通过真机确认的新契约**。必须由独立 Golden 帧和固件/真机验证冻结，不得只按标准 Modbus 经验改写。
+- 固件结构、字段 offset、sizeof、数组维度需以权威固件布局和黄金数据核验；禁止把未经验证的 C++ struct 强转为 wire bytes。
+- `ANC_OFF`、`ENC_OFF`、`RNC_OFF` 是反向语义：0 开、1 关；顶层 `Step` 只读；`RNC_refresh` 为专用命令（1 重置后按固件流程回 0），不是通用 Toggle。
+- CAN Excel 36 名称与 `Can_Msg[72]` 映射未确认；车速映射未确认前不能用于 `RNC_refresh` 联锁，禁止真实重置操作。Order 4/5 开关、时间换算（含参考秒数和反算写入）、阈值公式和 `ERNC_Switch_State` 枚举同样保持 unresolved。
+- 默认只执行**不接真机的 T0/T1/T2**（纯协议、模拟器/逻辑测试）；T3 串口台、T4 真机 HIL、T5 长时稳定性均需负责人明确授权、设备确认和安全步骤。不能自动扫描并写入真实设备或批量重试危险命令。
+- Golden 必须有独立来源（旧版抓包或固件确认）、版本、设备/协议标识、原始 hex 和审核人。不得用待测编码器输出当唯一正确期望值。
+- ACK ≠ 读回验证；写超时可能已生效，不能无条件重发。断连、取消、分块传输失败保留已写范围，结果未知不能当作成功。
+- 当协议与设计输入冲突：列出现有行为、来源证据、待确认项，并阻断可能造成错误真实写入的路径。
