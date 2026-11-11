@@ -490,3 +490,27 @@ foreach(ernc_serial_transport_case IN LISTS ernc_serial_transport_cases)
         COMMAND ernc_serial_transport_tests "${ernc_serial_transport_case}"
     )
 endforeach()
+
+add_executable(ernc_device_session_tests
+    device_session_test.cpp
+)
+
+target_link_libraries(ernc_device_session_tests PRIVATE ernc_device)
+
+set(ernc_device_session_cases
+    connect_sees_connecting
+    open_failure_retires_id
+    disconnect_drops_pending_and_old_id
+    disconnect_drains_closed
+    degraded_keeps_id
+    second_connect_rejected
+    pending_while_disconnected
+    disconnect_while_disconnected
+)
+
+foreach(ernc_device_session_case IN LISTS ernc_device_session_cases)
+    add_test(
+        NAME "device_session.${ernc_device_session_case}"
+        COMMAND ernc_device_session_tests "${ernc_device_session_case}"
+    )
+endforeach()
