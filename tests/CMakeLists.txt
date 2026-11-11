@@ -912,6 +912,7 @@ if(ERNC_BUILD_UI)
         ../src/presentation/pages/ernc_flag.cpp
         ../src/presentation/pages/ernc_in_out.cpp
         ../src/presentation/pages/enc_param.cpp
+        ../src/presentation/pages/rnc_param.cpp
         ../src/presentation/workspace/editor_tabs.cpp
         ../src/presentation/parameters/parameter_table_model.cpp
         ../src/presentation/parameters/parameter_filter_proxy.cpp
@@ -949,6 +950,7 @@ if(ERNC_BUILD_UI)
         ../src/presentation/pages/ernc_in_out.cpp
         ../src/presentation/pages/ernc_flag.cpp
         ../src/presentation/pages/enc_param.cpp
+        ../src/presentation/pages/rnc_param.cpp
         ../src/presentation/workspace/editor_tabs.cpp
         ../src/presentation/parameters/parameter_table_model.cpp
         ../src/presentation/parameters/parameter_filter_proxy.cpp
@@ -983,6 +985,7 @@ if(ERNC_BUILD_UI)
     add_executable(ernc_enc_param_page_tests
         enc_param_page_test.cpp
         ../src/presentation/pages/enc_param.cpp
+        ../src/presentation/pages/rnc_param.cpp
         ../src/presentation/pages/ernc_flag.cpp
         ../src/presentation/pages/ernc_in_out.cpp
         ../src/presentation/workspace/editor_tabs.cpp
@@ -1010,6 +1013,43 @@ if(ERNC_BUILD_UI)
             NAME "enc_param.${ernc_enc_param_page_case}"
             COMMAND ernc_enc_param_page_tests
                 "${ernc_enc_param_page_case}"
+                "${CMAKE_SOURCE_DIR}/catalog/parameter_catalog.json"
+                "${CMAKE_SOURCE_DIR}/firmware/layout_manifest.json"
+        )
+    endforeach()
+
+    add_executable(ernc_rnc_param_page_tests
+        rnc_param_page_test.cpp
+        ../src/presentation/pages/rnc_param.cpp
+        ../src/presentation/pages/enc_param.cpp
+        ../src/presentation/pages/ernc_flag.cpp
+        ../src/presentation/pages/ernc_in_out.cpp
+        ../src/presentation/workspace/editor_tabs.cpp
+        ../src/presentation/parameters/parameter_table_model.cpp
+        ../src/presentation/parameters/parameter_filter_proxy.cpp
+        ../src/presentation/parameters/write_plan_dialog.cpp
+        ../src/presentation/controls/parameter_delegates.cpp
+    )
+
+    target_include_directories(ernc_rnc_param_page_tests PRIVATE
+        "${CMAKE_SOURCE_DIR}/src/presentation"
+    )
+
+    target_link_libraries(ernc_rnc_param_page_tests PRIVATE Qt6::Widgets ernc_domain ernc_application)
+
+    set(ernc_rnc_param_page_cases
+        step_has_no_writer
+        running_time_keeps_firmware_value
+        alpha_stages_and_leaky_keeps_id
+        excluded_rows_are_absent
+        rnc_page_follows_tree
+    )
+
+    foreach(ernc_rnc_param_page_case IN LISTS ernc_rnc_param_page_cases)
+        add_test(
+            NAME "rnc_param.${ernc_rnc_param_page_case}"
+            COMMAND ernc_rnc_param_page_tests
+                "${ernc_rnc_param_page_case}"
                 "${CMAKE_SOURCE_DIR}/catalog/parameter_catalog.json"
                 "${CMAKE_SOURCE_DIR}/firmware/layout_manifest.json"
         )
