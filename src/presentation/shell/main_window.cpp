@@ -1,11 +1,15 @@
 #include "shell/main_window.hpp"
 
+#include "navigator/navigator_model.hpp"
 #include "theme/theme_tokens.hpp"
 
+#include <QAbstractItemView>
 #include <QDockWidget>
+#include <QItemSelectionModel>
 #include <QLabel>
 #include <QMenuBar>
 #include <QStatusBar>
+#include <QTreeView>
 #include <QVBoxLayout>
 
 namespace ernc::presentation {
@@ -22,9 +26,25 @@ constexpr int kInspectorHeight = 240;
 constexpr int kWindowWidth = 1280;
 constexpr int kWindowHeight = 800;
 
+/// @brief 把选中节点写成工作区里的一行文字。
+/// @param label 工作区文字，调用方拥有。空指针时不改。
+/// @param current 当前选中索引。无效时恢复成“工作区”。
+void showSelection(QLabel* label, const QModelIndex& current) {
+    if (label == nullptr) {
+        return;
+    }
+    if (!current.isValid()) {
+        label->setText(QStringLiteral("工作区"));
+        return;
+    }
+    const QString kind = current.data(NavigatorModel::KindRole).toString();
+    const QString id = current.data(Qt::DisplayRole).toString();
+    label->setText(kind + QStringLiteral(" ") + id);
+}
+
 } // namespace
 
-MainWindow::MainWindow(QWidget* parent)
+MainWindow::MainWindow(ernc::domain::CatalogLoad catalog, QString catalogPath, QWidget* parent)
     : QMainWindow(parent) {
     setObjectName(QStringLiteral("erncMainWindow"));
     setWindowTitle(QStringLiteral("ERNC Studio"));
@@ -35,6 +55,7 @@ MainWindow::MainWindow(QWidget* parent)
     auto* workLayout = new QVBoxLayout(workArea);
     workLayout->setContentsMargins(kSpace16, kSpace16, kSpace16, kSpace16);
     auto* workLabel = new QLabel(QStringLiteral("工作区"), workArea);
+    workLabel->setObjectName(QStringLiteral("erncWorkSelection"));
     workLabel->setAlignment(Qt::AlignLeft | Qt::AlignTop);
     workLayout->addWidget(workLabel, 0, Qt::AlignLeft | Qt::AlignTop);
     workLayout->addStretch(1);
@@ -48,6 +69,31 @@ MainWindow::MainWindow(QWidget* parent)
         QStringLiteral("erncDockTaskCards"), QStringLiteral("任务卡"), Qt::RightDockWidgetArea);
     resizeDocks({projectTree, taskCards}, {kProjectTreeWidth, kTaskCardsWidth}, Qt::Horizontal);
     resizeDocks({inspector}, {kInspectorHeight}, Qt::Vertical);
+
+    if (!catalog.ok()) {
+        showNavigatorError(projectTree, QStringLiteral("参数目录无法加载：") + catalogPath);
+    } else {
+        auto* model = new NavigatorModel(std::move(catalog));
+        if (!model->ok()) {
+            const QString error = model->error();
+            delete model;
+            showNavigatorError(projectTree, error);
+        } else {
+            auto* tree = new QTreeView(projectTree);
+            tree->setObjectName(QStringLiteral("erncProjectNavigator"));
+            tree->setHeaderHidden(true);
+            tree->setSelectionMode(QAbstractItemView::SingleSelection);
+            model->setParent(tree);
+            tree->setModel(model);
+            QWidget* previous = projectTree->widget();
+            projectTree->setWidget(tree);
+            delete previous;
+            QObject::connect(tree->selectionModel(), &QItemSelectionModel::currentChanged, this,
+                [workLabel](const QModelIndex& current, const QModelIndex&) {
+                    showSelection(workLabel, current);
+                });
+        }
+    }
 
     QStatusBar* bar = statusBar();
     bar->setObjectName(QStringLiteral("erncStatusBar"));
@@ -76,6 +122,17 @@ QDockWidget* MainWindow::addPlaceholderDock(
     dock->setWidget(label);
     addDockWidget(area, dock);
     return dock;
+}
+
+void MainWindow::showNavigatorError(QDockWidget* dock, const QString& message) {
+    auto* label = new QLabel(message, dock);
+    label->setObjectName(QStringLiteral("erncProjectNavigatorError"));
+    label->setWordWrap(true);
+    label->setAlignment(Qt::AlignLeft | Qt::AlignTop);
+    label->setContentsMargins(kSpace16, kSpace16, kSpace16, kSpace16);
+    QWidget* previous = dock->widget();
+    dock->setWidget(label);
+    delete previous;
 }
 
 } // namespace ernc::presentation

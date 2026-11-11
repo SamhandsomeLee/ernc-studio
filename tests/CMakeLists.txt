@@ -588,3 +588,32 @@ foreach(ernc_theme_tokens_case IN LISTS ernc_theme_tokens_cases)
             "${CMAKE_SOURCE_DIR}/resources/themes/ernc-light.qss"
     )
 endforeach()
+
+add_executable(ernc_navigator_pages_tests
+    navigator_pages_test.cpp
+    ../src/presentation/navigator/navigator_pages.cpp
+)
+
+target_include_directories(ernc_navigator_pages_tests PRIVATE
+    "${CMAKE_SOURCE_DIR}/src/presentation"
+)
+
+target_link_libraries(ernc_navigator_pages_tests PRIVATE ernc_domain)
+
+set(ernc_navigator_pages_cases
+    page_order
+    check_data_not_date
+    switch_state_split
+    parameters_once_in_file_order
+    unexpected_category_rejected
+    missing_category_rejected
+)
+
+foreach(ernc_navigator_pages_case IN LISTS ernc_navigator_pages_cases)
+    add_test(
+        NAME "navigator_pages.${ernc_navigator_pages_case}"
+        COMMAND ernc_navigator_pages_tests
+            "${ernc_navigator_pages_case}"
+            "${CMAKE_SOURCE_DIR}/catalog/parameter_catalog.json"
+    )
+endforeach()
