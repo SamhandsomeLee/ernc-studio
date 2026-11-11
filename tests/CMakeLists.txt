@@ -245,6 +245,19 @@ foreach(ernc_region_case IN ITEMS manifest_regions_match_layout gap_rejects_the_
     )
 endforeach()
 
+add_executable(ernc_legacy_region_codec_tests
+    legacy_region_codec_test.cpp
+)
+
+target_link_libraries(ernc_legacy_region_codec_tests PRIVATE ernc_filesystem ernc_application)
+
+foreach(ernc_legacy_region_case IN ITEMS bin_round_trip_matches_bytes txt_round_trip_matches_floats short_bin_rejected txt_bad_token_rejected txt_slots_header_mismatch_rejected cancellation_prefix_is_not_exported source_file_unchanged_after_rejected_export)
+    add_test(
+        NAME "legacy_region.${ernc_legacy_region_case}"
+        COMMAND ernc_legacy_region_codec_tests "${ernc_legacy_region_case}" "${ernc_layout_manifest}"
+    )
+endforeach()
+
 add_executable(ernc_region_decode_tests
     region_decode_test.cpp
 )

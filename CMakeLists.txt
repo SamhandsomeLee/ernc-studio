@@ -30,6 +30,7 @@ option(ERNC_BUILD_COMM_LAB "Add tools/ernc-comm-lab when that CMakeLists exists"
 add_subdirectory(src/domain)
 add_subdirectory(src/infrastructure/protocol)
 add_subdirectory(src/infrastructure/serial)
+add_subdirectory(src/infrastructure/filesystem)
 add_subdirectory(src/application/device)
 add_subdirectory(src/application/parameter)
 add_subdirectory(simulator)
