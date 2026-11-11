@@ -17,6 +17,7 @@ class QLineEdit;
 
 namespace ernc::presentation {
 class ErncFlagPage;
+class ErncInOutPage;
 class ParameterFilterProxy;
 class ParameterTableModel;
 }
@@ -67,7 +68,8 @@ public:
     void setParameterObserver(std::function<void(std::string_view)> observer);
 
 private:
-    /// @brief 按当前选择重写 Function View 上的文字。参数表不在这里改写。
+    /// @brief 按当前选择重写 Function View，并让当前功能页占满剩余高度。
+    /// @note 参数表不在这里改写。没有功能页时，说明文字仍停在上方。
     void refresh();
 
     /// @brief 按对象名切到一个工作页。
@@ -99,10 +101,13 @@ private:
     /// ERNC_Flag 功能页。由 Function View 通过 Qt 父子关系拥有。其它页面隐藏它。
     ErncFlagPage* flagPage_ = nullptr;
 
-    /// 参数表模型。由参数表通过 Qt 父子关系拥有。旗标页暂存后用它重画同一行。
+    /// ERNC_IN_OUT 功能页。由 Function View 通过 Qt 父子关系拥有。其它页面隐藏它。
+    ErncInOutPage* inOutPage_ = nullptr;
+
+    /// 参数表模型。由参数表通过 Qt 父子关系拥有。功能页暂存后用它重画同一行。
     ParameterTableModel* parameterModel_ = nullptr;
 
-    /// Function View 上的文字。由本控件通过 Qt 父子关系拥有。ERNC_Flag 页面显示时隐藏。
+    /// Function View 上的文字。由本控件通过 Qt 父子关系拥有。旗标页或通道页显示时隐藏。
     QLabel* functionLabel_ = nullptr;
 
     /// 参数表搜索框。由参数页通过 Qt 父子关系拥有。

@@ -12,6 +12,7 @@ qt_add_executable(ernc_app
     ../src/presentation/navigator/navigator_model.cpp
     ../src/presentation/workspace/editor_tabs.cpp
     ../src/presentation/pages/ernc_flag.cpp
+    ../src/presentation/pages/ernc_in_out.cpp
     ../src/presentation/parameters/parameter_table_model.cpp
     ../src/presentation/parameters/parameter_filter_proxy.cpp
     ../src/presentation/parameters/write_plan_dialog.cpp
