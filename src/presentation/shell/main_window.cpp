@@ -112,7 +112,14 @@ MainWindow::MainWindow(ernc::domain::CatalogLoad catalog, QString catalogPath, Q
     workArea->setObjectName(QStringLiteral("erncWorkArea"));
     auto* workLayout = new QVBoxLayout(workArea);
     workLayout->setContentsMargins(0, 0, 0, 0);
-    auto* editorTabs = new EditorTabs(loadedCatalog, &parameterStore_, workArea);
+#ifdef ERNC_LAYOUT_MANIFEST_PATH
+    const ernc::domain::LayoutLoad layoutLoad = ernc::domain::FirmwareLayoutLoader::loadFile(ERNC_LAYOUT_MANIFEST_PATH);
+    if (layoutLoad.ok()) {
+        firmwareLayout_ = layoutLoad.layout();
+    }
+#endif
+    const ernc::domain::FirmwareLayout* layout = firmwareLayout_ ? &*firmwareLayout_ : nullptr;
+    auto* editorTabs = new EditorTabs(loadedCatalog, &parameterStore_, layout, workArea);
     editorTabs_ = editorTabs;
     workLayout->addWidget(editorTabs);
     setCentralWidget(workArea);

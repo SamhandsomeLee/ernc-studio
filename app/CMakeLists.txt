@@ -13,6 +13,7 @@ qt_add_executable(ernc_app
     ../src/presentation/workspace/editor_tabs.cpp
     ../src/presentation/parameters/parameter_table_model.cpp
     ../src/presentation/parameters/parameter_filter_proxy.cpp
+    ../src/presentation/controls/parameter_delegates.cpp
     ../src/presentation/inspector/inspector_context.cpp
     ../src/presentation/inspector/inspector_panel.cpp
     ../src/presentation/task_cards/task_card_panel.cpp
@@ -31,10 +32,11 @@ target_include_directories(ernc_app PRIVATE
 
 target_compile_definitions(ernc_app PRIVATE
     "ERNC_PARAMETER_CATALOG_PATH=\"${CMAKE_SOURCE_DIR}/catalog/parameter_catalog.json\""
+    "ERNC_LAYOUT_MANIFEST_PATH=\"${CMAKE_SOURCE_DIR}/firmware/layout_manifest.json\""
     "ERNC_SHELL_KEYMAP_PATH=\"${CMAKE_SOURCE_DIR}/resources/keymap/shell.txt\""
 )
 
-target_link_libraries(ernc_app PRIVATE Qt6::Widgets ernc_domain)
+target_link_libraries(ernc_app PRIVATE Qt6::Widgets ernc_domain ernc_application)
 
 set_target_properties(ernc_app PROPERTIES
     OUTPUT_NAME "ernc-studio"

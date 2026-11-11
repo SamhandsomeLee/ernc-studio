@@ -1,5 +1,6 @@
 #include "workspace/editor_tabs.hpp"
 
+#include "controls/parameter_delegates.hpp"
 #include "parameters/fake_parameter_rows.hpp"
 #include "parameters/parameter_filter_proxy.hpp"
 #include "parameters/parameter_table_model.hpp"
@@ -40,20 +41,22 @@ QWidget* makeFunctionView(QWidget* parent, QLabel*& label) {
 /// @param parent 页签控件。它通过 Qt 父子关系拥有返回的页面。
 /// @param catalog 参数目录，只借用。空指针时表格没有行。
 /// @param store 运行状态，只借用。空指针时不显示数值。
+/// @param layout 固件布局，只借用。空指针时 Set 列确认不会暂存。
 /// @param search 成功时写入搜索框。调用方不另接所有权。
 /// @param proxy 成功时写入筛选代理。调用方不另接所有权。
 /// @return 带说明、搜索和表格的页面。表格不连接设备，选中行由调用方接到共用选择。
 QWidget* makeParameterView(QWidget* parent, const ernc::domain::ParameterCatalog* catalog,
-                           ernc::domain::ParameterRuntimeStore* store, QLineEdit*& search, ParameterFilterProxy*& proxy) {
+                           ernc::domain::ParameterRuntimeStore* store, const ernc::domain::FirmwareLayout* layout,
+                           QLineEdit*& search, ParameterFilterProxy*& proxy) {
     auto* view = new QWidget(parent);
     view->setObjectName(QStringLiteral("erncParameterView"));
-    auto* layout = new QVBoxLayout(view);
-    layout->setContentsMargins(kSpace16, kSpace16, kSpace16, kSpace16);
-    layout->setSpacing(kSpace8);
+    auto* viewLayout = new QVBoxLayout(view);
+    viewLayout->setContentsMargins(kSpace16, kSpace16, kSpace16, kSpace16);
+    viewLayout->setSpacing(kSpace8);
 
     auto* caption = new QLabel(QStringLiteral("参数表显示目录和运行状态。没有读数时 Read 为 —。"), view);
     caption->setWordWrap(true);
-    layout->addWidget(caption);
+    viewLayout->addWidget(caption);
 
     auto* filters = new QHBoxLayout();
     search = new QLineEdit(view);
@@ -64,7 +67,7 @@ QWidget* makeParameterView(QWidget* parent, const ernc::domain::ParameterCatalog
     dirtyOnly->setObjectName(QStringLiteral("erncParameterDirtyOnly"));
     filters->addWidget(search, 1);
     filters->addWidget(dirtyOnly);
-    layout->addLayout(filters);
+    viewLayout->addLayout(filters);
 
     auto* table = new QTableView(view);
     table->setObjectName(QStringLiteral("erncParameterTable"));
@@ -77,10 +80,11 @@ QWidget* makeParameterView(QWidget* parent, const ernc::domain::ParameterCatalog
     table->horizontalHeader()->setSortIndicatorShown(false);
     table->setSelectionBehavior(QAbstractItemView::SelectRows);
     table->setSelectionMode(QAbstractItemView::SingleSelection);
-    table->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    table->setItemDelegate(new ParameterDelegate(catalog, layout, store, table));
+    table->setEditTriggers(QAbstractItemView::DoubleClicked | QAbstractItemView::EditKeyPressed);
     table->horizontalHeader()->setStretchLastSection(true);
     table->verticalHeader()->setVisible(false);
-    layout->addWidget(table, 1);
+    viewLayout->addWidget(table, 1);
     QObject::connect(search, &QLineEdit::textChanged, proxy, &ParameterFilterProxy::setQuery);
     QObject::connect(dirtyOnly, &QCheckBox::toggled, proxy, &ParameterFilterProxy::setDirtyOnly);
     return view;
@@ -89,14 +93,14 @@ QWidget* makeParameterView(QWidget* parent, const ernc::domain::ParameterCatalog
 } // namespace
 
 EditorTabs::EditorTabs(const ernc::domain::ParameterCatalog* catalog, ernc::domain::ParameterRuntimeStore* store,
-                         QWidget* parent)
+                         const ernc::domain::FirmwareLayout* layout, QWidget* parent)
     : QTabWidget(parent) {
     setObjectName(QStringLiteral("erncEditorTabs"));
     setTabsClosable(false);
     setMovable(false);
 
     addTab(makeFunctionView(this, functionLabel_), QStringLiteral("Function View"));
-    auto* parameterView = makeParameterView(this, catalog, store, parameterSearch_, parameterProxy_);
+    auto* parameterView = makeParameterView(this, catalog, store, layout, parameterSearch_, parameterProxy_);
     addTab(parameterView, QStringLiteral("Parameter View"));
     auto* table = parameterView->findChild<QTableView*>(QStringLiteral("erncParameterTable"));
     connect(table->selectionModel(), &QItemSelectionModel::currentRowChanged, this,

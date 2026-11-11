@@ -791,7 +791,7 @@ foreach(ernc_parameter_table_case IN LISTS ernc_parameter_table_cases)
 endforeach()
 
 if(ERNC_BUILD_UI)
-    find_package(Qt6 REQUIRED COMPONENTS Core)
+    find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
 
     add_executable(ernc_parameter_store_model_tests
         parameter_store_model_test.cpp
@@ -844,6 +844,35 @@ if(ERNC_BUILD_UI)
             COMMAND ernc_parameter_filter_tests
                 "${ernc_parameter_filter_case}"
                 "${CMAKE_SOURCE_DIR}/catalog/parameter_catalog.json"
+        )
+    endforeach()
+
+    add_executable(ernc_parameter_delegate_tests
+        parameter_delegate_test.cpp
+        ../src/presentation/parameters/parameter_table_model.cpp
+        ../src/presentation/controls/parameter_delegates.cpp
+    )
+
+    target_include_directories(ernc_parameter_delegate_tests PRIVATE
+        "${CMAKE_SOURCE_DIR}/src/presentation"
+    )
+
+    target_link_libraries(ernc_parameter_delegate_tests PRIVATE Qt6::Widgets ernc_domain ernc_application)
+
+    set(ernc_parameter_delegate_cases
+        anc_off_toggle_words
+        anc_off_on_stages_zero
+        step_has_no_editor
+        running_time_keeps_firmware_value
+    )
+
+    foreach(ernc_parameter_delegate_case IN LISTS ernc_parameter_delegate_cases)
+        add_test(
+            NAME "parameter_delegate.${ernc_parameter_delegate_case}"
+            COMMAND ernc_parameter_delegate_tests
+                "${ernc_parameter_delegate_case}"
+                "${CMAKE_SOURCE_DIR}/catalog/parameter_catalog.json"
+                "${CMAKE_SOURCE_DIR}/firmware/layout_manifest.json"
         )
     endforeach()
 endif()

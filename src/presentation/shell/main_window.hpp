@@ -1,11 +1,14 @@
 #pragma once
 
 #include "ernc/domain/catalog.hpp"
+#include "ernc/domain/firmware_layout.hpp"
 #include "ernc/domain/runtime_store.hpp"
 #include "shell/layout_settings.hpp"
 
 #include <QMainWindow>
 #include <QString>
+
+#include <optional>
 
 class QCloseEvent;
 class QDockWidget;
@@ -74,6 +77,9 @@ private:
 
     /// 参数运行状态。本窗口拥有。参数表只借用它，不保存第二份数值。
     ernc::domain::ParameterRuntimeStore parameterStore_;
+
+    /// 固件布局。加载成功时持有。参数委托只借用它来暂存。
+    std::optional<ernc::domain::FirmwareLayout> firmwareLayout_;
 
     /// 中央工作页。由本窗口通过 Qt 父子关系拥有。
     EditorTabs* editorTabs_ = nullptr;

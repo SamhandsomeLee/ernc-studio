@@ -36,6 +36,11 @@ public:
     /// @note 不调用 markOffline。调用方先把 Store 标成过期，再调用本函数。只在 UI 主线程调用。
     void noteDisconnected();
 
+    /// @brief 本地编辑完成后重画一行。
+    /// @param id 参数标识，只在本次调用期间借用。目录里没有时忽略。
+    /// @note 不检查会话号。设备回调仍走 noteUpdated。不写 Store。
+    void noteLocalEdit(const ernc::domain::ParameterId& id);
+
     /// @brief 目录行数。
     /// @param parent 只接受无效索引。有效父索引表示树子节点，本表没有，因此返回 0。
     /// @return 目录参数个数。没有目录时为 0。

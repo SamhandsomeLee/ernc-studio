@@ -89,6 +89,15 @@ void ParameterTableModel::noteUpdated(ernc::domain::SessionId session, const ern
     emit dataChanged(left, right, {Qt::DisplayRole});
 }
 
+void ParameterTableModel::noteLocalEdit(const ernc::domain::ParameterId& id) {
+    const int row = rowOf(id);
+    if (row < 0) {
+        return;
+    }
+    refreshRow(row);
+    emit dataChanged(index(row, 0), index(row, columnCount() - 1), {Qt::DisplayRole});
+}
+
 void ParameterTableModel::noteDisconnected() {
     if (rowCount() <= 0) {
         return;
@@ -159,8 +168,14 @@ Qt::ItemFlags ParameterTableModel::flags(const QModelIndex& index) const {
         return Qt::NoItemFlags;
     }
     Qt::ItemFlags itemFlags = Qt::ItemIsEnabled | Qt::ItemIsSelectable;
-    if (fakeParameterColumnIsEditable(index.column())) {
-        itemFlags |= Qt::ItemIsEditable;
+    if (catalog_ != nullptr && index.column() == static_cast<int>(FakeParameterColumn::Set)
+        && index.row() >= 0 && static_cast<std::size_t>(index.row()) < catalog_->size()) {
+        const ernc::domain::ParameterDefinition& definition = catalog_->entries()[static_cast<std::size_t>(index.row())];
+        if (definition.editor
+            && (*definition.editor == ernc::domain::EditorKind::Toggle
+                || *definition.editor == ernc::domain::EditorKind::Numeric)) {
+            itemFlags |= Qt::ItemIsEditable;
+        }
     }
     return itemFlags;
 }
