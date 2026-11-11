@@ -911,6 +911,7 @@ if(ERNC_BUILD_UI)
         ernc_flag_page_test.cpp
         ../src/presentation/pages/ernc_flag.cpp
         ../src/presentation/pages/ernc_in_out.cpp
+        ../src/presentation/pages/enc_param.cpp
         ../src/presentation/workspace/editor_tabs.cpp
         ../src/presentation/parameters/parameter_table_model.cpp
         ../src/presentation/parameters/parameter_filter_proxy.cpp
@@ -947,6 +948,7 @@ if(ERNC_BUILD_UI)
         ernc_in_out_page_test.cpp
         ../src/presentation/pages/ernc_in_out.cpp
         ../src/presentation/pages/ernc_flag.cpp
+        ../src/presentation/pages/enc_param.cpp
         ../src/presentation/workspace/editor_tabs.cpp
         ../src/presentation/parameters/parameter_table_model.cpp
         ../src/presentation/parameters/parameter_filter_proxy.cpp
@@ -973,6 +975,41 @@ if(ERNC_BUILD_UI)
             NAME "ernc_in_out.${ernc_in_out_page_case}"
             COMMAND ernc_in_out_page_tests
                 "${ernc_in_out_page_case}"
+                "${CMAKE_SOURCE_DIR}/catalog/parameter_catalog.json"
+                "${CMAKE_SOURCE_DIR}/firmware/layout_manifest.json"
+        )
+    endforeach()
+
+    add_executable(ernc_enc_param_page_tests
+        enc_param_page_test.cpp
+        ../src/presentation/pages/enc_param.cpp
+        ../src/presentation/pages/ernc_flag.cpp
+        ../src/presentation/pages/ernc_in_out.cpp
+        ../src/presentation/workspace/editor_tabs.cpp
+        ../src/presentation/parameters/parameter_table_model.cpp
+        ../src/presentation/parameters/parameter_filter_proxy.cpp
+        ../src/presentation/parameters/write_plan_dialog.cpp
+        ../src/presentation/controls/parameter_delegates.cpp
+    )
+
+    target_include_directories(ernc_enc_param_page_tests PRIVATE
+        "${CMAKE_SOURCE_DIR}/src/presentation"
+    )
+
+    target_link_libraries(ernc_enc_param_page_tests PRIVATE Qt6::Widgets ernc_domain ernc_application)
+
+    set(ernc_enc_param_page_cases
+        orders_share_fields_and_keep_raw_flag
+        amp1_array_keeps_parameter_id
+        order_four_five_are_absent
+        enc_page_follows_tree
+    )
+
+    foreach(ernc_enc_param_page_case IN LISTS ernc_enc_param_page_cases)
+        add_test(
+            NAME "enc_param.${ernc_enc_param_page_case}"
+            COMMAND ernc_enc_param_page_tests
+                "${ernc_enc_param_page_case}"
                 "${CMAKE_SOURCE_DIR}/catalog/parameter_catalog.json"
                 "${CMAKE_SOURCE_DIR}/firmware/layout_manifest.json"
         )

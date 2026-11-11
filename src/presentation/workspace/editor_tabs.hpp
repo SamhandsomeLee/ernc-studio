@@ -16,6 +16,7 @@ class QLabel;
 class QLineEdit;
 
 namespace ernc::presentation {
+class EncParamPage;
 class ErncFlagPage;
 class ErncInOutPage;
 class ParameterFilterProxy;
@@ -104,10 +105,13 @@ private:
     /// ERNC_IN_OUT 功能页。由 Function View 通过 Qt 父子关系拥有。其它页面隐藏它。
     ErncInOutPage* inOutPage_ = nullptr;
 
+    /// ENC_Param 阶次页。由 Function View 通过 Qt 父子关系拥有。其它页面隐藏它。
+    EncParamPage* encPage_ = nullptr;
+
     /// 参数表模型。由参数表通过 Qt 父子关系拥有。功能页暂存后用它重画同一行。
     ParameterTableModel* parameterModel_ = nullptr;
 
-    /// Function View 上的文字。由本控件通过 Qt 父子关系拥有。旗标页或通道页显示时隐藏。
+    /// Function View 上的文字。由本控件通过 Qt 父子关系拥有。功能页显示时隐藏。
     QLabel* functionLabel_ = nullptr;
 
     /// 参数表搜索框。由参数页通过 Qt 父子关系拥有。

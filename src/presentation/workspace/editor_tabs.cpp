@@ -1,6 +1,7 @@
 #include "workspace/editor_tabs.hpp"
 
 #include "controls/parameter_delegates.hpp"
+#include "pages/enc_param.hpp"
 #include "pages/ernc_flag.hpp"
 #include "pages/ernc_in_out.hpp"
 #include "parameters/write_plan_dialog.hpp"
@@ -133,6 +134,19 @@ EditorTabs::EditorTabs(const ernc::domain::ParameterCatalog* catalog, ernc::doma
         selectParameter(QString::fromStdString(id.text()));
     });
     inOutPage_->hide();
+    encPage_ = new EncParamPage(catalog, store, layout, functionView);
+    if (auto* functionLayout = qobject_cast<QVBoxLayout*>(functionView->layout())) {
+        functionLayout->insertWidget(3, encPage_, 1);
+    }
+    encPage_->setEditObserver([this](const ernc::domain::ParameterId& id) {
+        if (parameterModel_ != nullptr) {
+            parameterModel_->noteLocalEdit(id);
+        }
+    });
+    encPage_->setSelectionObserver([this](const ernc::domain::ParameterId& id) {
+        selectParameter(QString::fromStdString(id.text()));
+    });
+    encPage_->hide();
     addTab(functionView, QStringLiteral("Function View"));
     auto* parameterView = makeParameterView(this, catalog, store, layout, parameterSearch_, parameterProxy_, parameterModel_);
     addTab(parameterView, QStringLiteral("Parameter View"));
@@ -233,7 +247,8 @@ void EditorTabs::refresh() {
     functionLabel_->setText(text);
     const bool showFlag = selection_.pageId() == "ERNC_Flag";
     const bool showInOut = selection_.pageId() == "ERNC_IN_OUT";
-    functionLabel_->setVisible(!showFlag && !showInOut);
+    const bool showEnc = selection_.pageId() == "ENC_Param";
+    functionLabel_->setVisible(!showFlag && !showInOut && !showEnc);
     if (flagPage_ != nullptr) {
         flagPage_->setVisible(showFlag);
         if (showFlag) {
@@ -246,13 +261,20 @@ void EditorTabs::refresh() {
             inOutPage_->reload();
         }
     }
+    if (encPage_ != nullptr) {
+        encPage_->setVisible(showEnc);
+        if (showEnc) {
+            encPage_->reload();
+        }
+    }
     if (QWidget* functionView = functionLabel_->parentWidget()) {
         if (auto* functionLayout = qobject_cast<QVBoxLayout*>(functionView->layout())) {
-            const bool showPage = showFlag || showInOut;
-            if (functionLayout->count() > 3) {
+            const bool showPage = showFlag || showInOut || showEnc;
+            if (functionLayout->count() > 4) {
                 functionLayout->setStretch(1, showFlag ? 1 : 0);
                 functionLayout->setStretch(2, showInOut ? 1 : 0);
-                functionLayout->setStretch(3, showPage ? 0 : 1);
+                functionLayout->setStretch(3, showEnc ? 1 : 0);
+                functionLayout->setStretch(4, showPage ? 0 : 1);
             }
         }
     }
