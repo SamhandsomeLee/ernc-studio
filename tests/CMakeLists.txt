@@ -564,7 +564,7 @@ foreach(ernc_retry_policy_case IN LISTS ernc_retry_policy_cases)
     )
 endforeach()
 
-add_executable(ernc_theme_tokens_tests)
+add_executable(ernc_theme_tokens_tests
     theme_tokens_test.cpp
 )
 
@@ -729,7 +729,7 @@ add_test(
         "${CMAKE_SOURCE_DIR}/resources/keymap/shell.txt"
 )
 
-add_executable(ernc_write_verification_tests)
+add_executable(ernc_write_verification_tests
     write_verification_test.cpp
 )
 
