@@ -1417,6 +1417,49 @@ if(ERNC_BUILD_UI)
                 "${CMAKE_SOURCE_DIR}/firmware/layout_manifest.json"
         )
     endforeach()
+
+    find_package(Qt6 REQUIRED COMPONENTS Concurrent PrintSupport Svg OpenGL)
+
+    if(NOT DEFINED ERNC_MINGW64_ROOT OR ERNC_MINGW64_ROOT STREQUAL "")
+        message(FATAL_ERROR "ERNC_MINGW64_ROOT is required to find Qwt")
+    endif()
+    set(ernc_qwt_include "${ERNC_MINGW64_ROOT}/include/qwt-qt6")
+    set(ernc_qwt_library "${ERNC_MINGW64_ROOT}/lib/libqwt-qt6.dll.a")
+    if(NOT EXISTS "${ernc_qwt_include}/qwt.h" OR NOT EXISTS "${ernc_qwt_library}")
+        message(FATAL_ERROR
+            "Qwt 6 for Qt 6 is missing under ${ERNC_MINGW64_ROOT}. "
+            "Expected include/qwt-qt6/qwt.h and lib/libqwt-qt6.dll.a.")
+    endif()
+
+    add_executable(ernc_plot_workspace_tests
+        plot_workspace_test.cpp
+        ../src/presentation/analysis/plot_workspace.cpp
+    )
+
+    target_include_directories(ernc_plot_workspace_tests PRIVATE
+        "${CMAKE_SOURCE_DIR}/src/presentation"
+        "${ernc_qwt_include}"
+    )
+
+    target_link_libraries(ernc_plot_workspace_tests PRIVATE
+        Qt6::Widgets
+        Qt6::Concurrent
+        Qt6::PrintSupport
+        Qt6::Svg
+        Qt6::OpenGL
+        ernc_domain
+        "${ernc_qwt_library}"
+    )
+
+    foreach(ernc_plot_case IN ITEMS
+        chart_tools_are_installed
+        raw_samples_survive_clearing_the_curve
+        two_by_three_keeps_one_tab)
+        add_test(
+            NAME "plot_workspace.${ernc_plot_case}"
+            COMMAND ernc_plot_workspace_tests "${ernc_plot_case}"
+        )
+    endforeach()
 endif()
 
 add_executable(ernc_inspector_context_tests
