@@ -37,6 +37,14 @@ void ParameterRuntimeStore::stage(const ParameterId& id, const ScalarValue& valu
     state.dirty = true;
 }
 
+void ParameterRuntimeStore::markClean(const ParameterId& id) noexcept {
+    const auto found = records_.find(id.text());
+    if (found == records_.end()) {
+        return;
+    }
+    found->second.dirty = false;
+}
+
 void ParameterRuntimeStore::markOffline() noexcept {
     for (auto& entry : records_) {
         entry.second.stale = true;

@@ -68,6 +68,12 @@ public:
     /// 写入 stagedValue 和 stagedAt，并把 dirty 设为 true。不改 deviceValue、stale、readAt 和 error。
     void stage(const ParameterId& id, const ScalarValue& value, RuntimeTime stagedAt);
 
+    /// @brief 清掉一条已有记录的未提交标记。
+    /// @param id 参数标识，只在本次调用期间借用。Store 用它的文本比较，不查询目录。
+    /// 只把 dirty 设为 false。不改 stagedValue、deviceValue、两个时刻、stale 和 error。
+    /// 没有记录时不新建。这不是设备 ACK，只表示调用方已经确认读回与入队时的目标一致。
+    void markClean(const ParameterId& id) noexcept;
+
     /// @brief 把已有记录标成过期。
     /// 数值、dirty、时刻和 error 保持原样。没有记录时不新建。
     void markOffline() noexcept;

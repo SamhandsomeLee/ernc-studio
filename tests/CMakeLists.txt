@@ -273,6 +273,31 @@ foreach(ernc_stage_value_case IN LISTS ernc_stage_value_cases)
     )
 endforeach()
 
+add_executable(ernc_write_parameter_tests
+    write_parameter_test.cpp
+)
+
+target_link_libraries(ernc_write_parameter_tests PRIVATE ernc_application ernc_simulator)
+
+set(ernc_write_parameter_cases
+    anc_off_verified_clears_dirty
+    readback_mismatch_keeps_staged
+    ack_timeout_does_not_resend
+    step_does_not_enqueue
+    can_msg_does_not_enqueue
+    edit_during_write_stays_dirty
+)
+
+foreach(ernc_write_parameter_case IN LISTS ernc_write_parameter_cases)
+    add_test(
+        NAME "write_parameter.${ernc_write_parameter_case}"
+        COMMAND ernc_write_parameter_tests
+            "${ernc_write_parameter_case}"
+            "${CMAKE_SOURCE_DIR}/catalog/parameter_catalog.json"
+            "${ernc_layout_manifest}"
+    )
+endforeach()
+
 add_executable(ernc_chunk_plan_tests
     chunk_plan_test.cpp
 )
