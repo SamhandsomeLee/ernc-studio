@@ -1,14 +1,18 @@
 #include "workspace/editor_tabs.hpp"
 
 #include "parameters/fake_parameter_rows.hpp"
+#include "parameters/parameter_filter_proxy.hpp"
 #include "parameters/parameter_table_model.hpp"
 #include "theme/theme_tokens.hpp"
 #include "workspace/editor_selection.hpp"
 
 #include <QAbstractItemView>
+#include <QCheckBox>
 #include <QHeaderView>
+#include <QHBoxLayout>
 #include <QItemSelectionModel>
 #include <QLabel>
+#include <QLineEdit>
 #include <QTableView>
 #include <QVBoxLayout>
 
@@ -36,9 +40,11 @@ QWidget* makeFunctionView(QWidget* parent, QLabel*& label) {
 /// @param parent 页签控件。它通过 Qt 父子关系拥有返回的页面。
 /// @param catalog 参数目录，只借用。空指针时表格没有行。
 /// @param store 运行状态，只借用。空指针时不显示数值。
-/// @return 带说明和表格的页面。表格不连接设备，选中行由调用方接到共用选择。
+/// @param search 成功时写入搜索框。调用方不另接所有权。
+/// @param proxy 成功时写入筛选代理。调用方不另接所有权。
+/// @return 带说明、搜索和表格的页面。表格不连接设备，选中行由调用方接到共用选择。
 QWidget* makeParameterView(QWidget* parent, const ernc::domain::ParameterCatalog* catalog,
-                           ernc::domain::ParameterRuntimeStore* store) {
+                           ernc::domain::ParameterRuntimeStore* store, QLineEdit*& search, ParameterFilterProxy*& proxy) {
     auto* view = new QWidget(parent);
     view->setObjectName(QStringLiteral("erncParameterView"));
     auto* layout = new QVBoxLayout(view);
@@ -49,16 +55,34 @@ QWidget* makeParameterView(QWidget* parent, const ernc::domain::ParameterCatalog
     caption->setWordWrap(true);
     layout->addWidget(caption);
 
+    auto* filters = new QHBoxLayout();
+    search = new QLineEdit(view);
+    search->setObjectName(QStringLiteral("erncParameterSearch"));
+    search->setPlaceholderText(QStringLiteral("搜索参数、路径或说明"));
+    search->setClearButtonEnabled(true);
+    auto* dirtyOnly = new QCheckBox(QStringLiteral("只看待写入"), view);
+    dirtyOnly->setObjectName(QStringLiteral("erncParameterDirtyOnly"));
+    filters->addWidget(search, 1);
+    filters->addWidget(dirtyOnly);
+    layout->addLayout(filters);
+
     auto* table = new QTableView(view);
     table->setObjectName(QStringLiteral("erncParameterTable"));
     auto* model = new ParameterTableModel(catalog, store, table);
-    table->setModel(model);
+    proxy = new ParameterFilterProxy(catalog, store, table);
+    proxy->setSourceModel(model);
+    table->setModel(proxy);
+    table->setSortingEnabled(true);
+    proxy->sort(-1);
+    table->horizontalHeader()->setSortIndicatorShown(false);
     table->setSelectionBehavior(QAbstractItemView::SelectRows);
     table->setSelectionMode(QAbstractItemView::SingleSelection);
     table->setEditTriggers(QAbstractItemView::NoEditTriggers);
     table->horizontalHeader()->setStretchLastSection(true);
     table->verticalHeader()->setVisible(false);
     layout->addWidget(table, 1);
+    QObject::connect(search, &QLineEdit::textChanged, proxy, &ParameterFilterProxy::setQuery);
+    QObject::connect(dirtyOnly, &QCheckBox::toggled, proxy, &ParameterFilterProxy::setDirtyOnly);
     return view;
 }
 
@@ -72,7 +96,7 @@ EditorTabs::EditorTabs(const ernc::domain::ParameterCatalog* catalog, ernc::doma
     setMovable(false);
 
     addTab(makeFunctionView(this, functionLabel_), QStringLiteral("Function View"));
-    auto* parameterView = makeParameterView(this, catalog, store);
+    auto* parameterView = makeParameterView(this, catalog, store, parameterSearch_, parameterProxy_);
     addTab(parameterView, QStringLiteral("Parameter View"));
     auto* table = parameterView->findChild<QTableView*>(QStringLiteral("erncParameterTable"));
     connect(table->selectionModel(), &QItemSelectionModel::currentRowChanged, this,
@@ -109,6 +133,9 @@ void EditorTabs::selectParameter(const QString& parameterId) {
 
 void EditorTabs::selectPage(const QString& pageId) {
     selection_.selectPage(pageId.toStdString());
+    if (parameterProxy_ != nullptr) {
+        parameterProxy_->setPage(pageId);
+    }
     refresh();
 }
 
@@ -132,8 +159,9 @@ void EditorTabs::showParameterView() {
 
 void EditorTabs::focusParameterTable() {
     showParameterView();
-    if (QTableView* table = findChild<QTableView*>(QStringLiteral("erncParameterTable"))) {
-        table->setFocus();
+    if (parameterSearch_ != nullptr) {
+        parameterSearch_->setFocus();
+        parameterSearch_->selectAll();
     }
 }
 

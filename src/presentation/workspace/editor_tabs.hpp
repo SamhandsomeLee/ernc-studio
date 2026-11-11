@@ -12,6 +12,11 @@
 #include <string_view>
 
 class QLabel;
+class QLineEdit;
+
+namespace ernc::presentation {
+class ParameterFilterProxy;
+}
 
 namespace ernc::presentation {
 
@@ -35,8 +40,8 @@ public:
     /// @note 不改参数 id，也不把焦点送进参数表。只在 UI 主线程调用。
     void showParameterView();
 
-    /// @brief 切到 Parameter View 并聚焦参数表。
-    /// @note 不打开搜索框，不改状态栏。只在 UI 主线程调用。
+    /// @brief 切到 Parameter View，并把焦点送进搜索框。
+    /// @note 不改搜索文字，不改状态栏。只在 UI 主线程调用。
     void focusParameterTable();
 
     /// @brief 把焦点交回当前工作页。
@@ -76,6 +81,12 @@ private:
 
     /// Function View 上的文字。由本控件通过 Qt 父子关系拥有。
     QLabel* functionLabel_ = nullptr;
+
+    /// 参数表搜索框。由参数页通过 Qt 父子关系拥有。
+    QLineEdit* parameterSearch_ = nullptr;
+
+    /// 参数表的筛选代理。由参数表通过 Qt 父子关系拥有。空表示还没有参数页。
+    ParameterFilterProxy* parameterProxy_ = nullptr;
 
     /// 参数 id 写入成功后的通知。空表示没有观察者。不拥有检查器。
     std::function<void(std::string_view)> parameterObserver_;

@@ -819,6 +819,33 @@ if(ERNC_BUILD_UI)
                 "${CMAKE_SOURCE_DIR}/catalog/parameter_catalog.json"
         )
     endforeach()
+
+    add_executable(ernc_parameter_filter_tests
+        parameter_filter_test.cpp
+        ../src/presentation/parameters/parameter_table_model.cpp
+        ../src/presentation/parameters/parameter_filter_proxy.cpp
+    )
+
+    target_include_directories(ernc_parameter_filter_tests PRIVATE
+        "${CMAKE_SOURCE_DIR}/src/presentation"
+    )
+
+    target_link_libraries(ernc_parameter_filter_tests PRIVATE Qt6::Core ernc_domain)
+
+    set(ernc_parameter_filter_cases
+        all_search_keeps_source_order
+        flag_page_hides_other_group
+        dirty_keeps_stale_dirty_row
+    )
+
+    foreach(ernc_parameter_filter_case IN LISTS ernc_parameter_filter_cases)
+        add_test(
+            NAME "parameter_filter.${ernc_parameter_filter_case}"
+            COMMAND ernc_parameter_filter_tests
+                "${ernc_parameter_filter_case}"
+                "${CMAKE_SOURCE_DIR}/catalog/parameter_catalog.json"
+        )
+    endforeach()
 endif()
 
 add_executable(ernc_inspector_context_tests
