@@ -1493,6 +1493,39 @@ if(ERNC_BUILD_UI)
             COMMAND ernc_tf_plot_tests "${ernc_tf_plot_case}"
         )
     endforeach()
+
+    add_executable(ernc_check_data_plot_tests
+        check_data_plot_test.cpp
+        ../src/presentation/analysis/check_data_plot.cpp
+        ../src/presentation/analysis/plot_workspace.cpp
+    )
+
+    target_include_directories(ernc_check_data_plot_tests PRIVATE
+        "${CMAKE_SOURCE_DIR}/src/presentation"
+        "${ernc_qwt_include}"
+    )
+
+    target_link_libraries(ernc_check_data_plot_tests PRIVATE
+        Qt6::Widgets
+        Qt6::Concurrent
+        Qt6::PrintSupport
+        Qt6::Svg
+        Qt6::OpenGL
+        ernc_domain
+        "${ernc_qwt_library}"
+    )
+
+    foreach(ernc_check_data_case IN ITEMS
+        output_check_overlay_keeps_6_by_200
+        output_check_stack_splits_six_plots
+        scalar_field_is_one_point
+        field_switch_uses_that_fields_length
+        bad_path_keeps_previous)
+        add_test(
+            NAME "check_data_plot.${ernc_check_data_case}"
+            COMMAND ernc_check_data_plot_tests "${ernc_check_data_case}"
+        )
+    endforeach()
 endif()
 
 add_executable(ernc_inspector_context_tests
