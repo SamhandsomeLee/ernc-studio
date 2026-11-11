@@ -1,4 +1,5 @@
 #include "scenarios/scenario.hpp"
+#include "serial_scenarios/serial_gate.hpp"
 
 #include <cstdint>
 #include <exception>
@@ -45,12 +46,12 @@ void printUsage() {
     std::cout << "ernc-comm-lab\n"
               << "  --help                 Show this usage and exit 0.\n"
               << "  --transport <name>     simulator (default) or serial.\n"
-              << "  --scenario <name>      smoke, bulk, or fault-injection.\n"
-              << "  --profile <path>       External profile is not available and exits 2.\n"
+              << "  --scenario <name>      simulator: smoke, bulk, or fault-injection.\n"
+              << "  --profile <path>       Serial profile. Simulator exits 2. Unusable serial profile exits 3.\n"
               << "  --seed <value>         Fault sequence seed. Default is 0x12345678.\n"
               << "  --iterations <count>   Repeat count from 1 to 100. Default is 1.\n"
               << "  --output <path>        Write the JSON report to this file.\n"
-              << "  --allow-write          Record the flag. Simulator writes do not use this flag.\n";
+              << "  --allow-write          Record the flag. Serial writes are not submitted.\n";
 }
 
 /// @brief 判断参数是否等于带等号的长选项前缀。
@@ -208,13 +209,14 @@ int main(int argc, char** argv) {
         std::cerr << "invalid arguments\n";
         return 2;
     }
-    if (!options.profile.empty()) {
-        std::cerr << "external profile is not available\n";
-        return 2;
-    }
     const bool knownScenario = options.scenario == "smoke" || options.scenario == "bulk" ||
                                options.scenario == "fault-injection";
     if (options.transport == "serial") {
+        const ernc::lab::SerialGate gate = ernc::lab::runSerialGate(options.profile);
+        if (gate == ernc::lab::SerialGate::NoByteExchange) {
+            std::cerr << "serial port was closed without a byte exchange\n";
+            return 2;
+        }
         ernc::lab::ScenarioStats empty;
         const std::string report =
             makeReport(options.transport, options.scenario, options.allowWrite, "BLOCKED", "", options.seed, empty);
@@ -223,6 +225,10 @@ int main(int argc, char** argv) {
             return 2;
         }
         return 3;
+    }
+    if (!options.profile.empty()) {
+        std::cerr << "external profile is not available\n";
+        return 2;
     }
     if (options.transport != "simulator" || !knownScenario) {
         std::cerr << "invalid arguments\n";

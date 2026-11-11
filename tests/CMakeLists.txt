@@ -660,6 +660,10 @@ if(TARGET ernc_comm_lab)
         simulator_readonly
         allow_write_still_reads
         serial_blocked
+        serial_missing_profile
+        serial_empty_whitelist
+        serial_missing_port
+        serial_read_limit
         unknown_scenario
         missing_profile
         smoke

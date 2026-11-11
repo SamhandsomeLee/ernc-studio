@@ -548,6 +548,92 @@ bool expectIterationsTooLarge(const std::string& labPath) {
     return expectLab(labPath, "iterations_101", {"--iterations", "101"}, 2, {}, {}, {});
 }
 
+/// @brief 删掉可能残留的档案。文件本来不存在也算完成。
+/// @param path 档案路径，只在本次调用期间借用。
+void removeProfile(std::string_view path) {
+    DeleteFileA(std::string{path}.c_str());
+}
+
+/// @brief 把档案正文写成一个新文件。
+/// @param path 档案路径，只在本次调用期间借用。
+/// @param body 档案正文，只在本次调用期间借用。
+/// @return 文件内容写完时为 true。
+bool writeProfile(std::string_view path, std::string_view body) {
+    std::ofstream file{std::string{path}, std::ios::binary | std::ios::trunc};
+    if (!file) {
+        return false;
+    }
+    file << body;
+    return static_cast<bool>(file);
+}
+
+/// @brief 核对串口缺少档案文件时退出 3，并且不记成通过。
+/// @param labPath 实验台可执行文件路径，只在本次调用期间借用。档案文件保持不存在。
+/// @return 退出码为 3，且报告含 BLOCKED、reads 0、writes 0 时为 true。
+bool expectSerialMissingProfile(const std::string& labPath) {
+    constexpr std::string_view kProfile = "missing-serial-profile.json";
+    constexpr std::string_view kFile = "comm-lab-serial-missing-profile.json";
+    removeProfile(kProfile);
+    return expectLab(labPath, "serial_missing_profile",
+                     {"--transport", "serial", "--profile", kProfile, "--output", kFile}, 3, kFile,
+                     {"\"status\":\"BLOCKED\"", "\"reads\":0", "\"writes\":0"}, {});
+}
+
+/// @brief 核对空的只读白名单使档案不可用，退出码为 3。
+/// @param labPath 实验台可执行文件路径，只在本次调用期间借用。本用例写入一份临时档案。
+/// @return 退出码为 3，且报告含 BLOCKED 和 writes 0 时为 true。
+bool expectSerialEmptyWhitelist(const std::string& labPath) {
+    constexpr std::string_view kProfile = "serial-empty-whitelist.json";
+    constexpr std::string_view kFile = "comm-lab-serial-empty-whitelist.json";
+    constexpr std::string_view kBody =
+        "{\"port\":\"ERNCTEST_NO_SUCH_PORT\",\"baudRate\":9600,\"slave\":1,\"readSlots\":[],\"writeSlots\":[]}";
+    if (!writeProfile(kProfile, kBody)) {
+        return failCase("serial_empty_whitelist", "cannot write profile");
+    }
+    return expectLab(labPath, "serial_empty_whitelist",
+                     {"--transport", "serial", "--profile", kProfile, "--output", kFile}, 3, kFile,
+                     {"\"status\":\"BLOCKED\"", "\"writes\":0"}, {});
+}
+
+/// @brief 核对档案指向不存在的端口时退出 3，允许写标志也不产生写入。
+/// @param labPath 实验台可执行文件路径，只在本次调用期间借用。
+/// 波特率 9600 只写在这份临时档案里，不是设备默认值。
+/// @return 退出码为 3，且报告含 BLOCKED、allowWrite true、reads 0、writes 0 时为 true。
+bool expectSerialMissingPort(const std::string& labPath) {
+    constexpr std::string_view kProfile = "serial-missing-port.json";
+    constexpr std::string_view kFile = "comm-lab-serial-missing-port.json";
+    constexpr std::string_view kBody =
+        "{\"port\":\"ERNCTEST_NO_SUCH_PORT\",\"baudRate\":9600,\"slave\":1,\"readSlots\":[0],\"writeSlots\":[]}";
+    if (!writeProfile(kProfile, kBody)) {
+        return failCase("serial_missing_port", "cannot write profile");
+    }
+    return expectLab(labPath, "serial_missing_port",
+                     {"--transport", "serial", "--allow-write", "--profile", kProfile, "--output", kFile}, 3, kFile,
+                     {"\"status\":\"BLOCKED\"", "\"allowWrite\":true", "\"reads\":0", "\"writes\":0"}, {});
+}
+
+/// @brief 核对超过 62 个只读槽位的档案不可用，退出码为 3。
+/// @param labPath 实验台可执行文件路径，只在本次调用期间借用。63 个槽位超过一次 FC03。
+/// @return 退出码为 3，且报告含 BLOCKED 和 writes 0 时为 true。
+bool expectSerialReadLimit(const std::string& labPath) {
+    constexpr std::string_view kProfile = "serial-read-limit.json";
+    constexpr std::string_view kFile = "comm-lab-serial-read-limit.json";
+    std::string body = "{\"port\":\"ERNCTEST_NO_SUCH_PORT\",\"baudRate\":9600,\"slave\":1,\"readSlots\":[";
+    for (int slot = 0; slot < 63; ++slot) {
+        if (slot != 0) {
+            body += ',';
+        }
+        body += std::to_string(slot);
+    }
+    body += "],\"writeSlots\":[]}";
+    if (!writeProfile(kProfile, body)) {
+        return failCase("serial_read_limit", "cannot write profile");
+    }
+    return expectLab(labPath, "serial_read_limit",
+                     {"--transport", "serial", "--profile", kProfile, "--output", kFile}, 3, kFile,
+                     {"\"status\":\"BLOCKED\"", "\"writes\":0"}, {});
+}
+
 /// @brief 核对外部 Profile 不可用，退出码为 2。
 /// @param labPath 实验台可执行文件路径，只在本次调用期间借用。missing-profile.json 不必存在。
 /// @return 实验台退出 2 时为 true。
@@ -573,6 +659,18 @@ bool runCase(const std::string& labPath, std::string_view name, bool& recognized
     }
     if (name == "serial_blocked") {
         return expectSerialBlocked(labPath);
+    }
+    if (name == "serial_missing_profile") {
+        return expectSerialMissingProfile(labPath);
+    }
+    if (name == "serial_empty_whitelist") {
+        return expectSerialEmptyWhitelist(labPath);
+    }
+    if (name == "serial_missing_port") {
+        return expectSerialMissingPort(labPath);
+    }
+    if (name == "serial_read_limit") {
+        return expectSerialReadLimit(labPath);
     }
     if (name == "unknown_scenario") {
         return expectUnknownScenario(labPath);
