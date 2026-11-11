@@ -1,5 +1,6 @@
 add_library(ernc_application STATIC
     read_parameter.cpp
+    stage_value.cpp
 )
 
 target_include_directories(ernc_application PUBLIC

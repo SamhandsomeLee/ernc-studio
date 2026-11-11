@@ -245,6 +245,34 @@ foreach(ernc_read_parameter_case IN LISTS ernc_read_parameter_cases)
     )
 endforeach()
 
+add_executable(ernc_stage_value_tests
+    stage_value_test.cpp
+)
+
+target_link_libraries(ernc_stage_value_tests PRIVATE ernc_application)
+
+set(ernc_stage_value_cases
+    anc_off_stages_scalar
+    step_is_read_only
+    refresh_is_rejected
+    nan_is_rejected
+    type_mismatch_is_rejected
+    can_msg_is_rejected
+    check_data_is_rejected
+    unknown_id_is_rejected
+    failed_stage_keeps_previous
+)
+
+foreach(ernc_stage_value_case IN LISTS ernc_stage_value_cases)
+    add_test(
+        NAME "stage_value.${ernc_stage_value_case}"
+        COMMAND ernc_stage_value_tests
+            "${ernc_stage_value_case}"
+            "${CMAKE_SOURCE_DIR}/catalog/parameter_catalog.json"
+            "${ernc_layout_manifest}"
+    )
+endforeach()
+
 add_executable(ernc_chunk_plan_tests
     chunk_plan_test.cpp
 )
