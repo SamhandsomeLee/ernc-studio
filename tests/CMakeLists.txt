@@ -281,6 +281,19 @@ foreach(ernc_region_read_case IN ITEMS pack4_region_does_not_enqueue empty_regio
     )
 endforeach()
 
+add_executable(ernc_region_writer_tests
+    region_writer_test.cpp
+)
+
+target_link_libraries(ernc_region_writer_tests PRIVATE ernc_application ernc_simulator)
+
+foreach(ernc_region_write_case IN ITEMS pack4_preview_does_not_enqueue ack_is_not_verified tail_write_is_verified timeout_keeps_verified_prefix mismatch_stops_later_chunks)
+    add_test(
+        NAME "region_writer.${ernc_region_write_case}"
+        COMMAND ernc_region_writer_tests "${ernc_region_write_case}" "${ernc_layout_manifest}"
+    )
+endforeach()
+
 add_executable(ernc_read_parameter_tests
     read_parameter_test.cpp
 )

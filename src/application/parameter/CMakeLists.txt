@@ -6,6 +6,7 @@ add_library(ernc_application STATIC
     batch_write.cpp
     array_operations.cpp
     ../region/region_reader.cpp
+    ../region/region_writer.cpp
 )
 
 target_include_directories(ernc_application PUBLIC
