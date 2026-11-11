@@ -10,6 +10,7 @@ qt_add_executable(ernc_app
     ../src/presentation/navigator/navigator_pages.cpp
     ../src/presentation/navigator/navigator_model.cpp
     ../src/presentation/workspace/editor_tabs.cpp
+    ../src/presentation/parameters/parameter_table_model.cpp
 )
 
 qt_add_resources(ernc_app "ernc_themes"

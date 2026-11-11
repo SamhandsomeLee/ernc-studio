@@ -2,6 +2,7 @@
 
 #include "workspace/editor_selection.hpp"
 
+#include <QModelIndex>
 #include <QTabWidget>
 
 class QLabel;
@@ -26,17 +27,20 @@ public:
     void selectPage(const QString& pageId);
 
 private:
-    /// @brief 按当前选择重写两个页面上的同一段文字。
+    /// @brief 按当前选择重写 Function View 上的文字。参数表不在这里改写。
     void refresh();
+
+    /// @brief 参数表换行时，把该行参数 id 写入共用选择。
+    /// @param current 新的当前行。无效时不改选择。本函数不清除页面 id。
+    /// @param previous 换行前的当前行。本函数不读取它。
+    /// @note 只在 UI 主线程由表格选择模型调用。不写设备，也不暂存 Set。
+    void onParameterRowChanged(const QModelIndex& current, const QModelIndex& previous);
 
     /// 两页共用的页面 id 和参数 id。页签切换不会改它。
     EditorSelection selection_;
 
     /// Function View 上的文字。由本控件通过 Qt 父子关系拥有。
     QLabel* functionLabel_ = nullptr;
-
-    /// Parameter View 上的文字。内容与 `functionLabel_` 相同。
-    QLabel* parameterLabel_ = nullptr;
 };
 
 } // namespace ernc::presentation

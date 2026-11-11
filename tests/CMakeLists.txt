@@ -638,3 +638,23 @@ foreach(ernc_editor_selection_case IN LISTS ernc_editor_selection_cases)
         COMMAND ernc_editor_selection_tests "${ernc_editor_selection_case}"
     )
 endforeach()
+
+add_executable(ernc_parameter_table_tests
+    parameter_table_test.cpp
+)
+
+target_include_directories(ernc_parameter_table_tests PRIVATE
+    "${CMAKE_SOURCE_DIR}/src/presentation"
+)
+
+set(ernc_parameter_table_cases
+    fixed_rows
+    read_is_not_editable
+)
+
+foreach(ernc_parameter_table_case IN LISTS ernc_parameter_table_cases)
+    add_test(
+        NAME "parameter_table.${ernc_parameter_table_case}"
+        COMMAND ernc_parameter_table_tests "${ernc_parameter_table_case}"
+    )
+endforeach()
