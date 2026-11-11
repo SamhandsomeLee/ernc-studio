@@ -1340,6 +1340,27 @@ if(ERNC_BUILD_UI)
         NAME "array_editor.set_column_edits_only_that_index"
         COMMAND ernc_array_editor_model_tests set_column_edits_only_that_index
     )
+
+    add_executable(ernc_spec_radius_page_tests
+        spec_radius_page_test.cpp
+        ../src/presentation/regions/spec_radius_page.cpp
+    )
+
+    target_include_directories(ernc_spec_radius_page_tests PRIVATE
+        "${CMAKE_SOURCE_DIR}/src/presentation"
+    )
+
+    target_link_libraries(ernc_spec_radius_page_tests PRIVATE Qt6::Widgets ernc_domain ernc_application ernc_simulator)
+
+    foreach(ernc_spec_radius_case IN ITEMS rows_only_set_editable load_read_keeps_set short_bytes_rejected nan_set_rejected preview_real_region_does_not_commit wrong_shape_has_no_rows)
+        add_test(
+            NAME "spec_radius.${ernc_spec_radius_case}"
+            COMMAND ernc_spec_radius_page_tests
+                "${ernc_spec_radius_case}"
+                "${CMAKE_SOURCE_DIR}/catalog/parameter_catalog.json"
+                "${CMAKE_SOURCE_DIR}/firmware/layout_manifest.json"
+        )
+    endforeach()
 endif()
 
 add_executable(ernc_inspector_context_tests
