@@ -16,7 +16,9 @@ class QLabel;
 class QLineEdit;
 
 namespace ernc::presentation {
+class ErncFlagPage;
 class ParameterFilterProxy;
+class ParameterTableModel;
 }
 
 namespace ernc::presentation {
@@ -94,7 +96,13 @@ private:
     /// 固件布局。只借用。空指针时写入预览不能判断 1 slot。调用方保证它比本控件活得久。
     const ernc::domain::FirmwareLayout* layout_ = nullptr;
 
-    /// Function View 上的文字。由本控件通过 Qt 父子关系拥有。
+    /// ERNC_Flag 功能页。由 Function View 通过 Qt 父子关系拥有。其它页面隐藏它。
+    ErncFlagPage* flagPage_ = nullptr;
+
+    /// 参数表模型。由参数表通过 Qt 父子关系拥有。旗标页暂存后用它重画同一行。
+    ParameterTableModel* parameterModel_ = nullptr;
+
+    /// Function View 上的文字。由本控件通过 Qt 父子关系拥有。ERNC_Flag 页面显示时隐藏。
     QLabel* functionLabel_ = nullptr;
 
     /// 参数表搜索框。由参数页通过 Qt 父子关系拥有。

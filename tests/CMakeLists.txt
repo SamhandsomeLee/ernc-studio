@@ -906,6 +906,41 @@ if(ERNC_BUILD_UI)
                 "${CMAKE_SOURCE_DIR}/firmware/layout_manifest.json"
         )
     endforeach()
+
+    add_executable(ernc_flag_page_tests
+        ernc_flag_page_test.cpp
+        ../src/presentation/pages/ernc_flag.cpp
+        ../src/presentation/workspace/editor_tabs.cpp
+        ../src/presentation/parameters/parameter_table_model.cpp
+        ../src/presentation/parameters/parameter_filter_proxy.cpp
+        ../src/presentation/parameters/write_plan_dialog.cpp
+        ../src/presentation/controls/parameter_delegates.cpp
+    )
+
+    target_include_directories(ernc_flag_page_tests PRIVATE
+        "${CMAKE_SOURCE_DIR}/src/presentation"
+    )
+
+    target_link_libraries(ernc_flag_page_tests PRIVATE Qt6::Widgets ernc_domain ernc_application)
+
+    set(ernc_flag_page_cases
+        reverse_switches_stage_wire_values
+        unknown_toggle_is_not_off
+        speaker_keeps_raw_number
+        bypass_has_no_toggle
+        refresh_stays_blocked
+        flag_page_follows_tree
+    )
+
+    foreach(ernc_flag_page_case IN LISTS ernc_flag_page_cases)
+        add_test(
+            NAME "ernc_flag.${ernc_flag_page_case}"
+            COMMAND ernc_flag_page_tests
+                "${ernc_flag_page_case}"
+                "${CMAKE_SOURCE_DIR}/catalog/parameter_catalog.json"
+                "${CMAKE_SOURCE_DIR}/firmware/layout_manifest.json"
+        )
+    endforeach()
 endif()
 
 add_executable(ernc_inspector_context_tests

@@ -1,6 +1,7 @@
 #include "workspace/editor_tabs.hpp"
 
 #include "controls/parameter_delegates.hpp"
+#include "pages/ernc_flag.hpp"
 #include "parameters/write_plan_dialog.hpp"
 #include "parameters/fake_parameter_rows.hpp"
 #include "parameters/parameter_filter_proxy.hpp"
@@ -32,6 +33,7 @@ QWidget* makeFunctionView(QWidget* parent, QLabel*& label) {
     auto* layout = new QVBoxLayout(view);
     layout->setContentsMargins(kSpace16, kSpace16, kSpace16, kSpace16);
     label = new QLabel(view);
+    label->setObjectName(QStringLiteral("erncFunctionSummary"));
     label->setAlignment(Qt::AlignLeft | Qt::AlignTop);
     label->setWordWrap(true);
     layout->addWidget(label, 0, Qt::AlignLeft | Qt::AlignTop);
@@ -46,10 +48,11 @@ QWidget* makeFunctionView(QWidget* parent, QLabel*& label) {
 /// @param layout 固件布局，只借用。空指针时 Set 列确认不会暂存。
 /// @param search 成功时写入搜索框。调用方不另接所有权。
 /// @param proxy 成功时写入筛选代理。调用方不另接所有权。
+/// @param modelOut 成功时写入参数表模型。调用方不另接所有权。
 /// @return 带说明、搜索和表格的页面。表格不连接设备，选中行由调用方接到共用选择。
 QWidget* makeParameterView(QWidget* parent, const ernc::domain::ParameterCatalog* catalog,
                            ernc::domain::ParameterRuntimeStore* store, const ernc::domain::FirmwareLayout* layout,
-                           QLineEdit*& search, ParameterFilterProxy*& proxy) {
+                           QLineEdit*& search, ParameterFilterProxy*& proxy, ParameterTableModel*& modelOut) {
     auto* view = new QWidget(parent);
     view->setObjectName(QStringLiteral("erncParameterView"));
     auto* viewLayout = new QVBoxLayout(view);
@@ -77,6 +80,7 @@ QWidget* makeParameterView(QWidget* parent, const ernc::domain::ParameterCatalog
     auto* table = new QTableView(view);
     table->setObjectName(QStringLiteral("erncParameterTable"));
     auto* model = new ParameterTableModel(catalog, store, table);
+    modelOut = model;
     proxy = new ParameterFilterProxy(catalog, store, table);
     proxy->setSourceModel(model);
     table->setModel(proxy);
@@ -104,8 +108,19 @@ EditorTabs::EditorTabs(const ernc::domain::ParameterCatalog* catalog, ernc::doma
     setTabsClosable(false);
     setMovable(false);
 
-    addTab(makeFunctionView(this, functionLabel_), QStringLiteral("Function View"));
-    auto* parameterView = makeParameterView(this, catalog, store, layout, parameterSearch_, parameterProxy_);
+    auto* functionView = makeFunctionView(this, functionLabel_);
+    flagPage_ = new ErncFlagPage(catalog, store, layout, functionView);
+    if (auto* functionLayout = qobject_cast<QVBoxLayout*>(functionView->layout())) {
+        functionLayout->insertWidget(1, flagPage_, 1);
+    }
+    flagPage_->setEditObserver([this](const ernc::domain::ParameterId& id) {
+        if (parameterModel_ != nullptr) {
+            parameterModel_->noteLocalEdit(id);
+        }
+    });
+    flagPage_->hide();
+    addTab(functionView, QStringLiteral("Function View"));
+    auto* parameterView = makeParameterView(this, catalog, store, layout, parameterSearch_, parameterProxy_, parameterModel_);
     addTab(parameterView, QStringLiteral("Parameter View"));
     auto* table = parameterView->findChild<QTableView*>(QStringLiteral("erncParameterTable"));
     if (auto* openWritePlan = parameterView->findChild<QPushButton*>(QStringLiteral("erncOpenWritePlan"))) {
@@ -202,6 +217,14 @@ void EditorTabs::refresh() {
         : QString::fromStdString(selection_.parameterId());
     const QString text = QStringLiteral("当前页面 %1\n参数 %2").arg(page, parameter);
     functionLabel_->setText(text);
+    const bool showFlag = selection_.pageId() == "ERNC_Flag";
+    functionLabel_->setVisible(!showFlag);
+    if (flagPage_ != nullptr) {
+        flagPage_->setVisible(showFlag);
+        if (showFlag) {
+            flagPage_->reload();
+        }
+    }
 }
 
 } // namespace ernc::presentation
