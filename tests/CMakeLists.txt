@@ -1374,6 +1374,29 @@ if(ERNC_BUILD_UI)
                 "${CMAKE_SOURCE_DIR}/firmware/layout_manifest.json"
         )
     endforeach()
+
+    add_executable(ernc_region_workspace_tests
+        region_workspace_test.cpp
+        ../src/presentation/regions/region_workspace.cpp
+        ../src/presentation/regions/spec_radius_page.cpp
+    )
+
+    target_include_directories(ernc_region_workspace_tests PRIVATE
+        "${CMAKE_SOURCE_DIR}/src/presentation"
+    )
+
+    target_link_libraries(ernc_region_workspace_tests PRIVATE
+        Qt6::Widgets ernc_domain ernc_application ernc_filesystem ernc_simulator)
+
+    foreach(ernc_region_workspace_case IN ITEMS spec_radius_shows_120_rows import_does_not_write preview_then_write_does_not_enqueue cancelled_record_is_not_exported)
+        add_test(
+            NAME "region_workspace.${ernc_region_workspace_case}"
+            COMMAND ernc_region_workspace_tests
+                "${ernc_region_workspace_case}"
+                "${CMAKE_SOURCE_DIR}/catalog/parameter_catalog.json"
+                "${CMAKE_SOURCE_DIR}/firmware/layout_manifest.json"
+        )
+    endforeach()
 endif()
 
 add_executable(ernc_inspector_context_tests
