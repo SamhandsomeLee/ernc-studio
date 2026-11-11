@@ -1,3 +1,4 @@
+#include "cancellation.hpp"
 #include "scheduler.hpp"
 
 #include "ernc/protocol/modbus_fc03.hpp"
@@ -86,6 +87,7 @@ Result<CommandId> CommandScheduler::enqueue(const CommandRequest& request) {
 
 void CommandScheduler::pump() {
     dropRejected();
+    promoteAcked();
     readAvailable();
     dropRejected();
     startNext();
@@ -93,14 +95,29 @@ void CommandScheduler::pump() {
 
 void CommandScheduler::pump(RetryTime now, const ReadRetryLimit& limit) {
     dropRejected();
+    promoteAcked();
     readAvailable();
     dropRejected();
+    applyWriteAckWait(now, limit);
     applyReadRetry(now, limit);
     startNext();
 }
 
 std::size_t CommandScheduler::inFlightCount() const noexcept {
     return inflight_.has_value() ? 1U : 0U;
+}
+
+std::optional<WritePhase> CommandScheduler::phaseOf(CommandId id) const {
+    if (inflight_.has_value() && inflight_->id == id && inflight_->request.op == CommandOp::Write &&
+        inflight_->request.readBack) {
+        return inflight_->writePhase;
+    }
+    for (const PendingCommand& waiting : waiting_) {
+        if (waiting.id == id && waiting.request.op == CommandOp::Write && waiting.request.readBack) {
+            return waiting.writePhase;
+        }
+    }
+    return std::nullopt;
 }
 
 std::optional<CommandOutcome> CommandScheduler::takeResult(CommandId id) {
@@ -112,6 +129,21 @@ std::optional<CommandOutcome> CommandScheduler::takeResult(CommandId id) {
         }
     }
     return std::nullopt;
+}
+
+void CommandScheduler::cancel() {
+    if (inflight_.has_value()) {
+        discardNextFrame_ = true;
+    }
+    parser_.clear();
+    if (inflight_.has_value()) {
+        failInFlight(ErrorCode::OperationCancelled);
+    }
+    while (!waiting_.empty()) {
+        const PendingCommand command = std::move(waiting_.front());
+        waiting_.pop_front();
+        completeFailure(command, ErrorCode::OperationCancelled);
+    }
 }
 
 std::optional<CommandId> CommandScheduler::allocateId() {
@@ -141,6 +173,7 @@ void CommandScheduler::enqueueWaiting(PendingCommand command) {
 
 void CommandScheduler::dropRejected() {
     if (inflight_.has_value() && !session_.acceptResult(inflight_->session)) {
+        discardNextFrame_ = true;
         parser_.clear();
         failInFlight(ErrorCode::DeviceDisconnected);
     }
@@ -171,7 +204,10 @@ void CommandScheduler::readAvailable() {
             }
             continue;
         }
-        if (!inflight_.has_value() || step.bytes.empty()) {
+        if (step.bytes.empty()) {
+            continue;
+        }
+        if (!discardNextFrame_ && !inflight_.has_value()) {
             continue;
         }
         parser_.append(step.bytes);
@@ -188,14 +224,20 @@ void CommandScheduler::consumeParser() {
         if (step.kind == ParseStep::Kind::LengthDropped) {
             continue;
         }
-        if (step.kind == ParseStep::Kind::CrcRejected) {
-            if (inflight_.has_value()) {
-                failInFlight(ErrorCode::CrcMismatch);
+        if (step.kind == ParseStep::Kind::CrcRejected || step.kind == ParseStep::Kind::Frame) {
+            const FrameDisposition disposition = disposeFrame(discardNextFrame_, inflight_.has_value());
+            if (disposition.dropFrame) {
+                if (discardNextFrame_) {
+                    discardNextFrame_ = false;
+                }
+                return;
             }
-            return;
-        }
-        if (step.kind == ParseStep::Kind::Frame && inflight_.has_value()) {
+            if (step.kind == ParseStep::Kind::CrcRejected) {
+                failInFlight(ErrorCode::CrcMismatch);
+                return;
+            }
             matchFrame(step.frame);
+            return;
         }
         return;
     }
@@ -212,7 +254,7 @@ void CommandScheduler::matchFrame(std::span<const std::uint8_t> frame) {
     const std::span<const std::uint8_t> modbus{frame.data() + 1, frame.size() - 1};
     const PendingCommand command = std::move(*inflight_);
     inflight_.reset();
-    if (command.request.op == CommandOp::Read) {
+    if (command.request.op == CommandOp::Read || command.writePhase == WritePhase::Verifying) {
         const Result<ernc::protocol::Fc03Response> decoded = ernc::protocol::decodeFc03Response(modbus);
         if (!decoded.ok()) {
             completeFailure(command, codeOf(decoded));
@@ -227,6 +269,14 @@ void CommandScheduler::matchFrame(std::span<const std::uint8_t> frame) {
         if (payload.slaveAddress != command.request.slaveAddress ||
             payload.slotCount != command.request.slotCount) {
             completeFailure(command, ErrorCode::ResponseMismatch);
+            return;
+        }
+        if (command.writePhase == WritePhase::Verifying) {
+            CommandOutcome outcome;
+            outcome.id = command.id;
+            outcome.session = command.session;
+            outcome.body = compareWriteReadBack(command.request.payload, payload.bytes);
+            finished_.push_back(std::move(outcome));
             return;
         }
         ReadCommandResult read;
@@ -253,6 +303,12 @@ void CommandScheduler::matchFrame(std::span<const std::uint8_t> frame) {
         return;
     }
     const auto& ack = std::get<Fc16Ack>(response);
+    if (command.request.readBack) {
+        PendingCommand acked = command;
+        acked.writePhase = WritePhase::Acked;
+        inflight_ = std::move(acked);
+        return;
+    }
     WriteCommandResult written;
     written.slaveAddress = ack.slaveAddress;
     written.startRegister = ack.startRegister;
@@ -265,7 +321,10 @@ void CommandScheduler::matchFrame(std::span<const std::uint8_t> frame) {
 }
 
 void CommandScheduler::applyReadRetry(RetryTime now, const ReadRetryLimit& limit) {
-    if (!inflight_.has_value() || inflight_->request.op != CommandOp::Read) {
+    const bool plainRead = inflight_.has_value() && inflight_->request.op == CommandOp::Read;
+    const bool readBack = inflight_.has_value() && inflight_->request.op == CommandOp::Write &&
+                          inflight_->writePhase == WritePhase::Verifying;
+    if (!plainRead && !readBack) {
         return;
     }
     if (inflight_->attempt == 0) {
@@ -289,6 +348,54 @@ void CommandScheduler::applyReadRetry(RetryTime now, const ReadRetryLimit& limit
     }
     parser_.clear();
     failInFlight(step.terminal);
+}
+
+void CommandScheduler::applyWriteAckWait(RetryTime now, const ReadRetryLimit& limit) {
+    if (!inflight_.has_value() || inflight_->request.op != CommandOp::Write || !inflight_->request.readBack ||
+        inflight_->writePhase != WritePhase::Sent) {
+        return;
+    }
+    if (limit.timeout.count() <= 0) {
+        parser_.clear();
+        failInFlight(ErrorCode::InvalidParameter);
+        return;
+    }
+    if (inflight_->attempt == 0) {
+        inflight_->attempt = 1;
+        inflight_->sentAt = now;
+    }
+    if (decideWriteAckWait(limit.timeout, inflight_->sentAt, now) == WriteWaitDecision::Waiting) {
+        return;
+    }
+    parser_.clear();
+    failInFlight(ErrorCode::ResponseTimeout);
+}
+
+void CommandScheduler::promoteAcked() {
+    if (!inflight_.has_value() || inflight_->writePhase != WritePhase::Acked) {
+        return;
+    }
+    const ernc::protocol::Fc03ReadRequest read{inflight_->request.firstSlot, inflight_->request.slotCount,
+                                               inflight_->request.slaveAddress};
+    const Result<std::vector<std::uint8_t>> wire = ernc::protocol::encodeFc03Read(read);
+    if (!wire.ok()) {
+        failInFlight(codeOf(wire));
+        return;
+    }
+    const std::vector<std::uint8_t>* encoded = wire.tryValue();
+    if (encoded == nullptr) {
+        failInFlight(ErrorCode::Unknown);
+        return;
+    }
+    inflight_->wire = *encoded;
+    inflight_->attempt = 0;
+    parser_.clear();
+    const Result<void> sent = transport_.submit(inflight_->wire);
+    if (!sent.ok()) {
+        failInFlight(codeOf(sent));
+        return;
+    }
+    inflight_->writePhase = WritePhase::Verifying;
 }
 
 void CommandScheduler::startNext() {

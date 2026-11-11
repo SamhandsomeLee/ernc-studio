@@ -564,7 +564,7 @@ foreach(ernc_retry_policy_case IN LISTS ernc_retry_policy_cases)
     )
 endforeach()
 
-add_executable(ernc_theme_tokens_tests
+add_executable(ernc_theme_tokens_tests)
     theme_tokens_test.cpp
 )
 
@@ -728,3 +728,123 @@ add_test(
         "keymap_esc_does_not_cancel"
         "${CMAKE_SOURCE_DIR}/resources/keymap/shell.txt"
 )
+
+add_executable(ernc_write_verification_tests)
+    write_verification_test.cpp
+)
+
+target_link_libraries(ernc_write_verification_tests PRIVATE ernc_device)
+
+set(ernc_write_verification_cases
+    compare_match
+    compare_mismatch
+    ack_without_readback
+    ack_stops_before_read
+    next_pump_verifies_with_read
+    write_ack_timeout_does_not_resend
+)
+
+foreach(ernc_write_verification_case IN LISTS ernc_write_verification_cases)
+    add_test(
+        NAME "write_verification.${ernc_write_verification_case}"
+        COMMAND ernc_write_verification_tests "${ernc_write_verification_case}"
+    )
+endforeach()
+
+add_executable(ernc_cancellation_tests
+    cancellation_test.cpp
+)
+
+target_link_libraries(ernc_cancellation_tests PRIVATE ernc_device)
+
+set(ernc_cancellation_cases
+    dispose_drops_stale_frame
+    cancel_does_not_send_the_rest
+    late_frame_after_cancel_stays_cancelled
+    late_frame_does_not_update_new_session
+)
+
+foreach(ernc_cancellation_case IN LISTS ernc_cancellation_cases)
+    add_test(
+        NAME "cancellation.${ernc_cancellation_case}"
+        COMMAND ernc_cancellation_tests "${ernc_cancellation_case}"
+    )
+endforeach()
+
+add_executable(ernc_simulator_slave_tests
+    simulator_slave_test.cpp
+)
+
+target_link_libraries(ernc_simulator_slave_tests PRIVATE ernc_simulator)
+
+set(ernc_simulator_slave_cases
+    read_returns_planted_bytes
+    write_then_read_shows_new_bytes
+    illegal_request_leaves_image
+    same_request_is_deterministic
+    memory_transport_polls_response
+)
+
+foreach(ernc_simulator_slave_case IN LISTS ernc_simulator_slave_cases)
+    add_test(
+        NAME "simulator_slave.${ernc_simulator_slave_case}"
+        COMMAND ernc_simulator_slave_tests "${ernc_simulator_slave_case}"
+    )
+endforeach()
+
+add_executable(ernc_simulator_fault_tests
+    simulator_fault_test.cpp
+)
+
+target_link_libraries(ernc_simulator_fault_tests PRIVATE ernc_simulator)
+
+set(ernc_simulator_fault_cases
+    same_seed_same_sequence
+    drop_leaves_image
+    disconnect_leaves_image
+    bad_crc_is_not_success
+    bad_frame_is_not_success
+    delay_releases_on_second_poll
+)
+
+foreach(ernc_simulator_fault_case IN LISTS ernc_simulator_fault_cases)
+    add_test(
+        NAME "simulator_fault.${ernc_simulator_fault_case}"
+        COMMAND ernc_simulator_fault_tests "${ernc_simulator_fault_case}"
+    )
+endforeach()
+
+# ES-038: spawn ernc_comm_lab. The checker links only the C++ standard library.
+if(TARGET ernc_comm_lab)
+    add_executable(ernc_comm_lab_tests
+        comm_lab_test.cpp
+    )
+
+    set(ernc_comm_lab_cases
+        help
+        simulator_readonly
+        allow_write_still_reads
+        serial_blocked
+        serial_missing_profile
+        serial_empty_whitelist
+        serial_missing_port
+        serial_read_limit
+        unknown_scenario
+        missing_profile
+        smoke
+        bulk
+        fault_injection
+        serial_bulk_blocked
+        iterations_zero
+        iterations_101
+    )
+
+    foreach(ernc_comm_lab_case IN LISTS ernc_comm_lab_cases)
+        add_test(
+            NAME "comm_lab.${ernc_comm_lab_case}"
+            COMMAND ernc_comm_lab_tests
+                "$<TARGET_FILE:ernc_comm_lab>"
+                "${ernc_comm_lab_case}"
+        )
+    endforeach()
+endif()
