@@ -875,6 +875,37 @@ if(ERNC_BUILD_UI)
                 "${CMAKE_SOURCE_DIR}/firmware/layout_manifest.json"
         )
     endforeach()
+
+    add_executable(ernc_write_plan_dialog_tests
+        write_plan_dialog_test.cpp
+        ../src/presentation/parameters/write_plan_dialog.cpp
+    )
+
+    target_include_directories(ernc_write_plan_dialog_tests PRIVATE
+        "${CMAKE_SOURCE_DIR}/src/presentation"
+    )
+
+    target_link_libraries(ernc_write_plan_dialog_tests PRIVATE Qt6::Widgets ernc_domain ernc_application ernc_simulator)
+
+    set(ernc_write_plan_dialog_cases
+        flag_preview_before_write
+        rnc_time_and_step
+        all_page_disables_confirm
+        can_msg_is_not_sent
+        ack_then_verified
+        mismatch_shows_diagnostic
+        timeout_does_not_resend
+    )
+
+    foreach(ernc_write_plan_dialog_case IN LISTS ernc_write_plan_dialog_cases)
+        add_test(
+            NAME "write_plan_dialog.${ernc_write_plan_dialog_case}"
+            COMMAND ernc_write_plan_dialog_tests
+                "${ernc_write_plan_dialog_case}"
+                "${CMAKE_SOURCE_DIR}/catalog/parameter_catalog.json"
+                "${CMAKE_SOURCE_DIR}/firmware/layout_manifest.json"
+        )
+    endforeach()
 endif()
 
 add_executable(ernc_inspector_context_tests

@@ -72,6 +72,10 @@ private:
     /// @param objectName 页面对象名。调用方拥有原件，本函数只比较它。找不到时不改当前页。
     void showNamedPage(const QString& objectName);
 
+    /// @brief 打开当前分类的写入预览。
+    /// @note 不创建会话，不打开串口。确认只在对话框里发生。只在 UI 主线程调用。
+    void openWritePlan();
+
     /// @brief 参数表换行时，把该行参数 id 写入共用选择。
     /// @param current 新的当前行。无效时不改选择。本函数不清除页面 id。
     /// @param previous 换行前的当前行。本函数不读取它。
@@ -80,6 +84,15 @@ private:
 
     /// 两页共用的页面 id 和参数 id。页签切换不会改它。
     EditorSelection selection_;
+
+    /// 参数目录。只借用。空指针时写入预览没有行。调用方保证它比本控件活得久。
+    const ernc::domain::ParameterCatalog* catalog_ = nullptr;
+
+    /// 运行状态。只借用。写入预览从这里读 Read 和 Set。调用方保证它比本控件活得久。
+    ernc::domain::ParameterRuntimeStore* store_ = nullptr;
+
+    /// 固件布局。只借用。空指针时写入预览不能判断 1 slot。调用方保证它比本控件活得久。
+    const ernc::domain::FirmwareLayout* layout_ = nullptr;
 
     /// Function View 上的文字。由本控件通过 Qt 父子关系拥有。
     QLabel* functionLabel_ = nullptr;

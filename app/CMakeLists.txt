@@ -13,6 +13,7 @@ qt_add_executable(ernc_app
     ../src/presentation/workspace/editor_tabs.cpp
     ../src/presentation/parameters/parameter_table_model.cpp
     ../src/presentation/parameters/parameter_filter_proxy.cpp
+    ../src/presentation/parameters/write_plan_dialog.cpp
     ../src/presentation/controls/parameter_delegates.cpp
     ../src/presentation/inspector/inspector_context.cpp
     ../src/presentation/inspector/inspector_panel.cpp

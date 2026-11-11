@@ -1,6 +1,7 @@
 #include "workspace/editor_tabs.hpp"
 
 #include "controls/parameter_delegates.hpp"
+#include "parameters/write_plan_dialog.hpp"
 #include "parameters/fake_parameter_rows.hpp"
 #include "parameters/parameter_filter_proxy.hpp"
 #include "parameters/parameter_table_model.hpp"
@@ -14,6 +15,7 @@
 #include <QItemSelectionModel>
 #include <QLabel>
 #include <QLineEdit>
+#include <QPushButton>
 #include <QTableView>
 #include <QVBoxLayout>
 
@@ -67,6 +69,9 @@ QWidget* makeParameterView(QWidget* parent, const ernc::domain::ParameterCatalog
     dirtyOnly->setObjectName(QStringLiteral("erncParameterDirtyOnly"));
     filters->addWidget(search, 1);
     filters->addWidget(dirtyOnly);
+    auto* writePlan = new QPushButton(QStringLiteral("写入已修改参数"), view);
+    writePlan->setObjectName(QStringLiteral("erncOpenWritePlan"));
+    filters->addWidget(writePlan);
     viewLayout->addLayout(filters);
 
     auto* table = new QTableView(view);
@@ -94,7 +99,7 @@ QWidget* makeParameterView(QWidget* parent, const ernc::domain::ParameterCatalog
 
 EditorTabs::EditorTabs(const ernc::domain::ParameterCatalog* catalog, ernc::domain::ParameterRuntimeStore* store,
                          const ernc::domain::FirmwareLayout* layout, QWidget* parent)
-    : QTabWidget(parent) {
+    : QTabWidget(parent), catalog_{catalog}, store_{store}, layout_{layout} {
     setObjectName(QStringLiteral("erncEditorTabs"));
     setTabsClosable(false);
     setMovable(false);
@@ -103,6 +108,9 @@ EditorTabs::EditorTabs(const ernc::domain::ParameterCatalog* catalog, ernc::doma
     auto* parameterView = makeParameterView(this, catalog, store, layout, parameterSearch_, parameterProxy_);
     addTab(parameterView, QStringLiteral("Parameter View"));
     auto* table = parameterView->findChild<QTableView*>(QStringLiteral("erncParameterTable"));
+    if (auto* openWritePlan = parameterView->findChild<QPushButton*>(QStringLiteral("erncOpenWritePlan"))) {
+        connect(openWritePlan, &QPushButton::clicked, this, &EditorTabs::openWritePlan);
+    }
     connect(table->selectionModel(), &QItemSelectionModel::currentRowChanged, this,
         &EditorTabs::onParameterRowChanged);
     setCurrentIndex(0);
@@ -151,6 +159,16 @@ void EditorTabs::showNamedPage(const QString& objectName) {
             return;
         }
     }
+}
+
+void EditorTabs::openWritePlan() {
+    WritePlanDialog::Sources sources;
+    sources.catalog = catalog_;
+    sources.store = store_;
+    sources.layout = layout_;
+    sources.pageId = QString::fromStdString(selection_.pageId());
+    WritePlanDialog dialog(sources, this);
+    dialog.exec();
 }
 
 void EditorTabs::showFunctionView() {
