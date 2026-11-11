@@ -617,3 +617,24 @@ foreach(ernc_navigator_pages_case IN LISTS ernc_navigator_pages_cases)
             "${CMAKE_SOURCE_DIR}/catalog/parameter_catalog.json"
     )
 endforeach()
+
+add_executable(ernc_editor_selection_tests
+    editor_selection_test.cpp
+)
+
+target_include_directories(ernc_editor_selection_tests PRIVATE
+    "${CMAKE_SOURCE_DIR}/src/presentation"
+)
+
+set(ernc_editor_selection_cases
+    initial_empty
+    page_keeps_parameter
+    empty_does_not_clear
+)
+
+foreach(ernc_editor_selection_case IN LISTS ernc_editor_selection_cases)
+    add_test(
+        NAME "editor_selection.${ernc_editor_selection_case}"
+        COMMAND ernc_editor_selection_tests "${ernc_editor_selection_case}"
+    )
+endforeach()

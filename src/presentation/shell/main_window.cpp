@@ -2,6 +2,7 @@
 
 #include "navigator/navigator_model.hpp"
 #include "theme/theme_tokens.hpp"
+#include "workspace/editor_tabs.hpp"
 
 #include <QAbstractItemView>
 #include <QDockWidget>
@@ -26,20 +27,22 @@ constexpr int kInspectorHeight = 240;
 constexpr int kWindowWidth = 1280;
 constexpr int kWindowHeight = 800;
 
-/// @brief 把选中节点写成工作区里的一行文字。
-/// @param label 工作区文字，调用方拥有。空指针时不改。
-/// @param current 当前选中索引。无效时恢复成“工作区”。
-void showSelection(QLabel* label, const QModelIndex& current) {
-    if (label == nullptr) {
-        return;
-    }
-    if (!current.isValid()) {
-        label->setText(QStringLiteral("工作区"));
+/// @brief 把项目树的当前节点送进两个工作页共用的选择。
+/// @param tabs 工作页签，调用方拥有。空指针时不改。
+/// @param current 当前树索引。无效索引不清除已有的页面或参数 id。
+void applyTreeSelection(EditorTabs* tabs, const QModelIndex& current) {
+    if (tabs == nullptr || !current.isValid()) {
         return;
     }
     const QString kind = current.data(NavigatorModel::KindRole).toString();
     const QString id = current.data(Qt::DisplayRole).toString();
-    label->setText(kind + QStringLiteral(" ") + id);
+    if (kind == QStringLiteral("参数")) {
+        tabs->selectParameter(id);
+        return;
+    }
+    if (kind == QStringLiteral("页面")) {
+        tabs->selectPage(id);
+    }
 }
 
 } // namespace
@@ -53,12 +56,9 @@ MainWindow::MainWindow(ernc::domain::CatalogLoad catalog, QString catalogPath, Q
     auto* workArea = new QWidget(this);
     workArea->setObjectName(QStringLiteral("erncWorkArea"));
     auto* workLayout = new QVBoxLayout(workArea);
-    workLayout->setContentsMargins(kSpace16, kSpace16, kSpace16, kSpace16);
-    auto* workLabel = new QLabel(QStringLiteral("工作区"), workArea);
-    workLabel->setObjectName(QStringLiteral("erncWorkSelection"));
-    workLabel->setAlignment(Qt::AlignLeft | Qt::AlignTop);
-    workLayout->addWidget(workLabel, 0, Qt::AlignLeft | Qt::AlignTop);
-    workLayout->addStretch(1);
+    workLayout->setContentsMargins(0, 0, 0, 0);
+    auto* editorTabs = new EditorTabs(workArea);
+    workLayout->addWidget(editorTabs);
     setCentralWidget(workArea);
 
     QDockWidget* projectTree = addPlaceholderDock(
@@ -89,8 +89,8 @@ MainWindow::MainWindow(ernc::domain::CatalogLoad catalog, QString catalogPath, Q
             projectTree->setWidget(tree);
             delete previous;
             QObject::connect(tree->selectionModel(), &QItemSelectionModel::currentChanged, this,
-                [workLabel](const QModelIndex& current, const QModelIndex&) {
-                    showSelection(workLabel, current);
+                [editorTabs](const QModelIndex& current, const QModelIndex&) {
+                    applyTreeSelection(editorTabs, current);
                 });
         }
     }

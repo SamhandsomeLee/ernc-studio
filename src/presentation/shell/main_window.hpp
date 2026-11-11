@@ -9,7 +9,7 @@ class QDockWidget;
 
 namespace ernc::presentation {
 
-/// 无设备主窗口。左侧项目树显示目录页面，中间工作区显示当前选中的 id。
+/// 无设备主窗口。左侧项目树显示目录页面，中间工作区用两个页签显示同一份选择。
 /// 检查器和任务卡仍是名称占位。本类不保存参数值，也不持有串口。
 class MainWindow final : public QMainWindow {
 public:
