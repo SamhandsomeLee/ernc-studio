@@ -1,6 +1,7 @@
 #include "workspace/editor_tabs.hpp"
 
 #include "controls/parameter_delegates.hpp"
+#include "pages/check.hpp"
 #include "pages/enc_param.hpp"
 #include "pages/rnc_param.hpp"
 #include "pages/ernc_flag.hpp"
@@ -161,6 +162,19 @@ EditorTabs::EditorTabs(const ernc::domain::ParameterCatalog* catalog, ernc::doma
         selectParameter(QString::fromStdString(id.text()));
     });
     rncPage_->hide();
+    checkPage_ = new CheckPage(catalog, store, layout, functionView);
+    if (auto* functionLayout = qobject_cast<QVBoxLayout*>(functionView->layout())) {
+        functionLayout->insertWidget(5, checkPage_, 1);
+    }
+    checkPage_->setEditObserver([this](const ernc::domain::ParameterId& id) {
+        if (parameterModel_ != nullptr) {
+            parameterModel_->noteLocalEdit(id);
+        }
+    });
+    checkPage_->setSelectionObserver([this](const ernc::domain::ParameterId& id) {
+        selectParameter(QString::fromStdString(id.text()));
+    });
+    checkPage_->hide();
     addTab(functionView, QStringLiteral("Function View"));
     auto* parameterView = makeParameterView(this, catalog, store, layout, parameterSearch_, parameterProxy_, parameterModel_);
     addTab(parameterView, QStringLiteral("Parameter View"));
@@ -263,7 +277,8 @@ void EditorTabs::refresh() {
     const bool showInOut = selection_.pageId() == "ERNC_IN_OUT";
     const bool showEnc = selection_.pageId() == "ENC_Param";
     const bool showRnc = selection_.pageId() == "RNC_Param";
-    functionLabel_->setVisible(!showFlag && !showInOut && !showEnc && !showRnc);
+    const bool showCheck = selection_.pageId() == "Check";
+    functionLabel_->setVisible(!showFlag && !showInOut && !showEnc && !showRnc && !showCheck);
     if (flagPage_ != nullptr) {
         flagPage_->setVisible(showFlag);
         if (showFlag) {
@@ -288,15 +303,22 @@ void EditorTabs::refresh() {
             rncPage_->reload();
         }
     }
+    if (checkPage_ != nullptr) {
+        checkPage_->setVisible(showCheck);
+        if (showCheck) {
+            checkPage_->reload();
+        }
+    }
     if (QWidget* functionView = functionLabel_->parentWidget()) {
         if (auto* functionLayout = qobject_cast<QVBoxLayout*>(functionView->layout())) {
-            const bool showPage = showFlag || showInOut || showEnc || showRnc;
-            if (functionLayout->count() > 5) {
+            const bool showPage = showFlag || showInOut || showEnc || showRnc || showCheck;
+            if (functionLayout->count() > 6) {
                 functionLayout->setStretch(1, showFlag ? 1 : 0);
                 functionLayout->setStretch(2, showInOut ? 1 : 0);
                 functionLayout->setStretch(3, showEnc ? 1 : 0);
                 functionLayout->setStretch(4, showRnc ? 1 : 0);
-                functionLayout->setStretch(5, showPage ? 0 : 1);
+                functionLayout->setStretch(5, showCheck ? 1 : 0);
+                functionLayout->setStretch(6, showPage ? 0 : 1);
             }
         }
     }

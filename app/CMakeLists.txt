@@ -15,6 +15,7 @@ qt_add_executable(ernc_app
     ../src/presentation/pages/ernc_in_out.cpp
     ../src/presentation/pages/enc_param.cpp
     ../src/presentation/pages/rnc_param.cpp
+    ../src/presentation/pages/check.cpp
     ../src/presentation/parameters/parameter_table_model.cpp
     ../src/presentation/parameters/parameter_filter_proxy.cpp
     ../src/presentation/parameters/write_plan_dialog.cpp

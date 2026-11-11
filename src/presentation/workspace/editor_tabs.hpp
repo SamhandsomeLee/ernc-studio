@@ -16,6 +16,7 @@ class QLabel;
 class QLineEdit;
 
 namespace ernc::presentation {
+class CheckPage;
 class EncParamPage;
 class RncParamPage;
 class ErncFlagPage;
@@ -111,6 +112,9 @@ private:
 
     /// RNC_Param 参数页。由 Function View 通过 Qt 父子关系拥有。其它页面隐藏它。
     RncParamPage* rncPage_ = nullptr;
+
+    /// Check 页。由 Function View 通过 Qt 父子关系拥有。其它页面隐藏它。
+    CheckPage* checkPage_ = nullptr;
 
     /// 参数表模型。由参数表通过 Qt 父子关系拥有。功能页暂存后用它重画同一行。
     ParameterTableModel* parameterModel_ = nullptr;
