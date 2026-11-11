@@ -1460,6 +1460,39 @@ if(ERNC_BUILD_UI)
             COMMAND ernc_plot_workspace_tests "${ernc_plot_case}"
         )
     endforeach()
+
+    add_executable(ernc_tf_plot_tests
+        ernc_tf_plot_test.cpp
+        ../src/presentation/analysis/ernc_tf_plot.cpp
+        ../src/presentation/analysis/plot_workspace.cpp
+    )
+
+    target_include_directories(ernc_tf_plot_tests PRIVATE
+        "${CMAKE_SOURCE_DIR}/src/presentation"
+        "${ernc_qwt_include}"
+    )
+
+    target_link_libraries(ernc_tf_plot_tests PRIVATE
+        Qt6::Widgets
+        Qt6::Concurrent
+        Qt6::PrintSupport
+        Qt6::Svg
+        Qt6::OpenGL
+        ernc_domain
+        "${ernc_qwt_library}"
+    )
+
+    foreach(ernc_tf_plot_case IN ITEMS
+        real_group_uses_storage_index
+        imag_switch_keeps_real_samples
+        bad_shape_keeps_previous
+        group_out_of_range_keeps_selection
+        point_readout_has_no_hz)
+        add_test(
+            NAME "ernc_tf_plot.${ernc_tf_plot_case}"
+            COMMAND ernc_tf_plot_tests "${ernc_tf_plot_case}"
+        )
+    endforeach()
 endif()
 
 add_executable(ernc_inspector_context_tests
