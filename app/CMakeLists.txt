@@ -6,7 +6,7 @@ qt_add_executable(ernc_app
     main.cpp
     ../src/presentation/theme/theme.cpp
     ../src/presentation/theme/status_badge.cpp
-    ../src/presentation/theme/theme_sample.cpp
+    ../src/presentation/shell/main_window.cpp
 )
 
 qt_add_resources(ernc_app "ernc_themes"
