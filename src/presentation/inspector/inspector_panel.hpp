@@ -7,6 +7,7 @@
 #include <string_view>
 
 class QLabel;
+class QTabWidget;
 
 namespace ernc::domain {
 class ParameterCatalog;
@@ -33,7 +34,18 @@ public:
     /// @note 只在 UI 主线程调用。这个按钮不改参数 id，也不写设备。
     void setOperationCenterOpener(std::function<void()> opener);
 
+    /// @brief 切到 Properties。
+    /// @note 不改参数 id，也不写设备。只在 UI 主线程调用。
+    void showPropertiesPage();
+
+    /// @brief 切到 Diagnostics。
+    /// @note 不改参数 id，也不写设备。只在 UI 主线程调用。
+    void showDiagnosticsPage();
+
 private:
+    /// @brief 按对象名选中一个检查器标签。
+    /// @param objectName 页面对象名。调用方拥有这段字面量。找不到时不改当前标签。
+    void showNamedPage(const char* objectName);
     /// 借用的目录。空指针表示没有可查询的定义。
     const ernc::domain::ParameterCatalog* catalog_ = nullptr;
 
@@ -51,6 +63,9 @@ private:
 
     /// Diagnostics 上「操作中心」按钮按下时调用。空表示没有动作。不拥有操作中心。
     std::function<void()> operationCenterOpener_;
+
+    /// 三个标签的页签控件。由本控件通过 Qt 父子关系拥有。
+    QTabWidget* tabs_ = nullptr;
 };
 
 } // namespace ernc::presentation

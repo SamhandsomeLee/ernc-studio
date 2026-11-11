@@ -18,8 +18,24 @@ class EditorTabs final : public QTabWidget {
 public:
     /// @brief 创建两个工作页，初始没有选中的页面或参数。
     /// @param parent 父控件。非空时由 Qt 父子关系拥有本控件。必须在 UI 主线程创建。
-    /// @note 启动时停在 Function View。这里不记住上次打开的页签。
+    /// @note 启动时停在 Function View。预置可以切换页签，窗口状态不单独保存这个页签。
     explicit EditorTabs(QWidget* parent = nullptr);
+
+    /// @brief 切到 Function View。
+    /// @note 不改参数 id，也不读取设备。只在 UI 主线程调用。
+    void showFunctionView();
+
+    /// @brief 切到 Parameter View。
+    /// @note 不改参数 id，也不把焦点送进参数表。只在 UI 主线程调用。
+    void showParameterView();
+
+    /// @brief 切到 Parameter View 并聚焦参数表。
+    /// @note 不打开搜索框，不改状态栏。只在 UI 主线程调用。
+    void focusParameterTable();
+
+    /// @brief 把焦点交回当前工作页。
+    /// @note 不切换页签，不读取设备，不改状态栏。只在 UI 主线程调用。
+    void focusCurrentPage();
 
     /// @brief 把参数 id 写进两页共用的选择。
     /// @param parameterId 目录主键。空文本不改变已有选择。调用方拥有原件，本函数只复制它。
@@ -38,6 +54,10 @@ public:
 private:
     /// @brief 按当前选择重写 Function View 上的文字。参数表不在这里改写。
     void refresh();
+
+    /// @brief 按对象名切到一个工作页。
+    /// @param objectName 页面对象名。调用方拥有原件，本函数只比较它。找不到时不改当前页。
+    void showNamedPage(const QString& objectName);
 
     /// @brief 参数表换行时，把该行参数 id 写入共用选择。
     /// @param current 新的当前行。无效时不改选择。本函数不清除页面 id。

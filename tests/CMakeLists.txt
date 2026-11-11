@@ -704,3 +704,27 @@ foreach(ernc_operation_log_case IN LISTS ernc_operation_log_cases)
         COMMAND ernc_operation_log_tests "${ernc_operation_log_case}"
     )
 endforeach()
+
+add_executable(ernc_layout_settings_tests
+    layout_settings_test.cpp
+    ../src/presentation/shell/layout_settings.cpp
+)
+
+target_include_directories(ernc_layout_settings_tests PRIVATE
+    "${CMAKE_SOURCE_DIR}/src/presentation"
+)
+
+add_test(
+    NAME "layout_settings.width_bands"
+    COMMAND ernc_layout_settings_tests "width_bands"
+)
+add_test(
+    NAME "layout_settings.presets"
+    COMMAND ernc_layout_settings_tests "presets"
+)
+add_test(
+    NAME "layout_settings.keymap_esc_does_not_cancel"
+    COMMAND ernc_layout_settings_tests
+        "keymap_esc_does_not_cancel"
+        "${CMAKE_SOURCE_DIR}/resources/keymap/shell.txt"
+)

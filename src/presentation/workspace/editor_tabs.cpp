@@ -108,6 +108,37 @@ void EditorTabs::selectPage(const QString& pageId) {
     refresh();
 }
 
+void EditorTabs::showNamedPage(const QString& objectName) {
+    for (int index = 0; index < count(); ++index) {
+        QWidget* page = widget(index);
+        if (page != nullptr && page->objectName() == objectName) {
+            setCurrentIndex(index);
+            return;
+        }
+    }
+}
+
+void EditorTabs::showFunctionView() {
+    showNamedPage(QStringLiteral("erncFunctionView"));
+}
+
+void EditorTabs::showParameterView() {
+    showNamedPage(QStringLiteral("erncParameterView"));
+}
+
+void EditorTabs::focusParameterTable() {
+    showParameterView();
+    if (QTableView* table = findChild<QTableView*>(QStringLiteral("erncParameterTable"))) {
+        table->setFocus();
+    }
+}
+
+void EditorTabs::focusCurrentPage() {
+    if (QWidget* page = currentWidget()) {
+        page->setFocus();
+    }
+}
+
 void EditorTabs::refresh() {
     const QString page = selection_.pageId().empty()
         ? QStringLiteral("未选择页面")

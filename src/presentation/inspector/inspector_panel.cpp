@@ -38,13 +38,13 @@ InspectorPanel::InspectorPanel(const ernc::domain::ParameterCatalog* catalog, QW
     , catalog_(catalog) {
     auto* layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
-    auto* tabs = new QTabWidget(this);
-    tabs->setObjectName(QStringLiteral("erncInspectorTabs"));
-    tabs->addTab(makePage(QStringLiteral("erncInspectorProperties"), tabs, propertiesLabel_),
+    tabs_ = new QTabWidget(this);
+    tabs_->setObjectName(QStringLiteral("erncInspectorTabs"));
+    tabs_->addTab(makePage(QStringLiteral("erncInspectorProperties"), tabs_, propertiesLabel_),
         QStringLiteral("Properties"));
-    tabs->addTab(makePage(QStringLiteral("erncInspectorInfo"), tabs, infoLabel_),
+    tabs_->addTab(makePage(QStringLiteral("erncInspectorInfo"), tabs_, infoLabel_),
         QStringLiteral("Info"));
-    auto* diagnosticsPage = makePage(QStringLiteral("erncInspectorDiagnostics"), tabs, diagnosticsLabel_);
+    auto* diagnosticsPage = makePage(QStringLiteral("erncInspectorDiagnostics"), tabs_, diagnosticsLabel_);
     auto* openOperationCenter = new QPushButton(QStringLiteral("操作中心"), diagnosticsPage);
     openOperationCenter->setObjectName(QStringLiteral("erncOpenOperationCenter"));
     if (auto* pageLayout = qobject_cast<QVBoxLayout*>(diagnosticsPage->layout())) {
@@ -55,8 +55,8 @@ InspectorPanel::InspectorPanel(const ernc::domain::ParameterCatalog* catalog, QW
             operationCenterOpener_();
         }
     });
-    tabs->addTab(diagnosticsPage, QStringLiteral("Diagnostics"));
-    layout->addWidget(tabs);
+    tabs_->addTab(diagnosticsPage, QStringLiteral("Diagnostics"));
+    layout->addWidget(tabs_);
     showParameter({});
 }
 
@@ -74,6 +74,28 @@ void InspectorPanel::showParameter(std::string_view parameterId) {
 
 void InspectorPanel::setOperationCenterOpener(std::function<void()> opener) {
     operationCenterOpener_ = std::move(opener);
+}
+
+void InspectorPanel::showNamedPage(const char* objectName) {
+    if (tabs_ == nullptr || objectName == nullptr) {
+        return;
+    }
+    const QString name = QString::fromUtf8(objectName);
+    for (int index = 0; index < tabs_->count(); ++index) {
+        QWidget* page = tabs_->widget(index);
+        if (page != nullptr && page->objectName() == name) {
+            tabs_->setCurrentIndex(index);
+            return;
+        }
+    }
+}
+
+void InspectorPanel::showPropertiesPage() {
+    showNamedPage("erncInspectorProperties");
+}
+
+void InspectorPanel::showDiagnosticsPage() {
+    showNamedPage("erncInspectorDiagnostics");
 }
 
 } // namespace ernc::presentation

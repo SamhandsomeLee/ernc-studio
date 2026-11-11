@@ -7,6 +7,7 @@ qt_add_executable(ernc_app
     ../src/presentation/theme/theme.cpp
     ../src/presentation/theme/status_badge.cpp
     ../src/presentation/shell/main_window.cpp
+    ../src/presentation/shell/layout_settings.cpp
     ../src/presentation/navigator/navigator_pages.cpp
     ../src/presentation/navigator/navigator_model.cpp
     ../src/presentation/workspace/editor_tabs.cpp
@@ -29,6 +30,7 @@ target_include_directories(ernc_app PRIVATE
 
 target_compile_definitions(ernc_app PRIVATE
     "ERNC_PARAMETER_CATALOG_PATH=\"${CMAKE_SOURCE_DIR}/catalog/parameter_catalog.json\""
+    "ERNC_SHELL_KEYMAP_PATH=\"${CMAKE_SOURCE_DIR}/resources/keymap/shell.txt\""
 )
 
 target_link_libraries(ernc_app PRIVATE Qt6::Widgets ernc_domain)
