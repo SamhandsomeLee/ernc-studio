@@ -58,6 +58,21 @@ inline constexpr FakeParameterRow kFakeParameterRows[] = {
     {"数据已过期", "Step", "Step", "3", "—", "2026-11-11T09:00:00Z"},
 };
 
+/// @brief 按参数 id 找到固定假数据行。
+/// @param parameterId 目录主键，只在本次调用期间借用。空文本和不在表里的 id 都表示没有假数据。
+/// @return 指向 `kFakeParameterRows` 里那一行的指针。调用方不拥有，静态表一直有效。未找到时为空指针。
+inline const FakeParameterRow* findFakeParameterRow(std::string_view parameterId) {
+    if (parameterId.empty()) {
+        return nullptr;
+    }
+    for (const FakeParameterRow& row : kFakeParameterRows) {
+        if (row.parameterId == parameterId) {
+            return &row;
+        }
+    }
+    return nullptr;
+}
+
 /// @brief 取出一格假数据。
 /// @param row 行号，从 0 开始。越界时返回空视图。
 /// @param column `FakeParameterColumn` 的整数值。`Count` 和越界列返回空视图。

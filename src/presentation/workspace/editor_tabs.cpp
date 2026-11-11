@@ -87,9 +87,20 @@ void EditorTabs::onParameterRowChanged(const QModelIndex& current, const QModelI
     selectParameter(idIndex.data(Qt::DisplayRole).toString());
 }
 
+void EditorTabs::setParameterObserver(std::function<void(std::string_view)> observer) {
+    parameterObserver_ = std::move(observer);
+}
+
 void EditorTabs::selectParameter(const QString& parameterId) {
-    selection_.selectParameter(parameterId.toStdString());
+    const std::string incoming = parameterId.toStdString();
+    if (incoming.empty()) {
+        return;
+    }
+    selection_.selectParameter(incoming);
     refresh();
+    if (parameterObserver_) {
+        parameterObserver_(selection_.parameterId());
+    }
 }
 
 void EditorTabs::selectPage(const QString& pageId) {

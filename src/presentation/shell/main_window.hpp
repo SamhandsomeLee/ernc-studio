@@ -10,7 +10,7 @@ class QDockWidget;
 namespace ernc::presentation {
 
 /// 无设备主窗口。左侧项目树显示目录页面，中间工作区用两个页签显示同一份选择。
-/// 检查器和任务卡仍是名称占位。本类不保存参数值，也不持有串口。
+/// 底部检查器跟随这份参数 id。任务卡仍是名称占位。本类不保存参数值，也不持有串口。
 class MainWindow final : public QMainWindow {
 public:
     /// @brief 创建主窗口。目录加载结果决定项目树显示入口还是失败原因。

@@ -31,6 +31,13 @@ QString NavigatorModel::error() const {
     return error_;
 }
 
+const ernc::domain::ParameterCatalog* NavigatorModel::catalog() const {
+    if (!ok()) {
+        return nullptr;
+    }
+    return catalog_.tryCatalog();
+}
+
 QModelIndex NavigatorModel::index(int row, int column, const QModelIndex& parent) const {
     if (!projection_ || column != 0 || row < 0) {
         return {};

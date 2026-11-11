@@ -1,5 +1,6 @@
 #include "shell/main_window.hpp"
 
+#include "inspector/inspector_panel.hpp"
 #include "navigator/navigator_model.hpp"
 #include "theme/theme_tokens.hpp"
 #include "workspace/editor_tabs.hpp"
@@ -70,6 +71,7 @@ MainWindow::MainWindow(ernc::domain::CatalogLoad catalog, QString catalogPath, Q
     resizeDocks({projectTree, taskCards}, {kProjectTreeWidth, kTaskCardsWidth}, Qt::Horizontal);
     resizeDocks({inspector}, {kInspectorHeight}, Qt::Vertical);
 
+    const ernc::domain::ParameterCatalog* loadedCatalog = nullptr;
     if (!catalog.ok()) {
         showNavigatorError(projectTree, QStringLiteral("参数目录无法加载：") + catalogPath);
     } else {
@@ -79,6 +81,7 @@ MainWindow::MainWindow(ernc::domain::CatalogLoad catalog, QString catalogPath, Q
             delete model;
             showNavigatorError(projectTree, error);
         } else {
+            loadedCatalog = model->catalog();
             auto* tree = new QTreeView(projectTree);
             tree->setObjectName(QStringLiteral("erncProjectNavigator"));
             tree->setHeaderHidden(true);
@@ -94,6 +97,14 @@ MainWindow::MainWindow(ernc::domain::CatalogLoad catalog, QString catalogPath, Q
                 });
         }
     }
+
+    auto* inspectorPanel = new InspectorPanel(loadedCatalog, inspector);
+    QWidget* previousInspector = inspector->widget();
+    inspector->setWidget(inspectorPanel);
+    delete previousInspector;
+    editorTabs->setParameterObserver([inspectorPanel](std::string_view parameterId) {
+        inspectorPanel->showParameter(parameterId);
+    });
 
     QStatusBar* bar = statusBar();
     bar->setObjectName(QStringLiteral("erncStatusBar"));

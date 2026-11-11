@@ -658,3 +658,30 @@ foreach(ernc_parameter_table_case IN LISTS ernc_parameter_table_cases)
         COMMAND ernc_parameter_table_tests "${ernc_parameter_table_case}"
     )
 endforeach()
+
+add_executable(ernc_inspector_context_tests
+    inspector_context_test.cpp
+    ../src/presentation/inspector/inspector_context.cpp
+)
+
+target_include_directories(ernc_inspector_context_tests PRIVATE
+    "${CMAKE_SOURCE_DIR}/src/presentation"
+)
+
+target_link_libraries(ernc_inspector_context_tests PRIVATE ernc_domain)
+
+set(ernc_inspector_context_cases
+    empty_selection
+    anc_off
+    alpha1_values
+    step_read_only
+    check_data_catalog_only
+    no_sketch_values
+)
+
+foreach(ernc_inspector_context_case IN LISTS ernc_inspector_context_cases)
+    add_test(
+        NAME "inspector_context.${ernc_inspector_context_case}"
+        COMMAND ernc_inspector_context_tests "${ernc_inspector_context_case}"
+    )
+endforeach()

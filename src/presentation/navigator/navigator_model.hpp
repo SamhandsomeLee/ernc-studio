@@ -29,6 +29,10 @@ public:
     /// @return 失败文本。成功时为空。文本不是设备状态。
     QString error() const;
 
+    /// @brief 借出投影使用的参数目录。
+    /// @return 投影成功时指向本模型内部目录，不转移所有权。失败时为空指针。指针在本模型存活期间有效，调用方不得移动本模型。
+    const ernc::domain::ParameterCatalog* catalog() const;
+
     /// @brief 取得页面或参数节点。
     /// @param row 父节点下的行号，从 0 开始。
     /// @param column 只接受 0。

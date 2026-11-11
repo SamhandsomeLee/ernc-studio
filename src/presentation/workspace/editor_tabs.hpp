@@ -5,6 +5,9 @@
 #include <QModelIndex>
 #include <QTabWidget>
 
+#include <functional>
+#include <string_view>
+
 class QLabel;
 
 namespace ernc::presentation {
@@ -24,7 +27,13 @@ public:
 
     /// @brief 更新当前页面，保留已经选中的参数 id。
     /// @param pageId 项目树页面 id。空文本不改变已有选择。调用方拥有原件，本函数只复制它。
+    /// @note 不通知参数观察者。检查器只跟参数 id 走。
     void selectPage(const QString& pageId);
+
+    /// @brief 登记参数 id 变化后的通知。
+    /// @param observer 观察者。空函数表示不再通知。本控件复制这份函数。只在 UI 主线程调用。
+    /// @note 通知参数是内部 id 的视图，只在这次调用期间有效。观察者不得再调用 `selectParameter`。
+    void setParameterObserver(std::function<void(std::string_view)> observer);
 
 private:
     /// @brief 按当前选择重写 Function View 上的文字。参数表不在这里改写。
@@ -41,6 +50,9 @@ private:
 
     /// Function View 上的文字。由本控件通过 Qt 父子关系拥有。
     QLabel* functionLabel_ = nullptr;
+
+    /// 参数 id 写入成功后的通知。空表示没有观察者。不拥有检查器。
+    std::function<void(std::string_view)> parameterObserver_;
 };
 
 } // namespace ernc::presentation
