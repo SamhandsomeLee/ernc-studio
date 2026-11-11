@@ -59,6 +59,34 @@ bool resetCopiesReadIntoSet() {
     return true;
 }
 
+bool markCleanKeepsValues() {
+    ArrayState state{2, ScalarValue::Kind::Float32};
+    if (!state.setRead(0, ScalarValue::fromFloat(1.0F)).ok() || !state.setValue(0, ScalarValue::fromFloat(4.0F)).ok()
+        || !state.setValue(1, ScalarValue::fromFloat(5.0F)).ok()) {
+        return fail("mark_clean_keeps_values");
+    }
+    const auto outOfRange = state.markClean(2);
+    const ArrayElement* kept = state.element(0);
+    if (outOfRange.ok() || kept == nullptr || !kept->dirty || !kept->read || !kept->set) {
+        return fail("mark_clean_keeps_values");
+    }
+    if (!state.markClean(0).ok()) {
+        return fail("mark_clean_keeps_values");
+    }
+    const ArrayElement* cleaned = state.element(0);
+    const ArrayElement* other = state.element(1);
+    if (cleaned == nullptr || other == nullptr || cleaned->dirty || !other->dirty || !cleaned->set || !other->set) {
+        return fail("mark_clean_keeps_values");
+    }
+    const auto read = cleaned->read->asFloat();
+    const auto set = cleaned->set->asFloat();
+    const auto otherSet = other->set->asFloat();
+    if (!read.ok() || read.value() != 1.0F || !set.ok() || set.value() != 4.0F || !otherSet.ok() || otherSet.value() != 5.0F) {
+        return fail("mark_clean_keeps_values");
+    }
+    return true;
+}
+
 bool typeOrIndexMismatchIsRejected() {
     ArrayState state{10, ScalarValue::Kind::Float32};
     if (!state.setRead(0, ScalarValue::fromFloat(1.0F)).ok()) {
@@ -87,6 +115,9 @@ bool runCase(std::string_view name) {
     }
     if (name == "type_or_index_mismatch_is_rejected") {
         return typeOrIndexMismatchIsRejected();
+    }
+    if (name == "mark_clean_keeps_values") {
+        return markCleanKeepsValues();
     }
     std::cerr << "unknown case: " << name << '\n';
     return false;

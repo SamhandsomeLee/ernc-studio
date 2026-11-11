@@ -45,6 +45,14 @@ void ArrayState::reset() {
     }
 }
 
+Result<void> ArrayState::markClean(std::size_t index) {
+    if (index >= elements_.size()) {
+        return Result<void>::failure(ErrorCode::InvalidParameter);
+    }
+    elements_[index].dirty = false;
+    return Result<void>::success();
+}
+
 const ArrayElement* ArrayState::element(std::size_t index) const noexcept {
     if (index >= elements_.size()) {
         return nullptr;

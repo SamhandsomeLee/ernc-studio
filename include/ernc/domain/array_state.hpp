@@ -59,6 +59,13 @@ public:
     /// 不访问设备。
     void reset();
 
+    /// @brief 只清掉一个下标的 dirty。
+    /// @param index 从 0 开始的元素下标。等于 size() 时越界。
+    /// @return 成功时没有载荷。Read 和 Set 都不变。该下标本来就不脏时也成功。
+    /// 越界时为 InvalidParameter，数组不变。
+    /// @note 读回已经对上的元素用它收口。reset() 会改整个数组，不能代替这一步。
+    Result<void> markClean(std::size_t index);
+
     /// @brief 借出一个下标的元素。
     /// @param index 从 0 开始的元素下标。
     /// @return 下标有效时指向内部元素，不转移所有权。越界时为空指针。

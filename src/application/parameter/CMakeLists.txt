@@ -4,6 +4,7 @@ add_library(ernc_application STATIC
     write_parameter.cpp
     batch_read.cpp
     batch_write.cpp
+    array_operations.cpp
 )
 
 target_include_directories(ernc_application PUBLIC

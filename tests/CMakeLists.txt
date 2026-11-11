@@ -118,7 +118,7 @@ add_executable(ernc_array_state_tests
 
 target_link_libraries(ernc_array_state_tests PRIVATE ernc_domain)
 
-foreach(ernc_array_state_case IN ITEMS edit_one_index_keeps_other_read reset_copies_read_into_set type_or_index_mismatch_is_rejected)
+foreach(ernc_array_state_case IN ITEMS edit_one_index_keeps_other_read reset_copies_read_into_set type_or_index_mismatch_is_rejected mark_clean_keeps_values)
     add_test(
         NAME "array_state.${ernc_array_state_case}"
         COMMAND ernc_array_state_tests "${ernc_array_state_case}"
@@ -343,6 +343,33 @@ foreach(ernc_batch_write_case IN LISTS ernc_batch_write_cases)
         NAME "batch_write.${ernc_batch_write_case}"
         COMMAND ernc_batch_write_tests
             "${ernc_batch_write_case}"
+            "${CMAKE_SOURCE_DIR}/catalog/parameter_catalog.json"
+            "${ernc_layout_manifest}"
+    )
+endforeach()
+
+add_executable(ernc_array_operations_tests
+    array_operations_test.cpp
+)
+
+target_link_libraries(ernc_array_operations_tests PRIVATE ernc_application ernc_simulator)
+
+set(ernc_array_operation_cases
+    can_msg_read_tail_keeps_set
+    read_stops_at_failed_index
+    cancel_keeps_completed_prefix
+    dirty_gap_splits_write
+    horn_write_tail_is_ten_slots
+    mismatch_stops_later_chunks
+    ack_timeout_does_not_resend
+    can_msg_and_step_do_not_enqueue
+)
+
+foreach(ernc_array_operation_case IN LISTS ernc_array_operation_cases)
+    add_test(
+        NAME "array_operations.${ernc_array_operation_case}"
+        COMMAND ernc_array_operations_tests
+            "${ernc_array_operation_case}"
             "${CMAKE_SOURCE_DIR}/catalog/parameter_catalog.json"
             "${ernc_layout_manifest}"
     )
