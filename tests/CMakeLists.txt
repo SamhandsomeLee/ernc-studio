@@ -256,7 +256,12 @@ foreach(ernc_decode_case IN ITEMS
     ernc_tf.parent_keeps_four_shapes
     ernc_tf.short_field_rejects
     ernc_tf.wrong_shape_rejects
-    ernc_tf.check_data_region_rejects)
+    ernc_tf.check_data_region_rejects
+    check_data.scalar_is_one_float
+    check_data.short_parent_rejects
+    check_data.extra_byte_rejects
+    check_data.ernc_tf_region_rejects
+    check_data.output_check_shape)
     add_test(
         NAME "region_decode.${ernc_decode_case}"
         COMMAND ernc_region_decode_tests "${ernc_decode_case}" "${ernc_layout_manifest}"

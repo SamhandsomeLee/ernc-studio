@@ -1,3 +1,4 @@
+#include "ernc/domain/check_data_codec.hpp"
 #include "ernc/domain/ernc_tf_codec.hpp"
 #include "ernc/domain/firmware_layout.hpp"
 #include "ernc/domain/region_catalog.hpp"
@@ -213,6 +214,124 @@ bool checkDataRegionRejects(const char* manifestPath) {
     return true;
 }
 
+/// @brief 没有 shape 的 1 个 slot 解成一个 float。
+/// @param manifestPath 正式 manifest。
+/// @return 字节 00 00 C0 3F 得到 1.5 时为 true。
+bool scalarIsOneFloat(const char* manifestPath) {
+    constexpr const char* name = "check_data.scalar_is_one_float";
+    const Result<RegionCatalog> catalog = openCatalog(manifestPath, name);
+    if (!catalog.ok()) {
+        return false;
+    }
+    const RegionDefinition* check = catalog.value().find("check_data");
+    const SubRegion* scalar = check == nullptr ? nullptr : findChild(*check, "check_data.RNCAdapCheckRefNum");
+    if (scalar == nullptr || !scalar->shape.empty() || scalar->slotCount != 1U || scalar->size != 4U) {
+        return fail(name);
+    }
+    const std::uint8_t oneAndAHalf[] = {0x00, 0x00, 0xC0, 0x3F};
+    const Result<DecodedField> decoded = ernc::domain::decodeCheckDataField(*scalar, oneAndAHalf);
+    if (!decoded.ok() || decoded.tryValue() == nullptr) {
+        return fail(name);
+    }
+    const DecodedField& field = decoded.value();
+    if (!field.shape.empty() || field.values.size() != 1U || field.values.front() != 1.5F) {
+        return fail(name);
+    }
+    return true;
+}
+
+/// @brief 父区域少一字节时不公布任何子字段。
+/// @param manifestPath 正式 manifest。
+/// @return 错误码为 PayloadSizeMismatch 时为 true。
+bool shortParentRejects(const char* manifestPath) {
+    constexpr const char* name = "check_data.short_parent_rejects";
+    const Result<RegionCatalog> catalog = openCatalog(manifestPath, name);
+    if (!catalog.ok()) {
+        return false;
+    }
+    const RegionDefinition* check = catalog.value().find("check_data");
+    if (check == nullptr || check->size == 0U || check->subregions.size() != 20U) {
+        return fail(name);
+    }
+    const std::vector<std::uint8_t> bytes(check->size - 1U, 0);
+    const Result<DecodedRegion> decoded = ernc::domain::decodeCheckData(*check, bytes);
+    if (decoded.ok() || decoded.tryValue() != nullptr || decoded.tryError() == nullptr || *decoded.tryError() != ErrorCode::PayloadSizeMismatch) {
+        return fail(name);
+    }
+    return true;
+}
+
+/// @brief 父区域多一字节时拒绝。
+/// @param manifestPath 正式 manifest。
+/// @return 错误码为 PayloadSizeMismatch 时为 true。
+bool extraByteRejects(const char* manifestPath) {
+    constexpr const char* name = "check_data.extra_byte_rejects";
+    const Result<RegionCatalog> catalog = openCatalog(manifestPath, name);
+    if (!catalog.ok()) {
+        return false;
+    }
+    const RegionDefinition* check = catalog.value().find("check_data");
+    if (check == nullptr) {
+        return fail(name);
+    }
+    const std::vector<std::uint8_t> bytes(static_cast<std::size_t>(check->size) + 1U, 0);
+    const Result<DecodedRegion> decoded = ernc::domain::decodeCheckData(*check, bytes);
+    if (decoded.ok() || decoded.tryError() == nullptr || *decoded.tryError() != ErrorCode::PayloadSizeMismatch) {
+        return fail(name);
+    }
+    return true;
+}
+
+/// @brief ERNC_TF 不能交给 check_data 解码。
+/// @param manifestPath 正式 manifest。
+/// @return 错误码为 InvalidParameter 时为 true。
+bool erncTfRegionRejects(const char* manifestPath) {
+    constexpr const char* name = "check_data.ernc_tf_region_rejects";
+    const Result<RegionCatalog> catalog = openCatalog(manifestPath, name);
+    if (!catalog.ok()) {
+        return false;
+    }
+    const RegionDefinition* transfer = catalog.value().find("ERNC_TF");
+    if (transfer == nullptr) {
+        return fail(name);
+    }
+    const Result<DecodedRegion> decoded = ernc::domain::decodeCheckData(*transfer, {});
+    if (decoded.ok() || decoded.tryError() == nullptr || *decoded.tryError() != ErrorCode::InvalidParameter) {
+        return fail(name);
+    }
+    return true;
+}
+
+/// @brief OutputCheck 保留目录维度，第一个值来自手工字节。
+/// @param manifestPath 正式 manifest。
+/// @return shape 为 6×200 且第一个值是 1 时为 true。
+bool outputCheckShape(const char* manifestPath) {
+    constexpr const char* name = "check_data.output_check_shape";
+    const Result<RegionCatalog> catalog = openCatalog(manifestPath, name);
+    if (!catalog.ok()) {
+        return false;
+    }
+    const RegionDefinition* check = catalog.value().find("check_data");
+    const SubRegion* output = check == nullptr ? nullptr : findChild(*check, "check_data.OutputCheck");
+    if (output == nullptr || output->shape != std::vector<std::uint32_t>{6, 200}) {
+        return fail(name);
+    }
+    std::vector<std::uint8_t> bytes(output->size, 0);
+    const std::uint8_t one[] = {0x00, 0x00, 0x80, 0x3F};
+    if (!putBytes(bytes, 0, one)) {
+        return fail(name);
+    }
+    const Result<DecodedField> decoded = ernc::domain::decodeCheckDataField(*output, bytes);
+    if (!decoded.ok() || decoded.tryValue() == nullptr) {
+        return fail(name);
+    }
+    const DecodedField& field = decoded.value();
+    if (field.shape != output->shape || field.values.size() != output->slotCount || field.values.front() != 1.0F) {
+        return fail(name);
+    }
+    return true;
+}
+
 /// @brief 按用例名运行。
 /// @param name 用例名。
 /// @param manifestPath 正式 manifest。wrong_shape 不读取它。
@@ -232,6 +351,21 @@ bool runCase(std::string_view name, const char* manifestPath) {
     }
     if (name == "ernc_tf.check_data_region_rejects") {
         return checkDataRegionRejects(manifestPath);
+    }
+    if (name == "check_data.scalar_is_one_float") {
+        return scalarIsOneFloat(manifestPath);
+    }
+    if (name == "check_data.short_parent_rejects") {
+        return shortParentRejects(manifestPath);
+    }
+    if (name == "check_data.extra_byte_rejects") {
+        return extraByteRejects(manifestPath);
+    }
+    if (name == "check_data.ernc_tf_region_rejects") {
+        return erncTfRegionRejects(manifestPath);
+    }
+    if (name == "check_data.output_check_shape") {
+        return outputCheckShape(manifestPath);
     }
     std::cerr << "unknown case: " << name << '\n';
     return false;
