@@ -313,6 +313,28 @@ set(ernc_batch_read_cases
     check_data_is_not_in_a_frame
 )
 
+add_executable(ernc_batch_write_tests
+    batch_write_test.cpp
+)
+
+target_link_libraries(ernc_batch_write_tests PRIVATE ernc_application ernc_simulator)
+
+set(ernc_batch_write_cases
+    two_scalars_write_one_at_a_time
+    mismatch_names_anc_then_writes_enc
+    step_and_can_msg_are_not_written
+)
+
+foreach(ernc_batch_write_case IN LISTS ernc_batch_write_cases)
+    add_test(
+        NAME "batch_write.${ernc_batch_write_case}"
+        COMMAND ernc_batch_write_tests
+            "${ernc_batch_write_case}"
+            "${CMAKE_SOURCE_DIR}/catalog/parameter_catalog.json"
+            "${ernc_layout_manifest}"
+    )
+endforeach()
+
 foreach(ernc_batch_read_case IN LISTS ernc_batch_read_cases)
     add_test(
         NAME "batch_read.${ernc_batch_read_case}"

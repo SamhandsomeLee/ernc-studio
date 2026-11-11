@@ -3,6 +3,7 @@ add_library(ernc_application STATIC
     stage_value.cpp
     write_parameter.cpp
     batch_read.cpp
+    batch_write.cpp
 )
 
 target_include_directories(ernc_application PUBLIC
