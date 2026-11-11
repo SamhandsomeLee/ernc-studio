@@ -6,6 +6,8 @@ add_library(ernc_domain STATIC
     region/region_catalog.cpp
     region/ernc_tf_codec.cpp
     region/check_data_codec.cpp
+    analysis/dataset.cpp
+    analysis/series_mapper.cpp
     parameter/runtime_store.cpp
     parameter/array_state.cpp
     parameter/write_plan.cpp

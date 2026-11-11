@@ -281,6 +281,26 @@ foreach(ernc_decode_case IN ITEMS
     )
 endforeach()
 
+add_executable(ernc_analysis_dataset_tests
+    analysis_dataset_test.cpp
+)
+
+target_link_libraries(ernc_analysis_dataset_tests PRIVATE ernc_domain)
+
+foreach(ernc_analysis_case IN ITEMS
+    spec_radius_keeps_120_indexes
+    grid_partitions_6x6x120
+    scalar_empty_shape_is_one_point
+    shape_mismatch_refuses
+    zero_dimension_refuses
+    channel_out_of_range_refuses
+    shape_is_not_collapsed)
+    add_test(
+        NAME "analysis_dataset.${ernc_analysis_case}"
+        COMMAND ernc_analysis_dataset_tests "${ernc_analysis_case}"
+    )
+endforeach()
+
 add_executable(ernc_region_reader_tests
     region_reader_test.cpp
 )
