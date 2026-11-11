@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ernc/domain/catalog.hpp"
+#include "ernc/domain/runtime_store.hpp"
 #include "shell/layout_settings.hpp"
 
 #include <QMainWindow>
@@ -70,6 +71,9 @@ private:
     /// @param action 动作名，只在本次调用期间借用。未知动作被忽略。
     /// @note `close-overlay` 在没有浮层时什么都不做。不取消写入。
     void runBoundAction(std::string_view action);
+
+    /// 参数运行状态。本窗口拥有。参数表只借用它，不保存第二份数值。
+    ernc::domain::ParameterRuntimeStore parameterStore_;
 
     /// 中央工作页。由本窗口通过 Qt 父子关系拥有。
     EditorTabs* editorTabs_ = nullptr;

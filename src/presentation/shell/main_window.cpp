@@ -70,15 +70,6 @@ MainWindow::MainWindow(ernc::domain::CatalogLoad catalog, QString catalogPath, Q
     setObjectName(QStringLiteral("erncMainWindow"));
     setWindowTitle(QStringLiteral("ERNC Studio"));
 
-    auto* workArea = new QWidget(this);
-    workArea->setObjectName(QStringLiteral("erncWorkArea"));
-    auto* workLayout = new QVBoxLayout(workArea);
-    workLayout->setContentsMargins(0, 0, 0, 0);
-    auto* editorTabs = new EditorTabs(workArea);
-    editorTabs_ = editorTabs;
-    workLayout->addWidget(editorTabs);
-    setCentralWidget(workArea);
-
     projectTree_ = addPlaceholderDock(
         QStringLiteral("erncDockProjectTree"), QStringLiteral("项目树"), Qt::LeftDockWidgetArea);
     inspectorDock_ = addPlaceholderDock(
@@ -93,6 +84,7 @@ MainWindow::MainWindow(ernc::domain::CatalogLoad catalog, QString catalogPath, Q
     taskCards_->raise();
 
     const ernc::domain::ParameterCatalog* loadedCatalog = nullptr;
+    QTreeView* navigatorTree = nullptr;
     if (!catalog.ok()) {
         showNavigatorError(projectTree_, QStringLiteral("参数目录无法加载：") + catalogPath);
     } else {
@@ -112,11 +104,23 @@ MainWindow::MainWindow(ernc::domain::CatalogLoad catalog, QString catalogPath, Q
             QWidget* previous = projectTree_->widget();
             projectTree_->setWidget(tree);
             delete previous;
-            QObject::connect(tree->selectionModel(), &QItemSelectionModel::currentChanged, this,
-                [editorTabs](const QModelIndex& current, const QModelIndex&) {
-                    applyTreeSelection(editorTabs, current);
-                });
+            navigatorTree = tree;
         }
+    }
+
+    auto* workArea = new QWidget(this);
+    workArea->setObjectName(QStringLiteral("erncWorkArea"));
+    auto* workLayout = new QVBoxLayout(workArea);
+    workLayout->setContentsMargins(0, 0, 0, 0);
+    auto* editorTabs = new EditorTabs(loadedCatalog, &parameterStore_, workArea);
+    editorTabs_ = editorTabs;
+    workLayout->addWidget(editorTabs);
+    setCentralWidget(workArea);
+    if (navigatorTree != nullptr) {
+        QObject::connect(navigatorTree->selectionModel(), &QItemSelectionModel::currentChanged, this,
+            [editorTabs](const QModelIndex& current, const QModelIndex&) {
+                applyTreeSelection(editorTabs, current);
+            });
     }
 
     inspectorPanel_ = new InspectorPanel(loadedCatalog, inspectorDock_);

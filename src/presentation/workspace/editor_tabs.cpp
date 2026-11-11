@@ -32,23 +32,26 @@ QWidget* makeFunctionView(QWidget* parent, QLabel*& label) {
     return view;
 }
 
-/// @brief 做一个显示固定假数据表的 Parameter View。
+/// @brief 做一个显示目录和运行状态的 Parameter View。
 /// @param parent 页签控件。它通过 Qt 父子关系拥有返回的页面。
+/// @param catalog 参数目录，只借用。空指针时表格没有行。
+/// @param store 运行状态，只借用。空指针时不显示数值。
 /// @return 带说明和表格的页面。表格不连接设备，选中行由调用方接到共用选择。
-QWidget* makeParameterView(QWidget* parent) {
+QWidget* makeParameterView(QWidget* parent, const ernc::domain::ParameterCatalog* catalog,
+                           ernc::domain::ParameterRuntimeStore* store) {
     auto* view = new QWidget(parent);
     view->setObjectName(QStringLiteral("erncParameterView"));
     auto* layout = new QVBoxLayout(view);
     layout->setContentsMargins(kSpace16, kSpace16, kSpace16, kSpace16);
     layout->setSpacing(kSpace8);
 
-    auto* caption = new QLabel(QStringLiteral("以下是固定假数据，不是设备当前值。"), view);
+    auto* caption = new QLabel(QStringLiteral("参数表显示目录和运行状态。没有读数时 Read 为 —。"), view);
     caption->setWordWrap(true);
     layout->addWidget(caption);
 
     auto* table = new QTableView(view);
     table->setObjectName(QStringLiteral("erncParameterTable"));
-    auto* model = new ParameterTableModel(table);
+    auto* model = new ParameterTableModel(catalog, store, table);
     table->setModel(model);
     table->setSelectionBehavior(QAbstractItemView::SelectRows);
     table->setSelectionMode(QAbstractItemView::SingleSelection);
@@ -61,14 +64,15 @@ QWidget* makeParameterView(QWidget* parent) {
 
 } // namespace
 
-EditorTabs::EditorTabs(QWidget* parent)
+EditorTabs::EditorTabs(const ernc::domain::ParameterCatalog* catalog, ernc::domain::ParameterRuntimeStore* store,
+                         QWidget* parent)
     : QTabWidget(parent) {
     setObjectName(QStringLiteral("erncEditorTabs"));
     setTabsClosable(false);
     setMovable(false);
 
     addTab(makeFunctionView(this, functionLabel_), QStringLiteral("Function View"));
-    auto* parameterView = makeParameterView(this);
+    auto* parameterView = makeParameterView(this, catalog, store);
     addTab(parameterView, QStringLiteral("Parameter View"));
     auto* table = parameterView->findChild<QTableView*>(QStringLiteral("erncParameterTable"));
     connect(table->selectionModel(), &QItemSelectionModel::currentRowChanged, this,

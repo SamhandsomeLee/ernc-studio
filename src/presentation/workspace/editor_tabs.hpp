@@ -2,6 +2,9 @@
 
 #include "workspace/editor_selection.hpp"
 
+#include "ernc/domain/catalog.hpp"
+#include "ernc/domain/runtime_store.hpp"
+
 #include <QModelIndex>
 #include <QTabWidget>
 
@@ -17,9 +20,12 @@ namespace ernc::presentation {
 class EditorTabs final : public QTabWidget {
 public:
     /// @brief 创建两个工作页，初始没有选中的页面或参数。
+    /// @param catalog 参数目录，只借用。空指针时参数表没有行。调用方保证它比本控件活得久。
+    /// @param store 运行状态，只借用。空指针时参数表不显示数值。调用方保证它比本控件活得久。
     /// @param parent 父控件。非空时由 Qt 父子关系拥有本控件。必须在 UI 主线程创建。
     /// @note 启动时停在 Function View。预置可以切换页签，窗口状态不单独保存这个页签。
-    explicit EditorTabs(QWidget* parent = nullptr);
+    explicit EditorTabs(const ernc::domain::ParameterCatalog* catalog, ernc::domain::ParameterRuntimeStore* store,
+                        QWidget* parent = nullptr);
 
     /// @brief 切到 Function View。
     /// @note 不改参数 id，也不读取设备。只在 UI 主线程调用。

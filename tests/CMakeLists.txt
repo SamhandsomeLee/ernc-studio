@@ -790,6 +790,37 @@ foreach(ernc_parameter_table_case IN LISTS ernc_parameter_table_cases)
     )
 endforeach()
 
+if(ERNC_BUILD_UI)
+    find_package(Qt6 REQUIRED COMPONENTS Core)
+
+    add_executable(ernc_parameter_store_model_tests
+        parameter_store_model_test.cpp
+        ../src/presentation/parameters/parameter_table_model.cpp
+    )
+
+    target_include_directories(ernc_parameter_store_model_tests PRIVATE
+        "${CMAKE_SOURCE_DIR}/src/presentation"
+    )
+
+    target_link_libraries(ernc_parameter_store_model_tests PRIVATE Qt6::Core ernc_domain)
+
+    set(ernc_parameter_store_model_cases
+        observe_shows_read
+        stage_shows_set
+        offline_shows_stale
+        other_session_is_ignored
+    )
+
+    foreach(ernc_parameter_store_model_case IN LISTS ernc_parameter_store_model_cases)
+        add_test(
+            NAME "parameter_store_model.${ernc_parameter_store_model_case}"
+            COMMAND ernc_parameter_store_model_tests
+                "${ernc_parameter_store_model_case}"
+                "${CMAKE_SOURCE_DIR}/catalog/parameter_catalog.json"
+        )
+    endforeach()
+endif()
+
 add_executable(ernc_inspector_context_tests
     inspector_context_test.cpp
     ../src/presentation/inspector/inspector_context.cpp
