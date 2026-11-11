@@ -648,3 +648,28 @@ foreach(ernc_simulator_fault_case IN LISTS ernc_simulator_fault_cases)
         COMMAND ernc_simulator_fault_tests "${ernc_simulator_fault_case}"
     )
 endforeach()
+
+# ES-038: spawn ernc_comm_lab. The checker links only the C++ standard library.
+if(TARGET ernc_comm_lab)
+    add_executable(ernc_comm_lab_tests
+        comm_lab_test.cpp
+    )
+
+    set(ernc_comm_lab_cases
+        help
+        simulator_readonly
+        allow_write_still_reads
+        serial_blocked
+        unknown_scenario
+        missing_profile
+    )
+
+    foreach(ernc_comm_lab_case IN LISTS ernc_comm_lab_cases)
+        add_test(
+            NAME "comm_lab.${ernc_comm_lab_case}"
+            COMMAND ernc_comm_lab_tests
+                "$<TARGET_FILE:ernc_comm_lab>"
+                "${ernc_comm_lab_case}"
+        )
+    endforeach()
+endif()
