@@ -1526,6 +1526,37 @@ if(ERNC_BUILD_UI)
             COMMAND ernc_check_data_plot_tests "${ernc_check_data_case}"
         )
     endforeach()
+
+    add_executable(ernc_spec_radius_plot_tests
+        spec_radius_plot_test.cpp
+        ../src/presentation/analysis/spec_radius_plot.cpp
+        ../src/presentation/analysis/plot_workspace.cpp
+    )
+
+    target_include_directories(ernc_spec_radius_plot_tests PRIVATE
+        "${CMAKE_SOURCE_DIR}/src/presentation"
+        "${ernc_qwt_include}"
+    )
+
+    target_link_libraries(ernc_spec_radius_plot_tests PRIVATE
+        Qt6::Widgets
+        Qt6::Concurrent
+        Qt6::PrintSupport
+        Qt6::Svg
+        Qt6::OpenGL
+        ernc_domain
+        "${ernc_qwt_library}"
+    )
+
+    foreach(ernc_spec_radius_plot_case IN ITEMS
+        indexes_survive_clearing_the_curve
+        axis_uses_index_without_hz
+        rejected_curve_keeps_previous)
+        add_test(
+            NAME "spec_radius_plot.${ernc_spec_radius_plot_case}"
+            COMMAND ernc_spec_radius_plot_tests "${ernc_spec_radius_plot_case}"
+        )
+    endforeach()
 endif()
 
 add_executable(ernc_inspector_context_tests
