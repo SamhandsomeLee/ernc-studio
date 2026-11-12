@@ -71,7 +71,7 @@ bool refernumStagesCount(const ParameterCatalog& catalog, const FirmwareLayout& 
     }
     store.observe(refernum, ScalarValue::fromInt32(2), RuntimeTime{std::chrono::seconds{1}});
     ErncInOutPage page(&catalog, &store, &layout);
-    if (!page.detailText(QStringLiteral("RNC_param.refernum")).contains(QStringLiteral("参考信号通道数"))
+    if (page.detailText(QStringLiteral("RNC_param.refernum")) != QStringLiteral("数量"))
         || !page.hasEditor(QStringLiteral("RNC_param.refernum"))
         || page.valueText(QStringLiteral("RNC_param.refernum")) != QStringLiteral("2")) {
         return fail("refernum_stages_count");

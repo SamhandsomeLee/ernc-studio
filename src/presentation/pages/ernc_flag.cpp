@@ -1,11 +1,13 @@
 #include "pages/ernc_flag.hpp"
 
+#include "pages/function_view_layout.hpp"
+
 #include "ernc/application/stage_value.hpp"
 #include "ernc/domain/control_semantics.hpp"
 #include "theme/theme_tokens.hpp"
 
 #include <QComboBox>
-#include <QGridLayout>
+#include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
@@ -117,18 +119,16 @@ ErncFlagPage::ErncFlagPage(const ernc::domain::ParameterCatalog* catalog, ernc::
         const ernc::domain::ParameterDefinition* definition =
             catalog_ == nullptr ? nullptr : catalog_->find(idText);
         auto* row = new QWidget(this);
-        auto* grid = new QGridLayout(row);
-        grid->setContentsMargins(0, 0, 0, 0);
+        auto* line = new QHBoxLayout(row);
+        line->setContentsMargins(0, 0, 0, 0);
+        line->setSpacing(kSpace8);
         auto* name = new QLabel(QString::fromUtf8(idText), row);
-        auto* description = new QLabel(row);
-        description->setWordWrap(true);
-        if (definition != nullptr && definition->descriptionZh) {
-            description->setText(QString::fromStdString(*definition->descriptionZh));
-        }
+        function_view_layout::styleParameterIdLabel(name);
         auto* value = new QLabel(row);
-        grid->addWidget(name, 0, 0);
-        grid->addWidget(value, 0, 1);
-        grid->addWidget(description, 1, 0, 1, 2);
+        function_view_layout::styleValueLabel(value);
+        line->addWidget(name);
+        line->addWidget(value);
+        function_view_layout::gapBetweenSecondAndThirdColumns(line);
         Control control;
         control.id = QString::fromUtf8(idText);
         control.value = value;
@@ -142,7 +142,8 @@ ErncFlagPage::ErncFlagPage(const ernc::domain::ParameterCatalog* catalog, ernc::
             choice->addItem(QStringLiteral("开"));
             choice->addItem(QStringLiteral("关"));
             choice->setCurrentIndex(-1);
-            grid->addWidget(choice, 0, 2);
+            function_view_layout::styleToggleCombo(choice);
+            line->addWidget(choice);
             control.toggle = choice;
             const QString parameterId = control.id;
             connect(choice, &QComboBox::currentIndexChanged, this, [this, parameterId](int index) {
@@ -158,17 +159,22 @@ ErncFlagPage::ErncFlagPage(const ernc::domain::ParameterCatalog* catalog, ernc::
         } else if (command) {
             auto* blocked = new QLabel(QStringLiteral("车速映射未确认，不能执行"), row);
             blocked->setObjectName(QStringLiteral("erncFlagRefreshBlock"));
+            blocked->setWordWrap(true);
+            blocked->setMaximumWidth(280);
+            blocked->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
             auto* button = new QPushButton(QStringLiteral("执行"), row);
             button->setObjectName(QStringLiteral("erncFlagRefresh"));
             button->setEnabled(false);
-            grid->addWidget(blocked, 0, 2);
-            grid->addWidget(button, 0, 3);
+            function_view_layout::styleActionButton(button);
+            line->addWidget(blocked);
+            line->addWidget(button);
             control.refresh = button;
             connect(button, &QPushButton::clicked, this, [this] { pressRefresh(); });
         } else if (definition != nullptr && definition->dataType
                    && *definition->dataType == ernc::domain::DataType::UInt32) {
             auto* editor = new QLineEdit(row);
-            grid->addWidget(editor, 0, 2);
+            function_view_layout::styleScalarEditor(editor);
+            line->addWidget(editor);
             control.raw = editor;
             const QString parameterId = control.id;
             connect(editor, &QLineEdit::editingFinished, this, [this, parameterId] {
@@ -182,6 +188,7 @@ ErncFlagPage::ErncFlagPage(const ernc::domain::ParameterCatalog* catalog, ernc::
                 commitRaw(parameterId, rowControl->raw->text());
             });
         }
+        function_view_layout::sealFormRow(line);
         controls_.push_back(control);
         root->addWidget(row);
     }

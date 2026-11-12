@@ -1,5 +1,7 @@
 #include "pages/rnc_param.hpp"
 
+#include "pages/function_view_layout.hpp"
+
 #include "theme/theme_tokens.hpp"
 
 #include <QFrame>
@@ -160,28 +162,19 @@ void RncParamPage::addRow(QWidget* parent, QVBoxLayout* layout, const QString& p
     auto* name = new QPushButton(parameterId, row);
     name->setFlat(true);
     name->setStyleSheet(QStringLiteral("text-align: left; padding: 0 4px;"));
-    name->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
-    const QString description = definition->descriptionZh ? QString::fromStdString(*definition->descriptionZh) : QString();
-    auto* detail = new QLabel(description, row);
-    detail->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-    detail->setMinimumWidth(0);
-    detail->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+    function_view_layout::styleParameterNameButton(name);
     auto* value = new QLabel(oneSlot || isReadOnly(*definition) ? kBlank.toString() : kArrayMark.toString(), row);
-    value->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    value->setMinimumWidth(48);
+    function_view_layout::styleValueLabel(value);
     line->addWidget(name);
-    line->addWidget(detail, 1);
     line->addWidget(value);
+    function_view_layout::gapBetweenSecondAndThirdColumns(line);
     Control control;
     control.id = parameterId;
-    control.detail = detail;
     control.value = value;
     connect(name, &QPushButton::clicked, this, [this, parameterId] { activate(parameterId); });
     if (editable) {
         auto* editor = new QLineEdit(row);
-        editor->setMinimumWidth(72);
-        editor->setMaximumWidth(160);
-        editor->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+        function_view_layout::styleScalarEditor(editor);
         line->addWidget(editor);
         control.editor = editor;
         connect(editor, &QLineEdit::editingFinished, this, [this, parameterId] {
@@ -196,10 +189,11 @@ void RncParamPage::addRow(QWidget* parent, QVBoxLayout* layout, const QString& p
         });
     } else if (!oneSlot) {
         auto* shortcut = new QPushButton(QStringLiteral("定位"), row);
-        shortcut->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
+        function_view_layout::styleActionButton(shortcut);
         line->addWidget(shortcut);
         connect(shortcut, &QPushButton::clicked, this, [this, parameterId] { activate(parameterId); });
     }
+    function_view_layout::sealFormRow(line);
     controls_.push_back(control);
     layout->addWidget(row);
 }
@@ -245,11 +239,14 @@ QString RncParamPage::valueText(const QString& parameterId) const {
 }
 
 QString RncParamPage::detailText(const QString& parameterId) const {
-    const Control* control = findControl(parameterId);
-    if (control == nullptr || control->detail == nullptr) {
+    if (catalog_ == nullptr) {
         return {};
     }
-    return control->detail->text();
+    const ernc::domain::ParameterDefinition* definition = catalog_->find(parameterId.toStdString());
+    if (definition == nullptr || !definition->descriptionZh) {
+        return {};
+    }
+    return QString::fromStdString(*definition->descriptionZh);
 }
 
 bool RncParamPage::hasEditor(const QString& parameterId) const {

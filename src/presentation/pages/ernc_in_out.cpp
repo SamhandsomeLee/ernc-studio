@@ -1,5 +1,7 @@
 #include "pages/ernc_in_out.hpp"
 
+#include "pages/function_view_layout.hpp"
+
 #include "theme/theme_tokens.hpp"
 
 #include <QFrame>
@@ -75,15 +77,9 @@ QString areaName(const ernc::domain::ParameterDefinition& definition) {
     return QStringLiteral("增益");
 }
 
-/// @brief 拼出说明和区域名。
-/// @param definition 目录定义，只借用。
-/// @return 没有说明时只有区域名。不加入参数 ID，也不生成通道名。
+/// @brief 功能页上的简短类型标签。完整说明在检查器属性里。
 QString detailFor(const ernc::domain::ParameterDefinition& definition) {
-    const QString area = areaName(definition);
-    if (!definition.descriptionZh || definition.descriptionZh->empty()) {
-        return area;
-    }
-    return QString::fromStdString(*definition.descriptionZh) + QStringLiteral(" ") + area;
+    return areaName(definition);
 }
 
 /// @brief 把 1 slot 标量格式化成十进制。
@@ -141,17 +137,16 @@ ErncInOutPage::ErncInOutPage(const ernc::domain::ParameterCatalog* catalog, ernc
         auto* name = new QPushButton(QString::fromStdString(definition.id.text()), row);
         name->setFlat(true);
         name->setStyleSheet(QStringLiteral("text-align: left; padding: 0 4px;"));
-        name->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
+        function_view_layout::styleParameterNameButton(name);
         auto* detail = new QLabel(detailFor(definition), row);
-        detail->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-        detail->setMinimumWidth(0);
-        detail->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+        function_view_layout::styleKindLabel(detail);
         auto* value = new QLabel(oneSlot ? kBlank.toString() : kArrayMark.toString(), row);
-        value->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-        value->setMinimumWidth(48);
+        function_view_layout::styleValueLabel(value);
         line->addWidget(name);
-        line->addWidget(detail, 1);
+        line->addWidget(detail);
+        function_view_layout::gapBetweenSecondAndThirdColumns(line);
         line->addWidget(value);
+        function_view_layout::gapBetweenSecondAndThirdColumns(line);
         Control control;
         control.id = QString::fromStdString(definition.id.text());
         control.detail = detail;
@@ -160,9 +155,7 @@ ErncInOutPage::ErncInOutPage(const ernc::domain::ParameterCatalog* catalog, ernc
         connect(name, &QPushButton::clicked, this, [this, parameterId] { activate(parameterId); });
         if (oneSlot) {
             auto* editor = new QLineEdit(row);
-            editor->setMinimumWidth(96);
-            editor->setMaximumWidth(220);
-            editor->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+            function_view_layout::styleScalarEditor(editor);
             line->addWidget(editor);
             control.editor = editor;
             connect(editor, &QLineEdit::editingFinished, this, [this, parameterId] {
@@ -177,10 +170,11 @@ ErncInOutPage::ErncInOutPage(const ernc::domain::ParameterCatalog* catalog, ernc
             });
         } else {
             auto* shortcut = new QPushButton(QStringLiteral("定位"), row);
-            shortcut->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
+            function_view_layout::styleActionButton(shortcut);
             line->addWidget(shortcut);
             connect(shortcut, &QPushButton::clicked, this, [this, parameterId] { activate(parameterId); });
         }
+        function_view_layout::sealFormRow(line);
         controls_.push_back(control);
         root->addWidget(row);
     }

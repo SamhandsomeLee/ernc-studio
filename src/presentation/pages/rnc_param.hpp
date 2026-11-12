@@ -58,6 +58,7 @@ public:
     /// @brief 读取目录说明，不含参数 ID。
     /// @param parameterId 目录主键。调用方拥有原件，本函数只比较它。
     /// @return 说明原文。没有说明时为空。未知 id 为空字符串。
+    /// @brief 目录说明原文。供测试读取；界面说明在检查器属性中。
     QString detailText(const QString& parameterId) const;
 
     /// @brief 这一行是否有数字框。
@@ -85,9 +86,6 @@ private:
     struct Control {
         /// 目录主键。
         QString id;
-
-        /// 目录说明。不含参数 ID。
-        QLabel* detail = nullptr;
 
         /// 当前值，或数组行的「数组」。
         QLabel* value = nullptr;
