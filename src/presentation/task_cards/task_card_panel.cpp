@@ -9,34 +9,39 @@
 namespace ernc::presentation {
 namespace {
 
+/// @brief 构造当前页和全工程操作区，按钮只转发操作意图。
+/// @param panel 借用的信号发出者，由调用方拥有。
+/// @param parent 通过 Qt 父子关系拥有返回的操作区。
 QWidget* makeCardPage(TaskCardPanel* panel, QWidget* parent) {
     auto* page = new QWidget(parent);
     auto* layout = new QVBoxLayout(page);
     layout->setContentsMargins(kSpace16, kSpace16, kSpace16, kSpace16);
     layout->setSpacing(kSpace8);
 
+    auto* readCurrent = new QPushButton(QStringLiteral("读取当前页"), page);
+    readCurrent->setObjectName(QStringLiteral("erncTaskReadCurrent"));
+    auto* writeCurrent = new QPushButton(QStringLiteral("写入当前页"), page);
+    writeCurrent->setObjectName(QStringLiteral("erncTaskWriteModified"));
+    layout->addWidget(readCurrent);
+    layout->addWidget(writeCurrent);
+    layout->addSpacing(kSpace4);
+
     auto* hint = new QLabel(
-        QStringLiteral("标量批量 FC03/FC16。读取/写入「所有」时跳过 check_data 与 ERNC_TF 等区域，不触发传函 BIN 传输。"), page);
+        QStringLiteral("全工程操作仅处理标量。写入前可查看范围和跳过项。"), page);
     hint->setWordWrap(true);
     layout->addWidget(hint);
 
-    auto* readCurrent = new QPushButton(QStringLiteral("读取当前参数"), page);
-    readCurrent->setObjectName(QStringLiteral("erncTaskReadCurrent"));
-    auto* writeModified = new QPushButton(QStringLiteral("写入修改参数"), page);
-    writeModified->setObjectName(QStringLiteral("erncTaskWriteModified"));
-    auto* readAll = new QPushButton(QStringLiteral("读取所有参数"), page);
+    auto* readAll = new QPushButton(QStringLiteral("读取全部标量"), page);
     readAll->setObjectName(QStringLiteral("erncTaskReadAll"));
-    auto* writeAll = new QPushButton(QStringLiteral("写入所有参数"), page);
+    auto* writeAll = new QPushButton(QStringLiteral("全工程写入计划"), page);
     writeAll->setObjectName(QStringLiteral("erncTaskWriteAll"));
 
-    layout->addWidget(readCurrent);
-    layout->addWidget(writeModified);
     layout->addWidget(readAll);
     layout->addWidget(writeAll);
     layout->addStretch(1);
 
     QObject::connect(readCurrent, &QPushButton::clicked, panel, &TaskCardPanel::readCurrentPageRequested);
-    QObject::connect(writeModified, &QPushButton::clicked, panel, &TaskCardPanel::writeModifiedPageRequested);
+    QObject::connect(writeCurrent, &QPushButton::clicked, panel, &TaskCardPanel::writeCurrentPageRequested);
     QObject::connect(readAll, &QPushButton::clicked, panel, &TaskCardPanel::readAllScalarsRequested);
     QObject::connect(writeAll, &QPushButton::clicked, panel, &TaskCardPanel::writeAllDirtyRequested);
 

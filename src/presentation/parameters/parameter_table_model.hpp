@@ -53,8 +53,8 @@ public:
 
     /// @brief 读取一格的显示文字。
     /// @param index 单元格。无效索引返回空。
-    /// @param role 只处理 `Qt::DisplayRole`。
-    /// @return 从目录和 Store 现取的文字。其他角色返回空。
+    /// @param role 显示文字或 Read/Set 的对齐方式。
+    /// @return 格子的显示文字或数字列右对齐。其他角色返回空。
     QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
 
     /// @brief 读取列标题。
@@ -66,7 +66,7 @@ public:
 
     /// @brief 单元格是否可编辑。
     /// @param index 单元格。
-    /// @return 有效单元格可选、可用。Read 和 Set 都不可编辑。
+    /// @return 有效单元格可选、可用。只有支持暂存的 Set 格可编辑。
     Qt::ItemFlags flags(const QModelIndex& index) const override;
 
 private:

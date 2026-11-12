@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ernc/domain/catalog.hpp"
-#include "parameters/fake_parameter_rows.hpp"
+#include "ernc/domain/runtime_store.hpp"
 
 #include <string>
 #include <string_view>
@@ -20,14 +20,14 @@ struct InspectorText {
     std::string diagnostics;
 };
 
-/// @brief 用一次借用的目录定义和假数据行生成三个标签的文字。
+/// @brief 从目录和实时工作区生成三个标签的文字。
 /// @param parameterId 当前参数 id。空文本表示还没有选择。只在本次调用期间借用。
 /// @param definition 目录定义。空指针表示目录里没有这一条，或目录不可用。调用方保留所有权。
-/// @param row 固定假数据行。空指针表示假数据表没有这一行。指针指向静态表，调用方不拥有。
+/// @param state 本次调用借用的运行态。空指针表示没有观察或暂存记录。
 /// @return 三个标签的文本。调用方拥有返回值。本函数不保存 Read 或 Set。
 InspectorText describeInspector(
     std::string_view parameterId,
     const ernc::domain::ParameterDefinition* definition,
-    const FakeParameterRow* row);
+    const ernc::domain::ParameterRuntimeState* state);
 
 } // namespace ernc::presentation

@@ -2,11 +2,11 @@
 
 #include "ernc/domain/catalog.hpp"
 #include "inspector/inspector_context.hpp"
-#include "parameters/fake_parameter_rows.hpp"
 #include "theme/theme_tokens.hpp"
 
 #include <QLabel>
 #include <QPushButton>
+#include <QScrollArea>
 #include <QTabWidget>
 #include <QVBoxLayout>
 
@@ -22,20 +22,28 @@ QWidget* makePage(const QString& objectName, QWidget* parent, QLabel*& label) {
     auto* page = new QWidget(parent);
     page->setObjectName(objectName);
     auto* layout = new QVBoxLayout(page);
-    layout->setContentsMargins(kSpace16, kSpace16, kSpace16, kSpace16);
-    label = new QLabel(page);
+    layout->setContentsMargins(kSpace8, kSpace8, kSpace8, kSpace8);
+    auto* scroll = new QScrollArea(page);
+    scroll->setWidgetResizable(true);
+    scroll->setFrameShape(QFrame::NoFrame);
+    label = new QLabel(scroll);
+    label->setTextFormat(Qt::PlainText);
+    label->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
+    label->setMargin(kSpace4);
     label->setAlignment(Qt::AlignLeft | Qt::AlignTop);
     label->setWordWrap(true);
-    layout->addWidget(label, 0, Qt::AlignLeft | Qt::AlignTop);
-    layout->addStretch(1);
+    scroll->setWidget(label);
+    layout->addWidget(scroll, 1);
     return page;
 }
 
 } // namespace
 
-InspectorPanel::InspectorPanel(const ernc::domain::ParameterCatalog* catalog, QWidget* parent)
+InspectorPanel::InspectorPanel(const ernc::domain::ParameterCatalog* catalog,
+                               const ernc::domain::ParameterRuntimeStore* store, QWidget* parent)
     : QWidget(parent)
-    , catalog_(catalog) {
+    , catalog_(catalog)
+    , store_(store) {
     auto* layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
     tabs_ = new QTabWidget(this);
@@ -66,7 +74,8 @@ void InspectorPanel::showParameter(std::string_view parameterId) {
     if (catalog_ != nullptr && !parameterId_.empty()) {
         definition = catalog_->find(parameterId_);
     }
-    const InspectorText text = describeInspector(parameterId_, definition, findFakeParameterRow(parameterId_));
+    const auto* state = store_ != nullptr && definition != nullptr ? store_->find(definition->id) : nullptr;
+    const InspectorText text = describeInspector(parameterId_, definition, state);
     propertiesLabel_->setText(QString::fromStdString(text.properties));
     infoLabel_->setText(QString::fromStdString(text.info));
     diagnosticsLabel_->setText(QString::fromStdString(text.diagnostics));

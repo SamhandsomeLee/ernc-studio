@@ -136,6 +136,7 @@ void DeviceController::tearDownSerial() {
 }
 
 void DeviceController::tearDownAll() {
+    wasWriteBusy_ = false;
     stopCanMsgSimulationPulse();
     if (linkKind_ == LinkKind::Simulator && stack_.connected()) {
         stack_.scheduler().cancel();
@@ -493,6 +494,7 @@ void DeviceController::pumpSerial() {
     if (report.writeFinished) {
         recordUi("parameter.batch_write.finish", report.writeDetailJson, report.writeSuccess,
                  report.writeSuccess ? ErrorCode::Unknown : ErrorCode::ResponseMismatch);
+        publishWriteResult(report.writeItems);
         emit operationLogRefreshRequested();
     }
     if (WritePlanDialog* dialog = writePlanDialog_) {
@@ -598,24 +600,50 @@ void DeviceController::pumpBatchWriteSimulator() {
             }
         }
     }
-    if (wasWriteBusy_ && !stack_.batchWriter().busy()) {
-        std::size_t verified = 0;
+    if ((busy || wasWriteBusy_) && !stack_.batchWriter().busy()) {
+        std::size_t acked = 0;
         std::size_t failed = 0;
         for (const ernc::application::BatchWriteItem& item : stack_.batchWriter().items()) {
             if (item.kind == ernc::application::BatchWriteKind::Verified) {
-                ++verified;
+                ++acked;
             } else if (item.kind == ernc::application::BatchWriteKind::Failed
                        || item.kind == ernc::application::BatchWriteKind::Mismatch) {
                 ++failed;
             }
         }
         std::ostringstream detail;
-        detail << R"({"verified":)" << verified << R"(,"failed":)" << failed << "}";
+        detail << R"({"acked":)" << acked << R"(,"failed":)" << failed << "}";
         recordUi("parameter.batch_write.finish", detail.str(), failed == 0U,
                  failed == 0U ? ErrorCode::Unknown : ErrorCode::ResponseMismatch);
+        publishWriteResult(stack_.batchWriter().items());
         emit operationLogRefreshRequested();
     }
     wasWriteBusy_ = stack_.batchWriter().busy();
+}
+
+void DeviceController::publishWriteResult(const std::vector<ernc::application::BatchWriteItem>& items) {
+    QStringList parameters;
+    int acked = 0;
+    int failed = 0;
+    for (const auto& item : items) {
+        switch (item.kind) {
+        case ernc::application::BatchWriteKind::Verified:
+            ++acked;
+            break;
+        case ernc::application::BatchWriteKind::Failed:
+        case ernc::application::BatchWriteKind::Mismatch:
+            ++failed;
+            break;
+        case ernc::application::BatchWriteKind::Excluded:
+        case ernc::application::BatchWriteKind::NotOneSlot:
+            continue;
+        }
+        parameters.append(QString::fromStdString(item.id.text()));
+    }
+    if (!parameters.isEmpty()) {
+        emit parametersUpdated(sessionId(), parameters);
+    }
+    emit writeBatchFinished(acked, failed);
 }
 
 void DeviceController::finishBatchReadIfIdleSimulator() {

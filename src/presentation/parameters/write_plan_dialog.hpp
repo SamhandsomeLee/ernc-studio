@@ -50,7 +50,7 @@ enum class WritePlanColumn : int {
     Diagnostic = 5
 };
 
-/// 当前分类的写入预览。确认前不发送；确认后只反映已有批量写的阶段。
+/// 当前分类或全工程的写入预览。确认前不发送；确认后只反映本次批量写的阶段。
 /// 本对话框在 UI 主线程创建和使用。它不持有串口，也不组装 Modbus 帧。
 class WritePlanDialog final : public QDialog {
 public:
@@ -126,6 +126,9 @@ public:
     QString diagnosticText() const;
 
 protected:
+    /// @brief Esc 或关闭按钮不取消已入队的写入。操作进行时继续显示本批结果。
+    void reject() override;
+
     /// @brief 写入还在进行时不关闭对话框。
     /// @param event Qt 关闭事件。写入未完成时忽略它，不把在途命令标成 Verified。
     /// @note 忽略关闭也不调用调度器的 cancel()。只在 UI 主线程调用。
@@ -150,6 +153,9 @@ private:
 
     /// 为 true 时，sources_.pageId 是可以交给批量写的目录分类。
     bool scopeReady_{false};
+
+    /// 仅在本对话框已成功启动写入后接收进度，避免上一次写入结果覆盖预览。
+    bool started_{false};
 
     /// 与表格行一一对应的参数。本对话框拥有。
     std::vector<PlanRow> rows_;

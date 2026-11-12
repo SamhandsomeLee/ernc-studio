@@ -25,15 +25,19 @@
 #include <QDockWidget>
 #include <QGuiApplication>
 #include <QItemSelectionModel>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QKeySequence>
 #include <QLabel>
-#include <QMessageBox>
 #include <QMenuBar>
 #include <QScreen>
 #include <QSettings>
 #include <QShortcut>
 #include <QStatusBar>
+#include <QStyle>
 #include <QTimer>
+#include <QToolBar>
+#include <QToolButton>
 #include <QTreeView>
 #include <QVBoxLayout>
 
@@ -51,6 +55,23 @@ constexpr int kTaskCardsWidth = 300;
 
 /// 检查器的起步高度，单位是逻辑像素。落在设计给出的 220–300 之内。
 constexpr int kInspectorHeight = 240;
+
+/// @brief 从设备报告提取便于扫描的读取结果。原报告留在操作日志。
+/// @param success 本次请求是否完成且没有失败项。
+/// @param detail 本次调用借用的结构化报告或简短错误文字。
+QString readSummary(bool success, const QString& detail) {
+    const auto object = QJsonDocument::fromJson(detail.toUtf8()).object();
+    if (!object.contains(QStringLiteral("completed"))) {
+        return detail.isEmpty() ? QStringLiteral("读取失败") : detail;
+    }
+    const QString scope = object.value(QStringLiteral("scope")).toString() == QStringLiteral("all_scalars")
+        ? QStringLiteral("全部标量") : QStringLiteral("本页");
+    return QStringLiteral("%1%2 · %3 项完成，%4 项失败，%5 项跳过")
+        .arg(scope, success ? QStringLiteral("读取完成") : QStringLiteral("读取有失败"))
+        .arg(object.value(QStringLiteral("completed")).toInt())
+        .arg(object.value(QStringLiteral("failed")).toInt())
+        .arg(object.value(QStringLiteral("skipped")).toInt());
+}
 
 /// @brief 这次启动是不是只显示后就退出。
 /// @return 命令行带 `--exit-after-show` 时为 true。这种启动不读写布局设置。
@@ -117,6 +138,7 @@ MainWindow::MainWindow(ernc::domain::CatalogLoad catalog, QString catalogPath, Q
             tree->setObjectName(QStringLiteral("erncProjectNavigator"));
             tree->setHeaderHidden(true);
             tree->setSelectionMode(QAbstractItemView::SingleSelection);
+            tree->setUniformRowHeights(true);
             model->setParent(tree);
             tree->setModel(model);
             QWidget* previous = projectTree_->widget();
@@ -130,6 +152,7 @@ MainWindow::MainWindow(ernc::domain::CatalogLoad catalog, QString catalogPath, Q
     workArea->setObjectName(QStringLiteral("erncWorkArea"));
     auto* workLayout = new QVBoxLayout(workArea);
     workLayout->setContentsMargins(0, 0, 0, 0);
+    workLayout->setSpacing(0);
 #ifdef ERNC_LAYOUT_MANIFEST_PATH
     const ernc::domain::LayoutLoad layoutLoad = ernc::domain::FirmwareLayoutLoader::loadFile(ERNC_LAYOUT_MANIFEST_PATH);
     if (layoutLoad.ok()) {
@@ -151,16 +174,22 @@ MainWindow::MainWindow(ernc::domain::CatalogLoad catalog, QString catalogPath, Q
     editorTabs->setCanSlotMapPath(QString::fromUtf8(ERNC_CAN_SLOT_MAP_PATH));
 #endif
     editorTabs_ = editorTabs;
+    workspaceContext_ = new QLabel(workArea);
+    workspaceContext_->setObjectName(QStringLiteral("erncEditorContext"));
+    workspaceContext_->setTextFormat(Qt::PlainText);
+    workspaceContext_->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    workLayout->addWidget(workspaceContext_);
     workLayout->addWidget(editorTabs);
     setCentralWidget(workArea);
     if (navigatorTree != nullptr) {
         QObject::connect(navigatorTree->selectionModel(), &QItemSelectionModel::currentChanged, this,
-            [editorTabs](const QModelIndex& current, const QModelIndex&) {
+            [this, editorTabs](const QModelIndex& current, const QModelIndex&) {
                 applyTreeSelection(editorTabs, current);
+                updateWorkspaceContext();
             });
     }
 
-    inspectorPanel_ = new InspectorPanel(loadedCatalog, inspectorDock_);
+    inspectorPanel_ = new InspectorPanel(loadedCatalog, &parameterStore_, inspectorDock_);
     arrayDetailPanel_ = new ArrayDetailPanel(loadedCatalog, firmwareLayout_ ? &*firmwareLayout_ : nullptr,
                                              &arrayParameterStore_, inspectorDock_);
     auto* inspectorTabs = new QTabWidget(inspectorDock_);
@@ -212,6 +241,15 @@ MainWindow::MainWindow(ernc::domain::CatalogLoad catalog, QString catalogPath, Q
 
     QStatusBar* bar = statusBar();
     bar->setObjectName(QStringLiteral("erncStatusBar"));
+    deviceStatus_ = new QLabel(bar);
+    deviceStatus_->setObjectName(QStringLiteral("erncDeviceStatus"));
+    deviceStatus_->setTextFormat(Qt::PlainText);
+    bar->addPermanentWidget(deviceStatus_);
+    taskStatus_ = new QLabel(QStringLiteral("就绪"), bar);
+    taskStatus_->setObjectName(QStringLiteral("erncTaskStatus"));
+    taskStatus_->setTextFormat(Qt::PlainText);
+    taskStatus_->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    bar->addWidget(taskStatus_, 1);
     devicePumpTimer_ = new QTimer(this);
     devicePumpTimer_->setInterval(10);
     QObject::connect(devicePumpTimer_, &QTimer::timeout, this, [this] {
@@ -242,56 +280,18 @@ MainWindow::MainWindow(ernc::domain::CatalogLoad catalog, QString catalogPath, Q
             }
         });
         QObject::connect(deviceController_, &DeviceController::readPageFinished, this, [this](bool success, QString detail) {
-            const bool allScalars = detail.contains(QStringLiteral("all_scalars"));
-            if (success) {
-                statusBar()->showMessage(allScalars ? QStringLiteral("读取所有参数完成：%1").arg(detail)
-                                                    : QStringLiteral("读取本页完成：%1").arg(detail),
-                                         5000);
-            } else {
-                statusBar()->showMessage(allScalars ? QStringLiteral("读取所有参数失败：%1").arg(detail)
-                                                    : QStringLiteral("读取本页失败：%1").arg(detail),
-                                         8000);
-            }
+            taskStatus_->setText(readSummary(success, detail));
         });
-        QObject::connect(taskCardPanel, &TaskCardPanel::readCurrentPageRequested, editorTabs, &EditorTabs::readCurrentPage);
-        QObject::connect(taskCardPanel, &TaskCardPanel::writeModifiedPageRequested, editorTabs, &EditorTabs::openWritePlan);
+        QObject::connect(deviceController_, &DeviceController::writeBatchFinished, this, [this](int acked, int failed) {
+            taskStatus_->setText(QStringLiteral("写入结束 · %1 项设备已确认，%2 项失败").arg(acked).arg(failed));
+        });
         QObject::connect(taskCardPanel, &TaskCardPanel::readAllScalarsRequested, deviceController_, &DeviceController::readAllScalars);
-        QObject::connect(taskCardPanel, &TaskCardPanel::writeAllDirtyRequested, this, [this] {
-            if (deviceController_ == nullptr) {
-                statusBar()->showMessage(QStringLiteral("未初始化设备控制器"), 5000);
-                return;
-            }
-            if (!deviceController_->connected()) {
-                statusBar()->showMessage(QStringLiteral("请先连接设备"), 5000);
-                return;
-            }
-            if (deviceController_->writeBusy()) {
-                statusBar()->showMessage(QStringLiteral("写入任务仍在进行"), 5000);
-                return;
-            }
-            const auto answer = QMessageBox::question(
-                this, QStringLiteral("写入所有参数"),
-                QStringLiteral("将写入全部已修改标量（跳过区域与只读项）。继续吗？"),
-                QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
-            if (answer != QMessageBox::Yes) {
-                return;
-            }
-            const ernc::domain::ErrorCode code = deviceController_->startWriteAllDirty();
-            if (code == ernc::domain::ErrorCode::Unknown) {
-                statusBar()->showMessage(QStringLiteral("批量写入已启动"), 5000);
-            } else if (code != ernc::domain::ErrorCode::DeviceDisconnected) {
-                statusBar()->showMessage(QStringLiteral("批量写入启动失败"), 8000);
-            } else {
-                statusBar()->showMessage(QStringLiteral("请先连接设备"), 5000);
-            }
-        });
     }
+    QObject::connect(taskCardPanel, &TaskCardPanel::readCurrentPageRequested, editorTabs, &EditorTabs::readCurrentPage);
+    QObject::connect(taskCardPanel, &TaskCardPanel::writeCurrentPageRequested, editorTabs, &EditorTabs::openWritePlan);
+    QObject::connect(taskCardPanel, &TaskCardPanel::writeAllDirtyRequested, editorTabs, &EditorTabs::openAllWritePlan);
 
-    if (sessionLog_ != nullptr) {
-        updateDeviceStatusBar(false, ernc::domain::SessionId::none());
-    } else {
-        bar->showMessage(QStringLiteral("未连接设备（会话日志目录创建失败）"));
-    }
+    updateDeviceStatusBar(false, ernc::domain::SessionId::none());
 
     addFileMenu();
     QMenu* deviceMenu = menuBar()->addMenu(QStringLiteral("设备"));
@@ -299,6 +299,17 @@ MainWindow::MainWindow(ernc::domain::CatalogLoad catalog, QString catalogPath, Q
     QAction* connectSerial = deviceMenu->addAction(QStringLiteral("连接串口设备…"));
     QAction* disconnectDevice = deviceMenu->addAction(QStringLiteral("断开设备"));
     QAction* readCurrentPage = deviceMenu->addAction(QStringLiteral("读取本页参数"));
+    connectSimulator->setEnabled(deviceController_ != nullptr);
+    connectSerial->setEnabled(deviceController_ != nullptr);
+    disconnectDevice->setEnabled(false);
+    readCurrentPage->setEnabled(false);
+    if (deviceController_ != nullptr) {
+        connect(deviceController_, &DeviceController::connectionChanged, this,
+            [disconnectDevice, readCurrentPage](bool connected, ernc::domain::SessionId) {
+                disconnectDevice->setEnabled(connected);
+                readCurrentPage->setEnabled(connected);
+            });
+    }
     QObject::connect(connectSimulator, &QAction::triggered, this, [this] {
         if (deviceController_ != nullptr) {
             deviceController_->connectSimulator();
@@ -332,20 +343,71 @@ MainWindow::MainWindow(ernc::domain::CatalogLoad catalog, QString catalogPath, Q
     viewMenu->addAction(operationCenter_->toggleViewAction());
     viewMenu->addSeparator();
     QAction* parameterDebug = viewMenu->addAction(QStringLiteral("参数调试"));
+    QAction* curveAnalysis = viewMenu->addAction(QStringLiteral("曲线分析"));
+    curveAnalysis->setEnabled(regionCatalog != nullptr);
     QAction* faultDiagnosis = viewMenu->addAction(QStringLiteral("故障诊断"));
     QAction* restoreDefault = viewMenu->addAction(QStringLiteral("恢复默认布局"));
     connect(parameterDebug, &QAction::triggered, this, [this] {
         applyWorkspace(presetLayout(WorkspacePreset::ParameterDebug));
+    });
+    connect(curveAnalysis, &QAction::triggered, this, [this] {
+        applyWorkspace(presetLayout(WorkspacePreset::CurveAnalysis));
     });
     connect(faultDiagnosis, &QAction::triggered, this, [this] {
         applyWorkspace(presetLayout(WorkspacePreset::FaultDiagnosis));
     });
     connect(restoreDefault, &QAction::triggered, this, [this] { restoreDefaultShellLayout(); });
 
+    auto* tools = addToolBar(QStringLiteral("工程工具栏"));
+    tools->setObjectName(QStringLiteral("erncWorkbenchTools"));
+    tools->setMovable(false);
+    tools->setFloatable(false);
+    tools->setToolButtonStyle(Qt::ToolButtonTextOnly);
+    openProjectAction_->setIconText(QStringLiteral("打开工程"));
+    tools->addAction(openProjectAction_);
+    tools->addAction(saveProjectAction_);
+    tools->addSeparator();
+    auto* connection = new QToolButton(tools);
+    connection->setObjectName(QStringLiteral("erncDeviceMenuButton"));
+    connection->setText(QStringLiteral("连接设备"));
+    connection->setPopupMode(QToolButton::InstantPopup);
+    auto* connectionMenu = new QMenu(connection);
+    connectionMenu->addActions({connectSimulator, connectSerial, disconnectDevice});
+    connection->setMenu(connectionMenu);
+    connection->setEnabled(deviceController_ != nullptr);
+    tools->addWidget(connection);
+    tools->addSeparator();
+    tools->addAction(projectTree_->toggleViewAction());
+    tools->addAction(inspectorDock_->toggleViewAction());
+    tools->addAction(taskCards_->toggleViewAction());
+
+    if (navigatorTree != nullptr) {
+        // 目录第一项为 ALL。启动即展示可搜索的参数表，保留函数视图作为相邻入口。
+        navigatorTree->setCurrentIndex(navigatorTree->model()->index(0, 0));
+        editorTabs_->showParameterView();
+    }
+
     bindShellKeymap();
     if (!restoreSavedShellLayout()) {
         applyDefaultShellLayout();
     }
+}
+
+void MainWindow::updateWorkspaceContext() {
+    const auto* tree = qobject_cast<QTreeView*>(projectTree_->widget());
+    QModelIndex page = tree == nullptr ? QModelIndex() : tree->currentIndex();
+    if (page.parent().isValid()) {
+        page = page.parent();
+    }
+    QString scope = page.isValid() ? page.data().toString() : QStringLiteral("参数工作区");
+    if (scope == QStringLiteral("ALL")) {
+        scope = QStringLiteral("全部参数");
+    } else if (scope == QStringLiteral("RNC_Param")) {
+        scope = QStringLiteral("RNC 参数");
+    }
+    const QString name = project_ ? QString::fromStdString(project_->name) : QStringLiteral("未打开工程");
+    workspaceContext_->setText(QStringLiteral("%1  /  %2").arg(name, scope));
+    workspaceContext_->setToolTip(workspaceContext_->text());
 }
 
 MainWindow::~MainWindow() = default;
@@ -405,7 +467,7 @@ void MainWindow::applyWorkspace(const WorkspaceLayout& layout) {
     if (layout.editorPage == ShellEditorPage::FunctionView) {
         editorTabs_->showFunctionView();
     } else if (layout.editorPage == ShellEditorPage::CurveAnalysis) {
-        editorTabs_->showParameterView();
+        editorTabs_->showCurveAnalysis();
     } else if (layout.editorPage == ShellEditorPage::ParameterView) {
         editorTabs_->showParameterView();
     }
@@ -527,17 +589,19 @@ void MainWindow::runBoundAction(std::string_view action) {
 void MainWindow::updateDeviceStatusBar(const bool connected, const ernc::domain::SessionId sessionId) {
     QString deviceText;
     if (connected && deviceController_ != nullptr && deviceController_->linkKind() == DeviceController::LinkKind::Serial) {
-        deviceText = QStringLiteral("设备：串口 #%1").arg(sessionId.raw());
+        deviceText = QStringLiteral("串口 #%1 · 已连接").arg(sessionId.raw());
     } else if (connected) {
-        deviceText = QStringLiteral("设备：虚拟从站 #%1").arg(sessionId.raw());
+        deviceText = QStringLiteral("虚拟从站 #%1 · 已连接").arg(sessionId.raw());
     } else {
         deviceText = QStringLiteral("设备：未连接");
     }
-    QString message = deviceText;
-    if (sessionLog_ != nullptr) {
-        message += QStringLiteral("  |  日志：") + QString::fromStdWString(sessionLog_->sessionDirectory().wstring());
-    }
-    statusBar()->showMessage(message);
+    deviceStatus_->setText(deviceText);
+    deviceStatus_->setProperty("connected", connected);
+    deviceStatus_->style()->unpolish(deviceStatus_);
+    deviceStatus_->style()->polish(deviceStatus_);
+    deviceStatus_->setToolTip(sessionLog_ != nullptr
+        ? QStringLiteral("会话日志：%1").arg(QString::fromStdWString(sessionLog_->sessionDirectory().wstring()))
+        : QStringLiteral("会话日志目录不可用"));
 }
 
 void MainWindow::onDeviceConnectionChanged(const bool connected, const ernc::domain::SessionId sessionId) {

@@ -193,18 +193,18 @@ void DeviceRuntimeWorker::pumpBatchWrite(PumpReport& report) {
         }
     }
     if (wasWriteBusy_ && !stack_->batchWriter().busy()) {
-        std::size_t verified = 0;
+        std::size_t acked = 0;
         std::size_t failed = 0;
         for (const ernc::application::BatchWriteItem& item : stack_->batchWriter().items()) {
             if (item.kind == ernc::application::BatchWriteKind::Verified) {
-                ++verified;
+                ++acked;
             } else if (item.kind == ernc::application::BatchWriteKind::Failed
                        || item.kind == ernc::application::BatchWriteKind::Mismatch) {
                 ++failed;
             }
         }
         std::ostringstream detail;
-        detail << R"({"verified":)" << verified << R"(,"failed":)" << failed << "}";
+        detail << R"({"acked":)" << acked << R"(,"failed":)" << failed << "}";
         report.writeFinished = true;
         report.writeSuccess = failed == 0U;
         report.writeDetailJson = detail.str();

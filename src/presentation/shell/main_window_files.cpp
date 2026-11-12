@@ -308,6 +308,7 @@ void MainWindow::updateProjectActions() {
     closeProjectAction_->setEnabled(project_.has_value());
     setWindowTitle(project_ ? QStringLiteral("ERNC Studio — %1").arg(QString::fromStdString(project_->name))
                            : QStringLiteral("ERNC Studio"));
+    updateWorkspaceContext();
 }
 
 void MainWindow::importParameters() {

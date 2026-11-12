@@ -1,7 +1,6 @@
 #include "ernc/domain/catalog.hpp"
 #include "inspector/inspector_context.hpp"
-#include "parameters/fake_parameter_rows.hpp"
-
+#include <chrono>
 #include <iostream>
 #include <string>
 #include <string_view>
@@ -12,10 +11,12 @@ using ernc::domain::AccessMode;
 using ernc::domain::DataType;
 using ernc::domain::ParameterDefinition;
 using ernc::domain::ParameterId;
+using ernc::domain::ParameterRuntimeStore;
+using ernc::domain::RuntimeTime;
+using ernc::domain::ScalarValue;
 using ernc::domain::ValueShape;
 using ernc::domain::WireLevels;
 using ernc::presentation::describeInspector;
-using ernc::presentation::findFakeParameterRow;
 using ernc::presentation::InspectorText;
 
 /// @brief 报告当前用例失败。
@@ -61,23 +62,23 @@ bool emptySelection() {
         "empty_selection",
         text,
         "参数 未选择参数\n"
+        "读 —\n"
+        "写 —\n"
+        "状态 —\n"
         "说明 —\n"
         "路径 —\n"
         "类型 —\n"
         "形状 —\n"
-        "权限 —\n"
-        "状态 —\n"
-        "读 —\n"
-        "写 —",
+        "权限 —",
         "来源 —\n"
         "分类 —\n"
         "说明 —\n"
         "更新时间 —",
         "当前参数 未选择参数\n"
-        "没有命令、Slot 或报文记录。");
+        "在操作中心查看会话记录。");
 }
 
-/// @brief ANC_OFF 显示目录说明和未读取的假数据，线值不当成当前读数。
+/// @brief 未观察 ANC_OFF 时显示目录说明和空读数。
 /// @return 说明、状态和目录线值都匹配时为 true。
 bool ancOff() {
     ParameterDefinition definition = definitionFor("ANC_OFF");
@@ -88,30 +89,30 @@ bool ancOff() {
     definition.shape = ValueShape::Scalar;
     definition.access = AccessMode::ReadWrite;
     definition.wireLevels = WireLevels{0, 1};
-    const InspectorText text = describeInspector("ANC_OFF", &definition, findFakeParameterRow("ANC_OFF"));
+    const InspectorText text = describeInspector("ANC_OFF", &definition, nullptr);
     return sameText(
         "anc_off",
         text,
         "参数 ANC_OFF\n"
+        "读 —\n"
+        "写 —\n"
+        "状态 未读取\n"
         "说明 ERNC总开关，0开启，1关闭\n"
         "路径 ANC_OFF\n"
         "类型 32 位浮点\n"
         "形状 标量\n"
-        "权限 读写\n"
-        "状态 未读取\n"
-        "读 —\n"
-        "写 —",
-        "来源 固定假数据，不是设备当前值。\n"
+        "权限 读写",
+        "来源 参数目录\n"
         "分类 ERNC_Flag\n"
         "说明 ERNC总开关，0开启，1关闭\n"
         "更新时间 —\n"
         "目录线值 on 0，off 1。这不是设备当前值。",
         "当前参数 ANC_OFF\n"
-        "没有命令、Slot 或报文记录。");
+        "在操作中心查看会话记录。");
 }
 
-/// @brief alpha1 的 Read/Set 仍是假数据表里的 1 和 2。
-/// @return 两列和更新时间与静态行一致时为 true。
+/// @brief 在 Store 分别放入读数与用户目标，检查两者都出现在属性中。
+/// @return 两列保持 1 和 2 且更新时间来自设备读回时为 true。
 bool alpha1Values() {
     ParameterDefinition definition = definitionFor("RNC_param.alpha1");
     definition.firmwarePath = "RNC_param.alpha1";
@@ -119,26 +120,28 @@ bool alpha1Values() {
     definition.descriptionZh = "第一段步长(10分钟后)，步长越大系统收敛速度越快，但稳定性越差";
     definition.dataType = DataType::Float32;
     definition.access = AccessMode::ReadWrite;
-    const InspectorText text = describeInspector(
-        "RNC_param.alpha1", &definition, findFakeParameterRow("RNC_param.alpha1"));
+    ParameterRuntimeStore store;
+    store.observe(definition.id, ScalarValue::fromFloat(1.0F), RuntimeTime{std::chrono::seconds{10}});
+    store.stage(definition.id, ScalarValue::fromFloat(2.0F), RuntimeTime{std::chrono::seconds{11}});
+    const InspectorText text = describeInspector("RNC_param.alpha1", &definition, store.find(definition.id));
     return sameText(
         "alpha1_values",
         text,
         "参数 RNC_param.alpha1\n"
+        "读 1\n"
+        "写 2\n"
+        "状态 待写入\n"
         "说明 第一段步长(10分钟后)，步长越大系统收敛速度越快，但稳定性越差\n"
         "路径 RNC_param.alpha1\n"
         "类型 32 位浮点\n"
         "形状 —\n"
-        "权限 读写\n"
-        "状态 待写入\n"
-        "读 1\n"
-        "写 2",
-        "来源 固定假数据，不是设备当前值。\n"
+        "权限 读写",
+        "来源 设备读回\n"
         "分类 RNC_Param\n"
         "说明 第一段步长(10分钟后)，步长越大系统收敛速度越快，但稳定性越差\n"
-        "更新时间 2026-11-11T10:00:00Z",
+        "更新时间 1970-01-01T00:00:10Z",
         "当前参数 RNC_param.alpha1\n"
-        "没有命令、Slot 或报文记录。");
+        "在操作中心查看会话记录。");
 }
 
 /// @brief Step 的目录权限是只读，Set 保持占位。
@@ -151,33 +154,33 @@ bool stepReadOnly() {
     definition.dataType = DataType::Float32;
     definition.shape = ValueShape::Scalar;
     definition.access = AccessMode::ReadOnly;
-    const InspectorText text = describeInspector("Step", &definition, findFakeParameterRow("Step"));
+    ParameterRuntimeStore store;
+    store.observe(definition.id, ScalarValue::fromFloat(3.0F), RuntimeTime{std::chrono::seconds{9}});
+    store.markOffline();
+    const InspectorText text = describeInspector("Step", &definition, store.find(definition.id));
     return sameText(
         "step_read_only",
         text,
         "参数 Step\n"
+        "读 3\n"
+        "写 —\n"
+        "状态 数据已过期\n"
         "说明 实时步长显示\n"
         "路径 Step\n"
         "类型 32 位浮点\n"
         "形状 标量\n"
-        "权限 只读\n"
-        "状态 数据已过期\n"
-        "读 3\n"
-        "写 —",
-        "来源 固定假数据，不是设备当前值。\n"
+        "权限 只读",
+        "来源 设备缓存\n"
         "分类 RNC_Param\n"
         "说明 实时步长显示\n"
-        "更新时间 2026-11-11T09:00:00Z",
+        "更新时间 1970-01-01T00:00:09Z",
         "当前参数 Step\n"
-        "没有命令、Slot 或报文记录。");
+        "在操作中心查看会话记录。");
 }
 
 /// @brief check_data 只显示目录字段，不编造假读数。
 /// @return 路径和权限来自目录、Read/Set 为占位时为 true。
 bool checkDataCatalogOnly() {
-    if (findFakeParameterRow("check_data") != nullptr) {
-        return fail("check_data_catalog_only");
-    }
     ParameterDefinition definition = definitionFor("check_data");
     definition.firmwarePath = "check_data";
     definition.category = "other";
@@ -187,20 +190,20 @@ bool checkDataCatalogOnly() {
         "check_data_catalog_only",
         text,
         "参数 check_data\n"
+        "读 —\n"
+        "写 —\n"
+        "状态 未读取\n"
         "说明 —\n"
         "路径 check_data\n"
         "类型 —\n"
         "形状 —\n"
-        "权限 读写\n"
-        "状态 —\n"
-        "读 —\n"
-        "写 —",
-        "来源 目录定义。假数据表没有这一行。\n"
+        "权限 读写",
+        "来源 参数目录\n"
         "分类 other\n"
         "说明 —\n"
         "更新时间 —",
         "当前参数 check_data\n"
-        "没有命令、Slot 或报文记录。");
+        "在操作中心查看会话记录。");
 }
 
 /// @brief 设计示意里的小数不能出现在检查器文字里。
@@ -215,9 +218,9 @@ bool noSketchValues() {
     ParameterDefinition check = definitionFor("check_data");
     const InspectorText samples[] = {
         describeInspector({}, nullptr, nullptr),
-        describeInspector("ANC_OFF", &anc, findFakeParameterRow("ANC_OFF")),
-        describeInspector("RNC_param.alpha1", &alpha, findFakeParameterRow("RNC_param.alpha1")),
-        describeInspector("Step", &step, findFakeParameterRow("Step")),
+        describeInspector("ANC_OFF", &anc, nullptr),
+        describeInspector("RNC_param.alpha1", &alpha, nullptr),
+        describeInspector("Step", &step, nullptr),
         describeInspector("check_data", &check, nullptr),
     };
     std::string joined;

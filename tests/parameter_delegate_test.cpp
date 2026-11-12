@@ -79,16 +79,17 @@ bool ancOffToggleWords(const ParameterCatalog& catalog, const FirmwareLayout& la
     }
     store.observe(definition->id, ScalarValue::fromFloat(0.0F), RuntimeTime{std::chrono::seconds{1}});
     const ernc::domain::ParameterRuntimeState* onState = store.find(definition->id);
-    if (delegate.setCaption(*definition, onState) != QStringLiteral("开")) {
+    if (delegate.readCaption(*definition, onState) != QStringLiteral("开")
+        || delegate.setCaption(*definition, onState) != QStringLiteral("未知")) {
         return fail("anc_off_toggle_words");
     }
     store.observe(definition->id, ScalarValue::fromFloat(1.0F), RuntimeTime{std::chrono::seconds{2}});
-    if (delegate.setCaption(*definition, store.find(definition->id)) != QStringLiteral("关")) {
+    if (delegate.readCaption(*definition, store.find(definition->id)) != QStringLiteral("关")) {
         return fail("anc_off_toggle_words");
     }
     store.observe(definition->id, ScalarValue::fromFloat(2.0F), RuntimeTime{std::chrono::seconds{3}});
-    const QString unknown = delegate.setCaption(*definition, store.find(definition->id));
-    if (unknown != QStringLiteral("Unknown") || unknown == QStringLiteral("关")) {
+    const QString unknown = delegate.readCaption(*definition, store.find(definition->id));
+    if (unknown != QStringLiteral("未知")) {
         return fail("anc_off_toggle_words");
     }
     return true;
@@ -182,8 +183,9 @@ bool runningTimeKeepsFirmwareValue(const ParameterCatalog& catalog, const Firmwa
         return fail("running_time_keeps_firmware_value");
     }
     store.observe(definition->id, ScalarValue::fromFloat(1100.0F), RuntimeTime{std::chrono::seconds{4}});
-    const QString caption = delegate.setCaption(*definition, store.find(definition->id));
-    if (caption != QStringLiteral("1100") || caption.contains(QStringLiteral("秒"))) {
+    const auto* state = store.find(definition->id);
+    if (delegate.readCaption(*definition, state) != QStringLiteral("1100")
+        || delegate.setCaption(*definition, state) != QStringLiteral("—")) {
         return fail("running_time_keeps_firmware_value");
     }
     const int row = sourceRow(model, QStringLiteral("running_time"));

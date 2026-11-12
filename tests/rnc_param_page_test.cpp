@@ -6,6 +6,7 @@
 #include "ernc/domain/runtime_store.hpp"
 
 #include <QApplication>
+#include <QLineEdit>
 #include <QWidget>
 
 #include <chrono>
@@ -82,7 +83,7 @@ bool stepHasNoWriter(const ParameterCatalog& catalog, const FirmwareLayout& layo
 /// @brief running_time 和 max_time 保持固件原值。
 /// @param catalog 正式目录。
 /// @param layout 正式布局。
-/// @return 1100 显示为 1100 且不含秒，确认 1100 后暂存 float 1100 时为 true。
+/// @return Read 仍显示原值 1100，输入 60 后 Set 为 float 60，未进行单位换算。
 bool runningTimeKeepsFirmwareValue(const ParameterCatalog& catalog, const FirmwareLayout& layout) {
     ParameterRuntimeStore store;
     ParameterId running = ParameterId::parse("running_time").value();
@@ -106,7 +107,9 @@ bool runningTimeKeepsFirmwareValue(const ParameterCatalog& catalog, const Firmwa
         return fail("running_time_keeps_firmware_value");
     }
     const Result<float> staged = state->stagedValue->asFloat();
-    if (!staged.ok() || staged.value() != 60.0F || page.valueText(QStringLiteral("running_time")) != QStringLiteral("60")) {
+    const auto* editor = page.findChild<QLineEdit*>(QStringLiteral("erncRncSet.running_time"));
+    if (!staged.ok() || staged.value() != 60.0F || page.valueText(QStringLiteral("running_time")) != QStringLiteral("1100")
+        || editor == nullptr || editor->text() != QStringLiteral("60")) {
         return fail("running_time_keeps_firmware_value");
     }
     return true;

@@ -58,9 +58,9 @@ Presentation 只把参数 ID 和用户动作交给 Application。设备当前值
 
 ### 当前接线状态
 
-P7 分析组件（`PlotWorkspace`、`ErncTfPlot`、`CheckDataPlot`、`SpecRadiusPlot`、`DatasetManager`）只在测试目标里编译，**尚未接入 `ernc_app` 主窗口**。主窗口的「视图 → 曲线分析」目前只是布局预设，不是真实页面。P6 的 `RegionWorkspace`、`SpecRadiusPage` 同样未接入主窗口。
+P7 分析组件（`PlotWorkspace`、`ErncTfPlot`、`CheckDataPlot`、`SpecRadiusPlot`、`DatasetManager`）已通过 `ernc_ui_qwt` 接入 `ernc_app`。主窗口的「视图 → 曲线分析」会打开真实分析页，支持从本地 BIN/TXT 导入 Region 字节，并经 `AnalysisRegionBridge` 解码为 `AnalysisDataset` 后更新叠加曲线和专业图。
 
-接入主窗口是独立的后续切片，至少包含：`ernc_app` 链接 Qwt、加入分析源文件，以及数据桥接（Region 字节 → `decodeErncTf` / `decodeCheckData` → `AnalysisDataset` → 分析控件）。
+P6 的 `RegionWorkspace`、`SpecRadiusPage` 已作为分析页左侧工作区接入。当前只开放离线导入与导出，`RegionReader` 和 `RegionWriter` 仍未绑定到桌面设备控制器，因此不会从这个页面发起真实设备读取或写入。
 
 ## 工具链
 

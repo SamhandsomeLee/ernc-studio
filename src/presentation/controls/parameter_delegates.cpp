@@ -4,6 +4,7 @@
 #include "parameters/fake_parameter_rows.hpp"
 #include "parameters/parameter_table_model.hpp"
 #include "parameters/parameter_set_policy.hpp"
+#include "parameters/scalar_display.hpp"
 
 #include <QApplication>
 #include <QLineEdit>
@@ -16,41 +17,6 @@
 #include <cmath>
 
 namespace ernc::presentation {
-namespace {
-
-/// 没有值时的占位。不是数值 0，也不是关。
-constexpr QStringView kBlank = u"—";
-
-/// @brief 把标量格式化成最短十进制。不把时间备注换算成秒。
-/// @param value 标量，只借用。
-/// @return float 的一般格式，或整数的十进制。读不到种类时为「—」。
-QString formatScalar(const ernc::domain::ScalarValue& value) {
-    if (const ernc::domain::Result<float> number = value.asFloat(); number.ok()) {
-        return QString::number(static_cast<double>(number.value()), 'g', 9);
-    }
-    if (const ernc::domain::Result<std::int32_t> number = value.asInt32(); number.ok()) {
-        return QString::number(number.value());
-    }
-    if (const ernc::domain::Result<std::uint32_t> number = value.asUInt32(); number.ok()) {
-        return QString::number(number.value());
-    }
-    return kBlank.toString();
-}
-
-/// @brief 暂存值优先，否则用界面显示的 Read（可能来自工程）。
-/// @param state 运行状态。空表示没有记录。
-/// @return 指向状态内部的标量。不转移所有权。两个都空时为空指针。
-const ernc::domain::ScalarValue* shownValue(const ernc::domain::ParameterRuntimeState* state) {
-    if (state == nullptr) {
-        return nullptr;
-    }
-    if (state->stagedValue) {
-        return &*state->stagedValue;
-    }
-    return state->displayedRead();
-}
-
-} // namespace
 
 ParameterDelegate::ParameterDelegate(const ernc::domain::ParameterCatalog* catalog, const ernc::domain::FirmwareLayout* layout,
                                      ernc::domain::ParameterRuntimeStore* store, QObject* parent)
@@ -76,12 +42,12 @@ QString ParameterDelegate::readCaption(const ernc::domain::ParameterDefinition& 
             return QStringLiteral("未知");
         }
     }
-    return value == nullptr ? kBlank.toString() : formatScalar(*value);
+    return QString::fromStdString(displayScalar(value));
 }
 
 QString ParameterDelegate::setCaption(const ernc::domain::ParameterDefinition& definition,
                                       const ernc::domain::ParameterRuntimeState* state) const {
-    const ernc::domain::ScalarValue* value = shownValue(state);
+    const auto* value = state != nullptr && state->stagedValue ? &*state->stagedValue : nullptr;
     if (definition.editor && *definition.editor == ernc::domain::EditorKind::Toggle) {
         if (value == nullptr) {
             return QStringLiteral("未知");
@@ -95,7 +61,7 @@ QString ParameterDelegate::setCaption(const ernc::domain::ParameterDefinition& d
             return QStringLiteral("未知");
         }
     }
-    return value == nullptr ? kBlank.toString() : formatScalar(*value);
+    return QString::fromStdString(displayScalar(value));
 }
 
 QWidget* ParameterDelegate::createEditor(QWidget* parent, const QStyleOptionViewItem& option, const QModelIndex& index) const {
@@ -194,6 +160,18 @@ void ParameterDelegate::initStyleOption(QStyleOptionViewItem* option, const QMod
         return;
     }
     const ernc::domain::ParameterRuntimeState* state = store_ == nullptr ? nullptr : store_->find(definition->id);
+    if (index.column() == static_cast<int>(FakeParameterColumn::Status) && state != nullptr) {
+        if (state->projectReadValue || (state->stale && state->displayedRead() != nullptr)) {
+            option->text.prepend(QStringLiteral("◷ "));
+        } else if (state->dirty) {
+            option->text.prepend(QStringLiteral("▲ "));
+            option->palette.setColor(QPalette::Text, QColor(QStringLiteral("#A86609")));
+        }
+    }
+    if (index.column() == static_cast<int>(FakeParameterColumn::Read)
+        && !option->state.testFlag(QStyle::State_Selected)) {
+        option->backgroundBrush = option->palette.window();
+    }
     if (isToggleReadCell(index)) {
         option->text.clear();
         option->displayAlignment = Qt::AlignCenter;

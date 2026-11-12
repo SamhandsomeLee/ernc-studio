@@ -1,4 +1,5 @@
 #include "parameters/write_plan_dialog.hpp"
+#include "parameters/scalar_display.hpp"
 
 #include "batch_operation_tags.hpp"
 #include "device/device_controller.hpp"
@@ -34,6 +35,7 @@ namespace {
 constexpr QStringView kBlank = u"—";
 
 /// @brief 按项目树页面 id 生成写入预览范围。`ALL` 表示目录内全部 dirty 标量。
+/// @param page 本次调用借用的目录分类或全工程标记。
 ernc::domain::WriteScope writeScopeForPage(const QString& page) {
     ernc::domain::WriteScope scope;
     if (isNavigatorAllPage(page)) {
@@ -43,22 +45,6 @@ ernc::domain::WriteScope writeScopeForPage(const QString& page) {
         scope.category = page.toStdString();
     }
     return scope;
-}
-
-/// @brief 把标量格式化成最短十进制。不把时间备注换算成秒。
-/// @param value 标量，只借用。
-/// @return float 的一般格式，或整数的十进制。读不到种类时为「—」。
-QString formatScalar(const ernc::domain::ScalarValue& value) {
-    if (const ernc::domain::Result<float> number = value.asFloat(); number.ok()) {
-        return QString::number(static_cast<double>(number.value()), 'g', 9);
-    }
-    if (const ernc::domain::Result<std::int32_t> number = value.asInt32(); number.ok()) {
-        return QString::number(number.value());
-    }
-    if (const ernc::domain::Result<std::uint32_t> number = value.asUInt32(); number.ok()) {
-        return QString::number(number.value());
-    }
-    return kBlank.toString();
 }
 
 /// @brief 按目录控件显示一个标量。
@@ -76,7 +62,7 @@ QString formatValue(const ernc::domain::ParameterDefinition* definition, const e
             return QStringLiteral("未知");
         }
     }
-    return formatScalar(value);
+    return QString::fromStdString(displayScalar(&value));
 }
 
 /// @brief 取出 Read 和 Set 的显示文字。
@@ -218,14 +204,14 @@ bool isTerminal(const ernc::application::BatchWriteItem* item) {
 WritePlanDialog::WritePlanDialog(Sources sources, QWidget* parent)
     : QDialog(parent), sources_{std::move(sources)} {
     setObjectName(QStringLiteral("erncWritePlanDialog"));
-    setWindowTitle(QStringLiteral("写入预览"));
+    setWindowTitle(QStringLiteral("写入计划"));
     setModal(true);
     resize(760, 420);
 
     auto* root = new QVBoxLayout(this);
     scopeLabel_ = new QLabel(this);
     scopeLabel_->setObjectName(QStringLiteral("erncWritePlanScope"));
-    auto* hint = new QLabel(QStringLiteral("确认前不会向设备发送。未连接时确认只报告「设备未连接」。"), this);
+    auto* hint = new QLabel(QStringLiteral("核对目标值和跳过原因。只有点击「确认写入」才会发送。"), this);
     hint->setWordWrap(true);
     diagnosticLabel_ = new QLabel(this);
     diagnosticLabel_->setObjectName(QStringLiteral("erncWritePlanDiagnostic"));
@@ -234,24 +220,32 @@ WritePlanDialog::WritePlanDialog(Sources sources, QWidget* parent)
     table_->setObjectName(QStringLiteral("erncWritePlanTable"));
     table_->setColumnCount(6);
     table_->setHorizontalHeaderLabels(
-        {QStringLiteral("参数"), QStringLiteral("路径"), QStringLiteral("读"), QStringLiteral("写"), QStringLiteral("状态"),
+        {QStringLiteral("参数"), QStringLiteral("路径"), QStringLiteral("读 Read"), QStringLiteral("设 Set"), QStringLiteral("状态"),
             QStringLiteral("诊断")});
     table_->verticalHeader()->setVisible(false);
     table_->setEditTriggers(QAbstractItemView::NoEditTriggers);
     table_->setSelectionBehavior(QAbstractItemView::SelectRows);
     table_->setSelectionMode(QAbstractItemView::SingleSelection);
     table_->horizontalHeader()->setStretchLastSection(true);
+    table_->setColumnWidth(static_cast<int>(WritePlanColumn::Parameter), 158);
+    table_->setColumnWidth(static_cast<int>(WritePlanColumn::Path), 158);
+    table_->setColumnWidth(static_cast<int>(WritePlanColumn::Status), 135);
     confirmButton_ = new QPushButton(QStringLiteral("确认写入"), this);
     confirmButton_->setObjectName(QStringLiteral("erncWritePlanConfirm"));
+    confirmButton_->setAutoDefault(false);
+    auto* close = new QPushButton(QStringLiteral("关闭"), this);
+    close->setDefault(true);
     auto* buttons = new QHBoxLayout();
     buttons->addStretch(1);
     buttons->addWidget(confirmButton_);
+    buttons->addWidget(close);
     root->addWidget(scopeLabel_);
     root->addWidget(hint);
     root->addWidget(diagnosticLabel_);
     root->addWidget(table_, 1);
     root->addLayout(buttons);
     connect(confirmButton_, &QPushButton::clicked, this, [this] { confirmWrite(); });
+    connect(close, &QPushButton::clicked, this, &WritePlanDialog::reject);
     rebuild();
 }
 
@@ -291,17 +285,22 @@ void WritePlanDialog::rebuild() {
         const QString idText = QString::fromStdString(id.text());
         const QString columns[] = {idText, path, readText, setText, status, QString()};
         for (int column = 0; column < 6; ++column) {
-            table_->setItem(row, column, new QTableWidgetItem(columns[column]));
+            auto* item = new QTableWidgetItem(columns[column]);
+            item->setToolTip(columns[column]);
+            if (column == static_cast<int>(WritePlanColumn::Read) || column == static_cast<int>(WritePlanColumn::Set)) {
+                item->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+            }
+            table_->setItem(row, column, item);
         }
         rows_.push_back(PlanRow{id, send});
     };
 
-    bool anySend = false;
+    int sendCount = 0;
     for (const ernc::domain::PlannedWrite& included : plan.included) {
         const bool send = isOneSlot(*sources_.layout, included.firmwarePath);
         append(included.id, QString::fromStdString(included.firmwarePath),
-            send ? QStringLiteral("待写入") : QStringLiteral("不写入"), send);
-        anySend = anySend || send;
+            send ? QStringLiteral("待写入") : QStringLiteral("非单值或受限制"), send);
+        sendCount += send ? 1 : 0;
     }
     for (const ernc::domain::RejectedWrite& rejected : plan.excluded) {
         const ernc::domain::ParameterDefinition* definition = sources_.catalog->find(rejected.id.text());
@@ -310,7 +309,10 @@ void WritePlanDialog::rebuild() {
             : QString::fromStdString(rejected.id.text());
         append(rejected.id, path, exclusionText(rejected.reason), false);
     }
-    confirmButton_->setEnabled(anySend);
+    const QString scopeName = isNavigatorAllPage(page) ? QStringLiteral("全工程 · 待写标量") : page;
+    scopeLabel_->setText(QStringLiteral("%1 · %2 项待写入 · %3 项跳过")
+        .arg(scopeName).arg(sendCount).arg(table_->rowCount() - sendCount));
+    confirmButton_->setEnabled(sendCount > 0);
     if (rows_.empty()) {
         diagnosticLabel_->setText(QStringLiteral("当前范围没有待写入的参数"));
     }
@@ -331,20 +333,20 @@ bool WritePlanDialog::writeBusy() const {
 }
 
 void WritePlanDialog::confirmWrite() {
-    if (writeBusy()) {
+    if (started_ || writeBusy()) {
         return;
     }
     rebuild();
     if (!confirmButton_->isEnabled() || !scopeReady_) {
         return;
     }
-    if (deviceController_ != nullptr && deviceController_->linkKind() == DeviceController::LinkKind::Serial) {
+    if (deviceController_ != nullptr && (deviceController_->linkKind() == DeviceController::LinkKind::Serial
+            || (deviceController_->linkKind() == DeviceController::LinkKind::Simulator && isNavigatorAllPage(sources_.pageId)))) {
         const ernc::domain::ErrorCode code = deviceController_->startWriteCategory(sources_.pageId);
+        started_ = code == ernc::domain::ErrorCode::Unknown;
         confirmButton_->setEnabled(false);
-        noteProgress();
-        if (code != ernc::domain::ErrorCode::Unknown) {
-            diagnosticLabel_->setText(errorName(code));
-        }
+        // 串口与模拟器统一由窗口定时器推进，确保本批完成事件也经过控制器。
+        diagnosticLabel_->setText(started_ ? QStringLiteral("写入任务已启动") : errorName(code));
         return;
     }
     if (writer_ == nullptr || scheduler_ == nullptr) {
@@ -354,6 +356,7 @@ void WritePlanDialog::confirmWrite() {
     }
     const ernc::domain::WriteScope scope = writeScopeForPage(sources_.pageId);
     const ernc::domain::Result<void> started = writer_->start(scope);
+    started_ = started.ok();
     confirmButton_->setEnabled(false);
     noteProgress();
     if (!started.ok() && started.tryError() != nullptr) {
@@ -362,6 +365,9 @@ void WritePlanDialog::confirmWrite() {
 }
 
 void WritePlanDialog::noteProgress() {
+    if (!started_) {
+        return;
+    }
     if (deviceController_ != nullptr && deviceController_->linkKind() == DeviceController::LinkKind::Serial) {
         deviceController_->refreshWritePlanFromWorker(this);
         return;
@@ -380,7 +386,7 @@ void WritePlanDialog::noteProgress() {
 void WritePlanDialog::noteProgressFromWorker(const std::vector<ernc::application::BatchWriteItem>& items,
                                              const std::optional<ernc::application::CommandId>& inflight,
                                              const std::optional<ernc::application::WritePhase>& phase) {
-    if (sources_.catalog == nullptr || sources_.store == nullptr || table_ == nullptr) {
+    if (!started_ || sources_.catalog == nullptr || sources_.store == nullptr || table_ == nullptr) {
         return;
     }
     int currentRow = -1;
@@ -418,7 +424,8 @@ void WritePlanDialog::noteProgressFromWorker(const std::vector<ernc::application
                 status = QStringLiteral("不写入");
                 break;
             case ernc::application::BatchWriteKind::Verified:
-                status = QStringLiteral("写入已确认");
+                // 当前批量标量写收到 FC16 ACK 后结束。历史枚举名不代表独立读回。
+                status = QStringLiteral("设备已确认 (ACK)");
                 break;
             case ernc::application::BatchWriteKind::Mismatch:
                 status = QStringLiteral("读回不一致");
@@ -485,11 +492,17 @@ QString WritePlanDialog::diagnosticText() const {
 }
 
 void WritePlanDialog::closeEvent(QCloseEvent* event) {
-    if (writeBusy()) {
+    if (started_ && writeBusy()) {
         event->ignore();
         return;
     }
     QDialog::closeEvent(event);
+}
+
+void WritePlanDialog::reject() {
+    if (!started_ || !writeBusy()) {
+        QDialog::reject();
+    }
 }
 
 }  // namespace ernc::presentation

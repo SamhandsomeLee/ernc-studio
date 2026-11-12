@@ -1,5 +1,7 @@
 #include "inspector/inspector_context.hpp"
 
+#include "parameters/scalar_display.hpp"
+#include <format>
 #include <optional>
 
 namespace ernc::presentation {
@@ -94,7 +96,7 @@ std::string formatWireLevel(double value) {
 InspectorText describeInspector(
     std::string_view parameterId,
     const ernc::domain::ParameterDefinition* definition,
-    const FakeParameterRow* row) {
+    const ernc::domain::ParameterRuntimeState* state) {
     const std::string_view shownId = parameterId.empty() ? std::string_view{"未选择参数"} : parameterId;
     const std::string_view description = definition == nullptr ? kMissing : textOrMissing(definition->descriptionZh);
     const std::string_view path = definition == nullptr ? kMissing : textOrMissing(definition->firmwarePath);
@@ -108,28 +110,42 @@ InspectorText describeInspector(
     const std::string_view access = definition == nullptr || !definition->access.has_value()
         ? kMissing
         : accessName(*definition->access);
-    const std::string_view status = row == nullptr ? kMissing : row->status;
-    const std::string_view read = row == nullptr ? kMissing : row->read;
-    const std::string_view set = row == nullptr ? kMissing : row->set;
-    const std::string_view updatedAt = row == nullptr ? kMissing : row->updatedAt;
-
-    std::string_view source = kMissing;
-    if (!parameterId.empty() && row != nullptr) {
-        source = "固定假数据，不是设备当前值。";
-    } else if (!parameterId.empty()) {
-        source = "目录定义。假数据表没有这一行。";
+    const auto* read = state == nullptr ? nullptr : state->displayedRead();
+    const auto* set = state != nullptr && state->stagedValue ? &*state->stagedValue : nullptr;
+    std::string_view status = parameterId.empty() ? kMissing : "未读取";
+    std::string_view source = definition == nullptr ? kMissing : "参数目录";
+    std::optional<ernc::domain::RuntimeTime> timestamp;
+    if (state != nullptr) {
+        if (state->projectReadValue) {
+            status = "工程历史读数";
+            source = "工程文件";
+        } else if (read != nullptr) {
+            status = state->stale ? "数据已过期" : "已读取";
+            source = state->stale ? "设备缓存" : "设备读回";
+            timestamp = state->readAt;
+        } else if (set != nullptr) {
+            source = "本地暂存";
+        }
+        if (state->dirty && !state->projectReadValue && (read == nullptr || !state->stale)) {
+            status = "待写入";
+        }
+        if (!timestamp) {
+            timestamp = state->stagedAt;
+        }
     }
+    const std::string updatedAt = timestamp
+        ? std::format("{:%FT%TZ}", std::chrono::floor<std::chrono::seconds>(*timestamp)) : std::string(kMissing);
 
     InspectorText text;
     appendLine(text.properties, "参数", shownId);
+    appendLine(text.properties, "读", displayScalar(read));
+    appendLine(text.properties, "写", displayScalar(set));
+    appendLine(text.properties, "状态", status);
     appendLine(text.properties, "说明", description);
     appendLine(text.properties, "路径", path);
     appendLine(text.properties, "类型", dataType);
     appendLine(text.properties, "形状", shape);
     appendLine(text.properties, "权限", access);
-    appendLine(text.properties, "状态", status);
-    appendLine(text.properties, "读", read);
-    appendLine(text.properties, "写", set);
 
     appendLine(text.info, "来源", source);
     appendLine(text.info, "分类", category);
@@ -146,7 +162,8 @@ InspectorText describeInspector(
     }
 
     appendLine(text.diagnostics, "当前参数", shownId);
-    text.diagnostics.append("\n没有命令、Slot 或报文记录。");
+    text.diagnostics.append(state != nullptr && state->error ? "\n上次读取失败，可在操作中心查看详情。"
+                                                           : "\n在操作中心查看会话记录。");
     return text;
 }
 

@@ -29,15 +29,17 @@ public:
     explicit ParameterDelegate(const ernc::domain::ParameterCatalog* catalog, const ernc::domain::FirmwareLayout* layout,
                                ernc::domain::ParameterRuntimeStore* store, QObject* parent = nullptr);
 
-    /// @brief Set 列要画出来的文字。
+    /// @brief Set 列只展示实际存在的用户目标值。
     /// @param definition 目录中的一条参数。只借用。
     /// @param state 运行状态。空表示还没有记录。
-    /// @return toggle 为「开」「关」或 Unknown。其它类型是固件标量文字，没有值时为「—」。
+    /// @return toggle 为「开」「关」或「未知」。其它类型是固件原值，没有 Set 时为「—」。
     /// running_time 和 max_time 不换算成秒。
     QString setCaption(const ernc::domain::ParameterDefinition& definition,
                        const ernc::domain::ParameterRuntimeState* state) const;
 
     /// @brief Read 列展示文字。Toggle 仅依据 displayedRead，不含 Set 覆盖。
+    /// @param definition 当前目录项，只在本次调用借用。
+    /// @param state 运行状态，只在本次调用借用。空时显示没有读数。
     QString readCaption(const ernc::domain::ParameterDefinition& definition,
                         const ernc::domain::ParameterRuntimeState* state) const;
 

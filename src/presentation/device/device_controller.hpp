@@ -114,6 +114,10 @@ signals:
     void connectionChanged(bool connected, ernc::domain::SessionId sessionId);
     void parametersUpdated(ernc::domain::SessionId sessionId, const QStringList& parameterIds);
     void readPageFinished(bool success, QString detail);
+    /// @brief 本批标量写已结束。只在 UI 线程发出。
+    /// @param acked 设备回 ACK 的条目数，不代表读回验证。
+    /// @param failed 失败条目数，不含计划排除项。
+    void writeBatchFinished(int acked, int failed);
     void canMsgUpdated(bool success);
     void operationLogRefreshRequested();
 
@@ -131,6 +135,10 @@ private:
 
     void pumpBatchReadSimulator();
     void pumpBatchWriteSimulator();
+
+    /// @brief 刷新本批结果所涉及的参数行和常驻任务状态。
+    /// @param items 已完成批次的结果，借用到函数返回。
+    void publishWriteResult(const std::vector<ernc::application::BatchWriteItem>& items);
     void pumpParameterReadSimulator();
     void finishBatchReadIfIdleSimulator();
     void finishCanMsgReadIfIdleSimulator();

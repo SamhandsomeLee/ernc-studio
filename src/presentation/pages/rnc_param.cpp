@@ -1,6 +1,7 @@
 #include "pages/rnc_param.hpp"
 
 #include "pages/function_view_layout.hpp"
+#include "parameters/scalar_display.hpp"
 
 #include "theme/theme_tokens.hpp"
 
@@ -11,6 +12,7 @@
 #include <QPushButton>
 #include <QScrollArea>
 #include <QSizePolicy>
+#include <QStyle>
 #include <QVBoxLayout>
 
 #include <chrono>
@@ -43,17 +45,11 @@ constexpr const char* kLeakyIds[] = {"RNC_param.LeakyRNCFre", "RNC_param.LeakyRN
 /// 时间。只使用固件原值，不换算秒。
 constexpr const char* kTimeIds[] = {"running_time", "max_time"};
 
-/// @brief 暂存值优先，否则用界面显示的 Read（可能来自工程）。
-/// @param state 运行状态。空表示没有记录。
-/// @return 指向状态内部的标量。不转移所有权。两个都空时为空指针。
-const ernc::domain::ScalarValue* shownValue(const ernc::domain::ParameterRuntimeState* state) {
-    if (state == nullptr) {
-        return nullptr;
-    }
-    if (state->stagedValue) {
-        return &*state->stagedValue;
-    }
-    return state->displayedRead();
+/// @brief 为 Read 列保留 112 个逻辑像素，容纳十进制原值并保持与表头对齐。
+/// @param label 借用的页内读数标签或表头，不转移所有权。
+void styleReadColumn(QLabel* label) {
+    label->setFixedWidth(112);
+    label->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
 }
 
 /// @brief 判断这条路径是不是可以暂存的 1 slot 标量。
@@ -70,25 +66,6 @@ bool isOneScalarSlot(const ernc::domain::FirmwareLayout* layout, std::string_vie
     }
     const ernc::domain::FieldLayout& field = located.field();
     return field.scalarType.has_value() && field.slotCount == 1U && field.size == 4U;
-}
-
-/// @brief 把标量格式化成十进制原值。
-/// @param value 当前标量。空或种类读不出时为「—」。
-/// @return float 的一般格式，或整数的十进制。不附加秒或 Hz。
-QString formatScalar(const ernc::domain::ScalarValue* value) {
-    if (value == nullptr) {
-        return kBlank.toString();
-    }
-    if (const ernc::domain::Result<float> number = value->asFloat(); number.ok()) {
-        return QString::number(static_cast<double>(number.value()), 'g', 9);
-    }
-    if (const ernc::domain::Result<std::int32_t> number = value->asInt32(); number.ok()) {
-        return QString::number(number.value());
-    }
-    if (const ernc::domain::Result<std::uint32_t> number = value->asUInt32(); number.ok()) {
-        return QString::number(number.value());
-    }
-    return kBlank.toString();
 }
 
 /// @brief 判断目录是否声明为只读。
@@ -117,7 +94,7 @@ RncParamPage::RncParamPage(const ernc::domain::ParameterCatalog* catalog, ernc::
     scroll->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     auto* content = new QWidget(scroll);
     auto* root = new QVBoxLayout(content);
-    root->setContentsMargins(0, 0, 0, 0);
+    root->setContentsMargins(kSpace4, 0, kSpace8, kSpace4);
     root->setSpacing(kSpace4);
     scroll->setWidget(content);
     pageLayout->addWidget(scroll, 1);
@@ -126,16 +103,33 @@ RncParamPage::RncParamPage(const ernc::domain::ParameterCatalog* catalog, ernc::
         return;
     }
 
+    auto* columns = new QHBoxLayout();
+    columns->setSpacing(kSpace8);
+    auto* parameter = new QLabel(QStringLiteral("参数"), content);
+    parameter->setMinimumWidth(function_view_layout::kNameColumnWidth);
+    parameter->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+    auto* read = new QLabel(QStringLiteral("读 Read"), content);
+    styleReadColumn(read);
+    auto* set = new QLabel(QStringLiteral("设 Set"), content);
+    set->setFixedWidth(function_view_layout::kEditorColumnWidth);
+    columns->addWidget(parameter);
+    columns->addWidget(read);
+    function_view_layout::gapBetweenSecondAndThirdColumns(columns);
+    columns->addWidget(set);
+    function_view_layout::sealFormRow(columns);
+    root->addLayout(columns);
+
     addSection(content, root, QStringLiteral("步长"), kStepIds, static_cast<int>(std::size(kStepIds)));
-    addSection(content, root, QStringLiteral("alpha"), kAlphaIds, static_cast<int>(std::size(kAlphaIds)));
-    addSection(content, root, QStringLiteral("频率"), kFrequencyIds, static_cast<int>(std::size(kFrequencyIds)));
-    addSection(content, root, QStringLiteral("泄漏"), kLeakyIds, static_cast<int>(std::size(kLeakyIds)));
+    addSection(content, root, QStringLiteral("Alpha 系数"), kAlphaIds, static_cast<int>(std::size(kAlphaIds)));
+    addSection(content, root, QStringLiteral("频段"), kFrequencyIds, static_cast<int>(std::size(kFrequencyIds)));
+    addSection(content, root, QStringLiteral("泄漏数组"), kLeakyIds, static_cast<int>(std::size(kLeakyIds)));
     {
         auto* heading = new QLabel(QStringLiteral("谱半径"), content);
+        heading->setObjectName(QStringLiteral("erncFunctionSection"));
         root->addWidget(heading);
         addParameterViewOnlyRow(content, root, QStringLiteral("ERNC_TF.SpecRadius"));
     }
-    addSection(content, root, QStringLiteral("时间"), kTimeIds, static_cast<int>(std::size(kTimeIds)));
+    addSection(content, root, QStringLiteral("时间原值"), kTimeIds, static_cast<int>(std::size(kTimeIds)));
     root->addStretch(1);
     reload();
 }
@@ -145,6 +139,7 @@ void RncParamPage::addSection(QWidget* parent, QVBoxLayout* layout, const QStrin
         return;
     }
     auto* heading = new QLabel(title, parent);
+    heading->setObjectName(QStringLiteral("erncFunctionSection"));
     layout->addWidget(heading);
     for (int index = 0; index < count; ++index) {
         addRow(parent, layout, QString::fromUtf8(ids[index]));
@@ -165,7 +160,7 @@ void RncParamPage::addParameterViewOnlyRow(QWidget* parent, QVBoxLayout* layout,
     name->setStyleSheet(QStringLiteral("text-align: left; padding: 0 4px;"));
     function_view_layout::styleParameterNameButton(name);
     auto* value = new QLabel(kArrayMark.toString(), row);
-    function_view_layout::styleValueLabel(value);
+    styleReadColumn(value);
     auto* hint = new QLabel(function_view_layout::parameterViewHintText(), row);
     hint->setWordWrap(true);
     hint->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
@@ -204,7 +199,8 @@ void RncParamPage::addRow(QWidget* parent, QVBoxLayout* layout, const QString& p
     name->setStyleSheet(QStringLiteral("text-align: left; padding: 0 4px;"));
     function_view_layout::styleParameterNameButton(name);
     auto* value = new QLabel(oneSlot || isReadOnly(*definition) ? kBlank.toString() : kArrayMark.toString(), row);
-    function_view_layout::styleValueLabel(value);
+    value->setObjectName(QStringLiteral("erncRncRead"));
+    styleReadColumn(value);
     line->addWidget(name);
     line->addWidget(value);
     function_view_layout::gapBetweenSecondAndThirdColumns(line);
@@ -216,6 +212,10 @@ void RncParamPage::addRow(QWidget* parent, QVBoxLayout* layout, const QString& p
     if (editable) {
         auto* editor = new QLineEdit(row);
         function_view_layout::styleScalarEditor(editor);
+        editor->setObjectName(QStringLiteral("erncRncSet.%1").arg(parameterId));
+        editor->setAccessibleName(QStringLiteral("设定 %1").arg(parameterId));
+        editor->setPlaceholderText(kBlank.toString());
+        editor->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
         line->addWidget(editor);
         control.editor = editor;
         connect(editor, &QLineEdit::editingFinished, this, [this, parameterId] {
@@ -223,10 +223,12 @@ void RncParamPage::addRow(QWidget* parent, QVBoxLayout* layout, const QString& p
                 return;
             }
             const Control* rowControl = findControl(parameterId);
-            if (rowControl == nullptr || rowControl->editor == nullptr) {
+            if (rowControl == nullptr || rowControl->editor == nullptr || !rowControl->editor->isModified()) {
                 return;
             }
+            rowControl->editor->setModified(false);
             commitValue(parameterId, rowControl->editor->text());
+            reload();
         });
     } else if (!oneSlot) {
         auto* hint = new QLabel(function_view_layout::parameterViewHintText(), row);
@@ -260,10 +262,19 @@ void RncParamPage::reload() {
             continue;
         }
         const ernc::domain::ParameterRuntimeState* state = store_ == nullptr ? nullptr : store_->find(definition->id);
-        const QString text = formatScalar(shownValue(state));
-        control.value->setText(text);
-        if (control.editor != nullptr) {
-            control.editor->setText(text == kBlank.toString() ? QString() : text);
+        const auto* read = state != nullptr ? state->displayedRead() : nullptr;
+        const bool historical = read != nullptr && (state->projectReadValue || state->stale);
+        control.value->setText(QString::fromStdString(displayScalar(read)));
+        control.value->setToolTip(read == nullptr ? QStringLiteral("未读取") : state->projectReadValue
+            ? QStringLiteral("工程历史读数") : state->stale ? QStringLiteral("数据已过期") : QStringLiteral("设备读数"));
+        if (control.value->property("historical").toBool() != historical) {
+            control.value->setProperty("historical", historical);
+            control.value->style()->unpolish(control.value);
+            control.value->style()->polish(control.value);
+        }
+        if (control.editor != nullptr && (!control.editor->hasFocus() || !control.editor->isModified())) {
+            control.editor->setText(state != nullptr && state->stagedValue
+                ? QString::fromStdString(displayScalar(&*state->stagedValue)) : QString());
         }
     }
     reloading_ = false;
@@ -406,6 +417,7 @@ void RncParamPage::notifyEdited(const ernc::domain::ParameterId& id) {
     if (editObserver_) {
         editObserver_(id);
     }
+    activate(QString::fromStdString(id.text()));
     reload();
 }
 

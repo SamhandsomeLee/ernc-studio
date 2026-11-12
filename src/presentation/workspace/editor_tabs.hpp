@@ -18,6 +18,7 @@
 
 class QLabel;
 class QLineEdit;
+class QTableView;
 
 namespace ernc::domain {
 class ArrayRuntimeStore;
@@ -43,16 +44,18 @@ class ParameterTableModel;
 
 namespace ernc::presentation {
 
-/// Function View 和 Parameter View。两个页面读取同一份参数 id。
-/// 切换页签不修改选择，也不连接设备。
+/// Function View、Parameter View 和离线曲线分析页。参数页读取同一份参数 id。
+/// 切换页签不修改选择。曲线分析只导入本地 BIN/TXT，不连接 Region 设备读写端口。
 class EditorTabs final : public QTabWidget {
 public:
-    /// @brief 创建两个工作页，初始没有选中的页面或参数。
+    /// @brief 创建参数工作页，并在区域目录可用时创建离线曲线分析页。初始没有选中的页面或参数。
     /// @param catalog 参数目录，只借用。空指针时参数表没有行。调用方保证它比本控件活得久。
     /// @param store 运行状态，只借用。空指针时参数表不显示数值。调用方保证它比本控件活得久。
     /// @param layout 固件布局，只借用。空指针时 Set 列确认不会暂存。调用方保证它比本控件活得久。
+    /// @param regionCatalog 区域目录，只借用。空指针时不创建曲线分析页。调用方保证它比本控件活得久。
     /// @param parent 父控件。非空时由 Qt 父子关系拥有本控件。必须在 UI 主线程创建。
-    /// @note 启动时停在 Function View。预置可以切换页签，窗口状态不单独保存这个页签。
+    /// @note 启动时停在 Function View。曲线分析页不绑定 RegionReader 或 RegionWriter。
+    /// 预置可以切换页签，窗口状态不单独保存这个页签。
     explicit EditorTabs(const ernc::domain::ParameterCatalog* catalog, ernc::domain::ParameterRuntimeStore* store,
                         const ernc::domain::FirmwareLayout* layout,
                         const ernc::domain::RegionCatalog* regionCatalog = nullptr, QWidget* parent = nullptr);
@@ -65,13 +68,14 @@ public:
     /// @note 不改参数 id，也不把焦点送进参数表。只在 UI 主线程调用。
       void showParameterView();
 
-    /// @brief 切到曲线分析页。无区域目录时仍停在当前页。
+    /// @brief 切到离线曲线分析页。无区域目录时仍停在当前页。
     void showCurveAnalysis();
 
     /// @brief 切到 CAN 信息页。
     void showCanInfoTab();
 
     /// @brief 把会话 UI 记录接到曲线分析页。
+    /// @param recorder 曲线导入操作的记录回调。本控件复制它，空函数表示停止记录。
     void setUiActivityRecorder(
         std::function<void(std::string_view action, std::string_view detail, bool success,
                            ernc::domain::ErrorCode error)>
@@ -126,6 +130,9 @@ public:
     /// @brief 打开当前分类的写入预览（仅本页已修改参数）。
     void openWritePlan();
 
+    /// @brief 打开全工程待写标量的预览。只在确认后进入既有批量写入口。
+    void openAllWritePlan();
+
     void bindParameterSession(ernc::domain::SessionId session);
     void notifyParametersUpdated(ernc::domain::SessionId session, const QStringList& parameterIds);
     void noteDeviceDisconnected();
@@ -135,6 +142,13 @@ public:
     void refreshLocalParameters();
 
 private:
+    /// @brief 打开一次模态写入计划。已有预览时复用它。
+    /// @param pageId 借用的目录分类或 ALL，由对话框复制。
+    void showWritePlan(const QString& pageId);
+
+    /// @brief 参数视图可见时定位两视图共享的参数。不更改筛选或暂存状态。
+    void syncParameterSelection();
+
     /// @brief 按当前选择重写 Function View，并让当前功能页占满剩余高度。
     /// @note 参数表不在这里改写。没有功能页时，说明文字仍停在上方。
     void refresh();
@@ -192,7 +206,7 @@ private:
     /// other 分类页。由 Function View 通过 Qt 父子关系拥有。其它页面隐藏它。
     OtherPage* otherPage_ = nullptr;
 
-    /// 曲线分析页。有区域目录时创建。
+    /// 离线曲线分析页。有区域目录时创建，由本控件通过 Qt 父子关系拥有。
     AnalysisPanel* curveAnalysis_ = nullptr;
 
     /// CAN 信息页。独立页签，不放在函数视图内。
@@ -203,6 +217,9 @@ private:
 
     /// 参数表模型。由参数表通过 Qt 父子关系拥有。功能页暂存后用它重画同一行。
     ParameterTableModel* parameterModel_ = nullptr;
+
+    /// 参数表，由参数页拥有。只在参数视图可见时对齐选中行。
+    QTableView* parameterTable_ = nullptr;
 
     /// Function View 上的文字。由本控件通过 Qt 父子关系拥有。功能页显示时隐藏。
     QLabel* functionLabel_ = nullptr;

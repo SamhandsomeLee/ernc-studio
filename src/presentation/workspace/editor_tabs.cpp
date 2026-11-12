@@ -3,6 +3,7 @@
 #include "arrays/array_detail_panel.hpp"
 #include "arrays/array_summary.hpp"
 
+#include "analysis/analysis_panel.hpp"
 #include "device/device_controller.hpp"
 #include "parameters/write_plan_dialog.hpp"
 
@@ -33,8 +34,10 @@
 #include <QItemSelectionModel>
 #include <QLabel>
 #include <QLineEdit>
+#include <QMenu>
 #include <QPushButton>
 #include <QTableView>
+#include <QToolButton>
 #include <QVBoxLayout>
 
 namespace ernc::presentation {
@@ -48,12 +51,22 @@ QWidget* makeFunctionView(QWidget* parent, QLabel*& label) {
     auto* view = new QWidget(parent);
     view->setObjectName(QStringLiteral("erncFunctionView"));
     auto* layout = new QVBoxLayout(view);
-    layout->setContentsMargins(kSpace16, kSpace16, kSpace16, kSpace16);
+    layout->setContentsMargins(kSpace8, kSpace8, kSpace8, kSpace8);
+    layout->setSpacing(kSpace8);
+    auto* toolbar = new QHBoxLayout();
     label = new QLabel(view);
     label->setObjectName(QStringLiteral("erncFunctionSummary"));
     label->setAlignment(Qt::AlignLeft | Qt::AlignTop);
     label->setWordWrap(true);
-    layout->addWidget(label, 0, Qt::AlignLeft | Qt::AlignTop);
+    toolbar->addWidget(label);
+    toolbar->addStretch(1);
+    auto* read = new QPushButton(QStringLiteral("读取本页"), view);
+    read->setObjectName(QStringLiteral("erncFunctionRead"));
+    auto* plan = new QPushButton(QStringLiteral("查看写入计划"), view);
+    plan->setObjectName(QStringLiteral("erncFunctionWritePlan"));
+    toolbar->addWidget(read);
+    toolbar->addWidget(plan);
+    layout->addLayout(toolbar);
     layout->addStretch(1);
     return view;
 }
@@ -73,12 +86,8 @@ QWidget* makeParameterView(QWidget* parent, const ernc::domain::ParameterCatalog
     auto* view = new QWidget(parent);
     view->setObjectName(QStringLiteral("erncParameterView"));
     auto* viewLayout = new QVBoxLayout(view);
-    viewLayout->setContentsMargins(kSpace16, kSpace16, kSpace16, kSpace16);
+    viewLayout->setContentsMargins(kSpace8, kSpace8, kSpace8, kSpace8);
     viewLayout->setSpacing(kSpace8);
-
-    auto* caption = new QLabel(QStringLiteral("参数表显示目录和运行状态。没有读数时「读」列为 —。"), view);
-    caption->setWordWrap(true);
-    viewLayout->addWidget(caption);
 
     auto* filters = new QHBoxLayout();
     search = new QLineEdit(view);
@@ -89,10 +98,17 @@ QWidget* makeParameterView(QWidget* parent, const ernc::domain::ParameterCatalog
     dirtyOnly->setObjectName(QStringLiteral("erncParameterDirtyOnly"));
     filters->addWidget(search, 1);
     filters->addWidget(dirtyOnly);
+    auto* columns = new QToolButton(view);
+    columns->setText(QStringLiteral("显示"));
+    columns->setObjectName(QStringLiteral("erncParameterDisplayOptions"));
+    columns->setPopupMode(QToolButton::InstantPopup);
+    auto* displayMenu = new QMenu(columns);
+    columns->setMenu(displayMenu);
+    filters->addWidget(columns);
     auto* readPage = new QPushButton(QStringLiteral("读取本页"), view);
     readPage->setObjectName(QStringLiteral("erncReadCurrentPage"));
     filters->addWidget(readPage);
-    auto* writePlan = new QPushButton(QStringLiteral("写入已修改参数"), view);
+    auto* writePlan = new QPushButton(QStringLiteral("查看写入计划"), view);
     writePlan->setObjectName(QStringLiteral("erncOpenWritePlan"));
     filters->addWidget(writePlan);
     viewLayout->addLayout(filters);
@@ -111,8 +127,35 @@ QWidget* makeParameterView(QWidget* parent, const ernc::domain::ParameterCatalog
     table->setSelectionMode(QAbstractItemView::SingleSelection);
     table->setItemDelegate(new ParameterDelegate(catalog, layout, store, table));
     table->setEditTriggers(QAbstractItemView::DoubleClicked | QAbstractItemView::EditKeyPressed);
-    table->horizontalHeader()->setStretchLastSection(true);
-    table->verticalHeader()->setVisible(false);
+    auto* header = table->horizontalHeader();
+    header->setSectionResizeMode(QHeaderView::Interactive);
+    header->setSectionResizeMode(static_cast<int>(FakeParameterColumn::Parameter), QHeaderView::Stretch);
+    table->setColumnWidth(static_cast<int>(FakeParameterColumn::Status), 122);
+    table->setColumnWidth(static_cast<int>(FakeParameterColumn::Read), 118);
+    table->setColumnWidth(static_cast<int>(FakeParameterColumn::Set), 118);
+    table->setColumnWidth(static_cast<int>(FakeParameterColumn::Path), 210);
+    table->setColumnWidth(static_cast<int>(FakeParameterColumn::UpdatedAt), 174);
+    auto* rows = table->verticalHeader();
+    rows->setVisible(false);
+    rows->setSectionResizeMode(QHeaderView::Fixed);
+    rows->setDefaultSectionSize(30);
+    const auto addColumnToggle = [displayMenu, table](const QString& label, FakeParameterColumn column) {
+        const int index = static_cast<int>(column);
+        table->setColumnHidden(index, true);
+        QAction* action = displayMenu->addAction(label);
+        action->setCheckable(true);
+        QObject::connect(action, &QAction::toggled, table, [table, index](bool visible) {
+            table->setColumnHidden(index, !visible);
+        });
+    };
+    addColumnToggle(QStringLiteral("固件路径"), FakeParameterColumn::Path);
+    addColumnToggle(QStringLiteral("更新时间"), FakeParameterColumn::UpdatedAt);
+    displayMenu->addSeparator();
+    QAction* standardDensity = displayMenu->addAction(QStringLiteral("标准行距"));
+    standardDensity->setCheckable(true);
+    QObject::connect(standardDensity, &QAction::toggled, rows, [rows](bool standard) {
+        rows->setDefaultSectionSize(standard ? 34 : 30);
+    });
     viewLayout->addWidget(table, 1);
     QObject::connect(search, &QLineEdit::textChanged, proxy, &ParameterFilterProxy::setQuery);
     QObject::connect(dirtyOnly, &QCheckBox::toggled, proxy, &ParameterFilterProxy::setDirtyOnly);
@@ -235,17 +278,45 @@ EditorTabs::EditorTabs(const ernc::domain::ParameterCatalog* catalog, ernc::doma
     addTab(functionView, QStringLiteral("函数视图"));
     auto* parameterView = makeParameterView(this, catalog, store, layout, parameterSearch_, parameterProxy_, parameterModel_);
     addTab(parameterView, QStringLiteral("参数视图"));
+    if (regionCatalog != nullptr) {
+        // 本次只开放离线文件导入与画图。Region 设备读写端口保持为空，不新增真实设备操作路径。
+        curveAnalysis_ = new AnalysisPanel(*regionCatalog, nullptr, nullptr, this);
+        addTab(curveAnalysis_, QStringLiteral("曲线分析"));
+    }
     canInfoPanel_ = new CanInfoPanel(layout, this);
     addTab(canInfoPanel_, QStringLiteral("CAN信息"));
-    auto* table = parameterView->findChild<QTableView*>(QStringLiteral("erncParameterTable"));
+    parameterTable_ = parameterView->findChild<QTableView*>(QStringLiteral("erncParameterTable"));
+    connect(functionView->findChild<QPushButton*>(QStringLiteral("erncFunctionRead")), &QPushButton::clicked,
+        this, &EditorTabs::readCurrentPage);
+    connect(functionView->findChild<QPushButton*>(QStringLiteral("erncFunctionWritePlan")), &QPushButton::clicked,
+        this, &EditorTabs::openWritePlan);
     if (auto* readCurrent = parameterView->findChild<QPushButton*>(QStringLiteral("erncReadCurrentPage"))) {
         connect(readCurrent, &QPushButton::clicked, this, &EditorTabs::readCurrentPage);
     }
     if (auto* openWritePlan = parameterView->findChild<QPushButton*>(QStringLiteral("erncOpenWritePlan"))) {
         connect(openWritePlan, &QPushButton::clicked, this, &EditorTabs::openWritePlan);
     }
-    connect(table->selectionModel(), &QItemSelectionModel::currentRowChanged, this,
+    connect(parameterTable_->selectionModel(), &QItemSelectionModel::currentRowChanged, this,
         &EditorTabs::onParameterRowChanged);
+    connect(this, &QTabWidget::currentChanged, this, [this] {
+        if (showingFunctionView()) {
+            emphasizeFunctionViewParameter(QString::fromStdString(selection_.parameterId()));
+        } else {
+            syncParameterSelection();
+        }
+    });
+    connect(parameterModel_, &QAbstractItemModel::dataChanged, this, [this](const QModelIndex& first, const QModelIndex& last) {
+        if (!parameterObserver_ || selection_.parameterId().empty()) {
+            return;
+        }
+        const QString selected = QString::fromStdString(selection_.parameterId());
+        for (int row = first.row(); row <= last.row(); ++row) {
+            if (parameterModel_->index(row, static_cast<int>(FakeParameterColumn::Parameter)).data().toString() == selected) {
+                parameterObserver_(selection_.parameterId());
+                return;
+            }
+        }
+    });
     setCurrentIndex(0);
     refresh();
 }
@@ -257,7 +328,10 @@ void EditorTabs::onParameterRowChanged(const QModelIndex& current, const QModelI
     }
     const QModelIndex idIndex = current.sibling(
         current.row(), static_cast<int>(FakeParameterColumn::Parameter));
-    selectParameter(idIndex.data(Qt::DisplayRole).toString());
+    const QString parameterId = idIndex.data(Qt::DisplayRole).toString();
+    if (parameterId.toStdString() != selection_.parameterId()) {
+        selectParameter(parameterId);
+    }
 }
 
 void EditorTabs::setParameterObserver(std::function<void(std::string_view)> observer) {
@@ -273,6 +347,8 @@ void EditorTabs::selectParameter(const QString& parameterId) {
     refresh();
     if (showingFunctionView()) {
         emphasizeFunctionViewParameter(parameterId);
+    } else {
+        syncParameterSelection();
     }
     if (arrayDetail_ != nullptr && catalog_ != nullptr && layout_ != nullptr) {
         const ernc::domain::ParameterDefinition* definition = catalog_->find(incoming);
@@ -282,6 +358,24 @@ void EditorTabs::selectParameter(const QString& parameterId) {
     }
     if (parameterObserver_) {
         parameterObserver_(selection_.parameterId());
+    }
+}
+
+void EditorTabs::syncParameterSelection() {
+    if (parameterTable_ == nullptr || parameterProxy_ == nullptr || currentWidget() != parameterTable_->parentWidget()) {
+        return;
+    }
+    const QString selected = QString::fromStdString(selection_.parameterId());
+    for (int row = 0; row < parameterProxy_->rowCount(); ++row) {
+        const auto index = parameterProxy_->index(row, static_cast<int>(FakeParameterColumn::Parameter));
+        if (index.data().toString() == selected) {
+            if (parameterTable_->currentIndex().row() != row) {
+                // 保留表格自身的选择通知和重绘；当前行回调见到相同 ID 时直接返回。
+                parameterTable_->setCurrentIndex(index);
+                parameterTable_->scrollTo(index);
+            }
+            return;
+        }
     }
 }
 
@@ -430,11 +524,25 @@ void EditorTabs::refreshLocalParameters() {
 }
 
 void EditorTabs::openWritePlan() {
+    showWritePlan(QString::fromStdString(selection_.pageId()));
+}
+
+void EditorTabs::openAllWritePlan() {
+    showWritePlan(QStringLiteral("ALL"));
+}
+
+void EditorTabs::showWritePlan(const QString& pageId) {
+    const auto dialogs = findChildren<QDialog*>(QStringLiteral("erncWritePlanDialog"), Qt::FindDirectChildrenOnly);
+    if (!dialogs.isEmpty()) {
+        dialogs.constFirst()->raise();
+        dialogs.constFirst()->activateWindow();
+        return;
+    }
     WritePlanDialog::Sources sources;
     sources.catalog = catalog_;
     sources.store = store_;
     sources.layout = layout_;
-    sources.pageId = QString::fromStdString(selection_.pageId());
+    sources.pageId = pageId;
     auto* dialog = new WritePlanDialog(sources, this);
     dialog->setAttribute(Qt::WA_DeleteOnClose);
     if (deviceController_ != nullptr) {
@@ -462,12 +570,16 @@ void EditorTabs::showParameterView() {
 }
 
 void EditorTabs::showCurveAnalysis() {
-    showParameterView();
+    if (curveAnalysis_ != nullptr) {
+        showNamedPage(QStringLiteral("erncCurveAnalysis"));
+    }
 }
 
 void EditorTabs::setUiActivityRecorder(
     std::function<void(std::string_view, std::string_view, bool, ernc::domain::ErrorCode)> recorder) {
-    (void)recorder;
+    if (curveAnalysis_ != nullptr) {
+        curveAnalysis_->setUiActivityRecorder(std::move(recorder));
+    }
 }
 
 void EditorTabs::focusParameterTable() {
@@ -493,6 +605,9 @@ void EditorTabs::refresh() {
         : QString::fromStdString(selection_.parameterId());
     const QString text = QStringLiteral("当前页面 %1\n参数 %2").arg(page, parameter);
     functionLabel_->setText(text);
+    const QString readLabel = selection_.pageId() == "ALL" ? QStringLiteral("读取全部标量") : QStringLiteral("读取本页");
+    findChild<QPushButton*>(QStringLiteral("erncFunctionRead"))->setText(readLabel);
+    findChild<QPushButton*>(QStringLiteral("erncReadCurrentPage"))->setText(readLabel);
     const bool showFlag = selection_.pageId() == "ERNC_Flag";
     const bool showInOut = selection_.pageId() == "ERNC_IN_OUT";
     const bool showEnc = selection_.pageId() == "ENC_Param";

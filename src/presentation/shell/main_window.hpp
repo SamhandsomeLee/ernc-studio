@@ -19,6 +19,7 @@
 class QAction;
 class QCloseEvent;
 class QDockWidget;
+class QLabel;
 class QTimer;
 
 namespace ernc::infrastructure {
@@ -73,6 +74,9 @@ private:
     /// @brief 刷新标题和依赖当前工程的菜单可用状态。
     void updateProjectActions();
 
+    /// @brief 由当前工程与树选中分类更新工作区标题。
+    void updateWorkspaceContext();
+
     /// @brief 读取旧版 JSON 并暂存其中可编辑的标量，显示应用及跳过结果。
     void importParameters();
 
@@ -122,6 +126,9 @@ private:
     void recordUiAction(std::string_view action, std::string_view detail, bool success,
                         ernc::domain::ErrorCode error = ernc::domain::ErrorCode::Unknown);
 
+    /// @brief 更新常驻设备来源，不覆盖当前任务结果。
+    /// @param connected 当前会话是否可用。
+    /// @param sessionId 当前会话代号，离线时不用它生成文字。
     void updateDeviceStatusBar(bool connected, ernc::domain::SessionId sessionId);
     void onDeviceConnectionChanged(bool connected, ernc::domain::SessionId sessionId);
     void onParametersUpdated(ernc::domain::SessionId sessionId, const QStringList& parameterIds);
@@ -159,6 +166,15 @@ private:
 
     /// 中央工作页。由本窗口通过 Qt 父子关系拥有。
     EditorTabs* editorTabs_ = nullptr;
+
+    /// 当前工程和分类。由中央工作区拥有，仅在 UI 线程更新。
+    QLabel* workspaceContext_ = nullptr;
+
+    /// 常驻设备来源。由状态栏拥有，临时消息不会替换它。
+    QLabel* deviceStatus_ = nullptr;
+
+    /// 最近一次读写任务摘要。由状态栏拥有，可被临时消息短暂覆盖。
+    QLabel* taskStatus_ = nullptr;
 
     /// 底部检查器内容。由检查器 Dock 通过 Qt 父子关系拥有。
     InspectorPanel* inspectorPanel_ = nullptr;

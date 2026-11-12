@@ -1,10 +1,9 @@
 #include "parameters/parameter_table_model.hpp"
 
 #include "parameters/parameter_set_policy.hpp"
+#include "parameters/scalar_display.hpp"
 
 #include "parameters/fake_parameter_rows.hpp"
-
-#include "ernc/domain/control_semantics.hpp"
 
 #include <QDateTime>
 #include <QTimeZone>
@@ -16,37 +15,6 @@ namespace {
 
 /// 没有读数或暂存值时的占位。不是数值 0。
 constexpr QStringView kBlank = u"—";
-
-/// @brief 把标量格式化成最短的十进制文字。
-/// @param value 标量，只在本次调用期间借用。没有物理单位。
-/// @return float 使用一般格式，整数使用十进制。种类无法读取时为「—」。
-QString formatScalar(const ernc::domain::ScalarValue& value) {
-    if (const ernc::domain::Result<float> number = value.asFloat(); number.ok()) {
-        return QString::number(static_cast<double>(number.value()), 'g', 9);
-    }
-    if (const ernc::domain::Result<std::int32_t> number = value.asInt32(); number.ok()) {
-        return QString::number(number.value());
-    }
-    if (const ernc::domain::Result<std::uint32_t> number = value.asUInt32(); number.ok()) {
-        return QString::number(number.value());
-    }
-    return kBlank.toString();
-}
-
-/// @brief 按目录控件把标量格式成界面文字。Toggle 为开、关或未知。
-QString formatDisplayValue(const ernc::domain::ParameterDefinition& definition, const ernc::domain::ScalarValue& value) {
-    if (definition.editor && *definition.editor == ernc::domain::EditorKind::Toggle) {
-        switch (ernc::domain::decodeToggle(definition, value)) {
-        case ernc::domain::TogglePosition::On:
-            return QStringLiteral("开");
-        case ernc::domain::TogglePosition::Off:
-            return QStringLiteral("关");
-        case ernc::domain::TogglePosition::Unknown:
-            return QStringLiteral("未知");
-        }
-    }
-    return formatScalar(value);
-}
 
 /// @brief 把调用方给出的时刻写成 UTC 的 ISO 文字。
 /// @param time 系统钟时间点。本函数不读取当前时间。
@@ -145,7 +113,7 @@ int ParameterTableModel::columnCount(const QModelIndex& parent) const {
 }
 
 QVariant ParameterTableModel::data(const QModelIndex& index, int role) const {
-    if (!index.isValid() || role != Qt::DisplayRole || catalog_ == nullptr) {
+    if (!index.isValid() || catalog_ == nullptr) {
         return {};
     }
     if (index.row() < 0 || static_cast<std::size_t>(index.row()) >= catalog_->size()) {
@@ -155,6 +123,13 @@ QVariant ParameterTableModel::data(const QModelIndex& index, int role) const {
         return {};
     }
     const RowText& row = rows_.at(index.row());
+    if (role == Qt::TextAlignmentRole && (index.column() == static_cast<int>(FakeParameterColumn::Read)
+            || index.column() == static_cast<int>(FakeParameterColumn::Set))) {
+        return static_cast<int>(Qt::AlignRight | Qt::AlignVCenter);
+    }
+    if (role != Qt::DisplayRole) {
+        return {};
+    }
     switch (static_cast<FakeParameterColumn>(index.column())) {
     case FakeParameterColumn::Status:
         return row.status;
@@ -177,6 +152,12 @@ QVariant ParameterTableModel::data(const QModelIndex& index, int role) const {
 QVariant ParameterTableModel::headerData(int section, Qt::Orientation orientation, int role) const {
     if (orientation != Qt::Horizontal || role != Qt::DisplayRole) {
         return {};
+    }
+    if (section == static_cast<int>(FakeParameterColumn::Read)) {
+        return QStringLiteral("读 Read");
+    }
+    if (section == static_cast<int>(FakeParameterColumn::Set)) {
+        return QStringLiteral("设 Set");
     }
     const std::string_view name = fakeParameterColumnName(section);
     if (name.empty()) {
@@ -216,8 +197,8 @@ void ParameterTableModel::refreshRow(int row) {
         text.read.clear();
         text.set.clear();
     } else {
-        text.read = read != nullptr ? formatDisplayValue(definition, *read) : kBlank.toString();
-        text.set = state != nullptr && state->stagedValue ? formatScalar(*state->stagedValue) : kBlank.toString();
+        text.read = QString::fromStdString(displayScalar(read));
+        text.set = QString::fromStdString(displayScalar(state != nullptr && state->stagedValue ? &*state->stagedValue : nullptr));
     }
     if (state != nullptr && !state->projectReadValue && state->readAt) {
         text.updatedAt = formatTime(*state->readAt);

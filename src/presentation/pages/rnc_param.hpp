@@ -52,7 +52,7 @@ public:
     /// @return 已经生成行时为 true。
     bool containsParameter(const QString& parameterId) const;
 
-    /// @brief 读取一行当前值或数组标记。
+    /// @brief 读取一行 Read 或数组标记。
     /// @param parameterId 目录主键。调用方拥有原件，本函数只比较它。
     /// @return 标量行是十进制原值，没有值时为「—」。数组行固定为「数组」。未知 id 为空字符串。
     QString valueText(const QString& parameterId) const;
@@ -95,7 +95,7 @@ private:
         /// 目录主键。
         QString id;
 
-        /// 当前值，或数组行的「数组」。
+        /// 设备 Read（可以是工程历史值），或数组行的「数组」。
         QLabel* value = nullptr;
 
         /// 可写 1 slot 的输入。Step 和数组行为空。
