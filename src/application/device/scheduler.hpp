@@ -281,7 +281,7 @@ private:
     /// @param limit 等待长度和允许的 submit 次数。只在本次调用期间借用。
     void applyReadRetry(RetryTime now, const ReadRetryLimit& limit);
 
-    /// @brief 对仍在等待 ACK 的读回写命令应用超时。超时不再次提交 FC16。
+    /// @brief 对仍在 Sent 阶段、等待 FC16 ACK 的写命令应用超时。readBack 为 false 的标量写也走这里。超时不再次提交 FC16。
     /// @param now 调用方给出的当前时刻。函数不读取系统钟。
     /// @param limit 只使用其中的 timeout。maxAttempts 不使 FC16 重发。
     void applyWriteAckWait(RetryTime now, const ReadRetryLimit& limit);

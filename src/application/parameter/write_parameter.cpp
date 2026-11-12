@@ -100,7 +100,7 @@ ernc::domain::Result<CommandId> ParameterWriter::write(const ernc::domain::Param
     request.op = CommandOp::Write;
     request.firstSlot = static_cast<std::uint16_t>(field.slot);
     request.slotCount = 1;
-    request.readBack = true;
+    request.readBack = false;
     request.payload.assign(encoded.begin(), encoded.end());
     const ernc::domain::Result<CommandId> enqueued = scheduler_.enqueue(request);
     if (!enqueued.ok()) {
@@ -124,6 +124,16 @@ void ParameterWriter::apply(const CommandOutcome& outcome, ernc::domain::Runtime
     }
     if (const auto* failed = std::get_if<FailedCommand>(&outcome.body)) {
         failActive(failed->code);
+        return;
+    }
+    if (std::get_if<WriteCommandResult>(&outcome.body) != nullptr) {
+        const std::optional<ernc::domain::RuntimeTime> stagedAt = active_->stagedAt;
+        const ernc::domain::ParameterId parameter = active_->parameter;
+        const ernc::domain::ParameterRuntimeState* state = store_.find(parameter);
+        if (state != nullptr && state->stagedAt == stagedAt) {
+            store_.markClean(parameter);
+        }
+        active_.reset();
         return;
     }
     const auto* verification = std::get_if<WriteVerification>(&outcome.body);

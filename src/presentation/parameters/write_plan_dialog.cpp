@@ -418,7 +418,7 @@ void WritePlanDialog::noteProgressFromWorker(const std::vector<ernc::application
                 status = QStringLiteral("不写入");
                 break;
             case ernc::application::BatchWriteKind::Verified:
-                status = QStringLiteral("读回一致");
+                status = QStringLiteral("写入已确认");
                 break;
             case ernc::application::BatchWriteKind::Mismatch:
                 status = QStringLiteral("读回不一致");
@@ -430,6 +430,7 @@ void WritePlanDialog::noteProgressFromWorker(const std::vector<ernc::application
                 break;
             }
         } else if (row == currentRow) {
+            // 标量写 readBack 为 false 时 phaseOf 通常为空，只显示「正在写入」直到 ACK 结束。
             if (phase == ernc::application::WritePhase::Acked) {
                 status = QStringLiteral("设备已确认");
             } else if (phase == ernc::application::WritePhase::Verifying) {

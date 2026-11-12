@@ -77,6 +77,8 @@ void ParameterBatchWriter::apply(const CommandOutcome& outcome, ernc::domain::Ru
     }
     if (const auto* failed = std::get_if<FailedCommand>(&outcome.body)) {
         record(id, BatchWriteKind::Failed, failed->code);
+    } else if (std::get_if<WriteCommandResult>(&outcome.body) != nullptr) {
+        record(id, BatchWriteKind::Verified, std::nullopt);
     } else if (const auto* verification = std::get_if<WriteVerification>(&outcome.body)) {
         if (verification->phase == WritePhase::Verified) {
             record(id, BatchWriteKind::Verified, std::nullopt);

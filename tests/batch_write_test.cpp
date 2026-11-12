@@ -201,10 +201,10 @@ WriteScope selectedTwo(const ParameterId& first, const ParameterId& second) {
     return scope;
 }
 
-/// @brief ANC_OFF 写完并读回之后，才发送 ENC_OFF 的写。
+/// @brief ANC_OFF ACK 之后，才发送 ENC_OFF 的写。
 /// @param catalog 正式目录。
 /// @param layout 正式布局。
-/// @return 四帧顺序是 slot 0 的 FC16、FC03，然后 slot 1 的 FC16、FC03，且两项都是 Verified 时为 true。
+/// @return 两帧 slot 0 与 slot 1 的 FC16，两项 BatchWriteKind::Verified，且 dirty 清掉时为 true。
 bool twoScalarsWriteOneAtATime(const ParameterCatalog& catalog, const FirmwareLayout& layout) {
     Bench bench{catalog, layout};
     if (!bench.session.connect().ok()) {
@@ -231,26 +231,22 @@ bool twoScalarsWriteOneAtATime(const ParameterCatalog& catalog, const FirmwareLa
     const ParameterRuntimeState* encState = bench.store.find(enc);
     const BatchWriteItem* ancItem = findItem(bench.writer.items(), anc);
     const BatchWriteItem* encItem = findItem(bench.writer.items(), enc);
-    if (ancState == nullptr || encState == nullptr || ancState->dirty || encState->dirty || !ancState->deviceValue
-        || !encState->deviceValue || ancItem == nullptr || encItem == nullptr || ancItem->kind != BatchWriteKind::Verified
-        || encItem->kind != BatchWriteKind::Verified) {
+    if (ancState == nullptr || encState == nullptr || ancState->dirty || encState->dirty || ancState->deviceValue.has_value()
+        || encState->deviceValue.has_value() || ancItem == nullptr || encItem == nullptr
+        || ancItem->kind != BatchWriteKind::Verified || encItem->kind != BatchWriteKind::Verified) {
         return fail("two_scalars_write_one_at_a_time");
     }
-    const Result<float> ancValue = ancState->deviceValue->asFloat();
-    const Result<float> encValue = encState->deviceValue->asFloat();
     const std::vector<std::vector<std::uint8_t>>& frames = bench.transport.submitted();
-    if (!ancValue.ok() || !encValue.ok() || ancValue.value() != 2.0F || encValue.value() != 3.0F || frames.size() != 4U
-        || !oneSlotHeader(frames[0], 0x10, 0) || !oneSlotHeader(frames[1], 0x03, 0) || !oneSlotHeader(frames[2], 0x10, 1)
-        || !oneSlotHeader(frames[3], 0x03, 1)) {
+    if (frames.size() != 2U || !oneSlotHeader(frames[0], 0x10, 0) || !oneSlotHeader(frames[1], 0x10, 1)) {
         return fail("two_scalars_write_one_at_a_time");
     }
     return true;
 }
 
-/// @brief ANC_OFF 读回不一致时，结果指向它，ENC_OFF 随后仍单独写完。
+/// @brief 不从站读回时，镜像与写入不一致也不产生 Mismatch；两项仍按 ACK 记 Verified，ENC_OFF 随后写完。
 /// @param catalog 正式目录。
 /// @param layout 正式布局。
-/// @return ANC_OFF 为 Mismatch 且暂存仍是 2，ENC_OFF 为 Verified 时为 true。
+/// @return ANC_OFF 与 ENC_OFF 均为 Verified、dirty 均为 false、无 ReadBackMismatch 时为 true。
 bool mismatchNamesAncThenWritesEnc(const ParameterCatalog& catalog, const FirmwareLayout& layout) {
     Bench bench{catalog, layout};
     if (!bench.session.connect().ok()) {
@@ -281,16 +277,17 @@ bool mismatchNamesAncThenWritesEnc(const ParameterCatalog& catalog, const Firmwa
     const ParameterRuntimeState* encState = bench.store.find(enc);
     const BatchWriteItem* ancItem = findItem(bench.writer.items(), anc);
     const BatchWriteItem* encItem = findItem(bench.writer.items(), enc);
-    if (ancState == nullptr || encState == nullptr || !ancState->dirty || !ancState->stagedValue || encState->dirty
-        || ancState->error != ErrorCode::ReadBackMismatch || ancItem == nullptr || encItem == nullptr
-        || ancItem->kind != BatchWriteKind::Mismatch || encItem->kind != BatchWriteKind::Verified) {
+    if (ancState == nullptr || encState == nullptr || ancState->dirty || encState->dirty || !ancState->stagedValue
+        || !encState->stagedValue || ancState->error.has_value() || encState->error.has_value()
+        || ancState->deviceValue.has_value() || encState->deviceValue.has_value() || ancItem == nullptr
+        || encItem == nullptr || ancItem->kind != BatchWriteKind::Verified || encItem->kind != BatchWriteKind::Verified) {
         return fail("mismatch_names_anc_then_writes_enc");
     }
     const Result<float> staged = ancState->stagedValue->asFloat();
-    const Result<float> device = ancState->deviceValue->asFloat();
-    const Result<float> encValue = encState->deviceValue->asFloat();
-    if (!staged.ok() || !device.ok() || !encValue.ok() || staged.value() != 2.0F || device.value() != 1.0F
-        || encValue.value() != 3.0F) {
+    const Result<float> encStaged = encState->stagedValue->asFloat();
+    const std::vector<std::vector<std::uint8_t>>& frames = bench.transport.submitted();
+    if (!staged.ok() || !encStaged.ok() || staged.value() != 2.0F || encStaged.value() != 3.0F || frames.size() != 2U
+        || !oneSlotHeader(frames[0], 0x10, 0) || !oneSlotHeader(frames[1], 0x10, 1)) {
         return fail("mismatch_names_anc_then_writes_enc");
     }
     return true;

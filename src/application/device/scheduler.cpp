@@ -426,8 +426,8 @@ void CommandScheduler::applyReadRetry(RetryTime now, const ReadRetryLimit& limit
 }
 
 void CommandScheduler::applyWriteAckWait(RetryTime now, const ReadRetryLimit& limit) {
-    if (!inflight_.has_value() || inflight_->request.op != CommandOp::Write || !inflight_->request.readBack ||
-        inflight_->writePhase != WritePhase::Sent) {
+    // 等待 FC16 ACK 的阶段。readBack 为 false 时也在 Sent 等到 ACK 或超时；为 true 时 ACK 后转入 Acked，不再在这里计时。
+    if (!inflight_.has_value() || inflight_->request.op != CommandOp::Write || inflight_->writePhase != WritePhase::Sent) {
         return;
     }
     if (limit.timeout.count() <= 0) {

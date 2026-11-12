@@ -88,7 +88,9 @@ public:
     /// @brief 清掉一条已有记录的未提交标记。
     /// @param id 参数标识，只在本次调用期间借用。Store 用它的文本比较，不查询目录。
     /// 只把 dirty 设为 false。不改 stagedValue、deviceValue、两个时刻、stale 和 error。
-    /// 没有记录时不新建。这不是设备 ACK，只表示调用方已经确认读回与入队时的目标一致。
+    /// 没有记录时不新建。这不是设备 ACK。
+    /// 标量写可在 FC16 ACK 后调用，表示入队时的 stagedAt 仍未变、待提交目标已接受下发。
+    /// 读回 Verified 路径仍可在字节一致后调用，表示读回与入队时的目标一致。
     void markClean(const ParameterId& id) noexcept;
 
     /// @brief 切换工程时清除 Set、暂存时间与 dirty，保留 Read 及其时效状态。

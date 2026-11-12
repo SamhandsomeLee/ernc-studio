@@ -16,10 +16,11 @@ enum class BatchWriteKind {
     /// 计划里有它，但它不是 1 个标量 slot。Can_Msg 属于这一类。
     NotOneSlot,
 
-    /// 读回字节和写入字节相同。
+    /// 标量写：设备已对 FC16 回 ACK（readBack=false，不表示已读回 Verified）。
+    /// 读回对照路径：读回字节和写入字节相同。
     Verified,
 
-    /// 读回字节和写入字节不同。
+    /// 读回字节和写入字节不同。标量写默认不发读回，通常不出现。
     Mismatch,
 
     /// 超时、取消、断连或其它失败。没有再次入队。
@@ -45,14 +46,14 @@ struct BatchWriteItem {
 ///
 /// 借用目录、布局、Store、会话和调度器，不拥有它们。这些对象必须比本对象活得久，并且只在调度器所属线程上调用。
 /// 不调用 poll()，不创建线程，也不是 QObject。
-/// 一次只发出一条带读回的 FC16。当前项结束后才发送下一项。不把多个参数拼进同一帧。
+/// 一次只发出一条 readBack 为 false 的 FC16。当前项 ACK 结束后才发送下一项。不把多个参数拼进同一帧。
 /// 失败项不会再次入队。后面的其它参数仍会写。
 class ParameterBatchWriter {
 public:
     /// @brief 绑定这批写要用的目录、布局、状态、会话和调度器。
     /// @param catalog 参数目录，只借用。
     /// @param layout 固件布局，只借用。
-    /// @param store 运行状态，只借用。内部的 ParameterWriter 在读回后更新它。
+    /// @param store 运行状态，只借用。内部的 ParameterWriter 在 ACK 或读回后更新它。
     /// @param session 设备会话，只借用。必须和 scheduler 使用同一条端口。
     /// @param scheduler 命令调度器，只借用。同一时刻只交给它一条写命令。
     ParameterBatchWriter(const ernc::domain::ParameterCatalog& catalog, const ernc::domain::FirmwareLayout& layout,
@@ -84,7 +85,7 @@ public:
     /// 会话不接受该 SessionId 时，不把这次结果当成 Verified，也不再提交后面的项。
     /// 命令号不属于当前写时不改记录。
     /// @param outcome 调度器取走的结果，只在本次调用期间借用。
-    /// @param readAt 读回写入 Store 的时刻。调用方给出，本函数不读取系统钟。
+    /// @param readAt 读回写入 Store 的时刻。标量 ACK 路径不使用。调用方给出，本函数不读取系统钟。
     void apply(const CommandOutcome& outcome, ernc::domain::RuntimeTime readAt);
 
     /// @brief 当前是否还有未写完的参数。

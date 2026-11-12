@@ -215,10 +215,10 @@ bool drive(Bench& bench, CommandId id, RuntimeTime readAt, const char* name) {
     return true;
 }
 
-/// @brief 读回与写入字节相同后，dirty 被清掉，stagedValue 仍保留。
+/// @brief FC16 ACK 后 dirty 被清掉，stagedValue 仍保留；不自动读回，故不更新 deviceValue。
 /// @param catalog 正式目录。
 /// @param layout 正式布局。
-/// @return deviceValue 和 stagedValue 都是 2，且先 FC16 后 FC03 时为 true。
+/// @return stagedValue 是 2、dirty 为 false、只提交一条 FC16、且无 deviceValue 时为 true。
 bool ancOffVerifiedClearsDirty(const ParameterCatalog& catalog, const FirmwareLayout& layout) {
     Bench bench{catalog, layout};
     if (!bench.session.connect().ok()) {
@@ -242,24 +242,24 @@ bool ancOffVerifiedClearsDirty(const ParameterCatalog& catalog, const FirmwareLa
         return false;
     }
     const ParameterRuntimeState* state = bench.store.find(id);
-    float device = 0.0F;
     float staged = 0.0F;
-    if (state == nullptr || !state->deviceValue || !state->stagedValue || state->dirty || state->error.has_value()
-        || state->stagedAt != stagedAt || state->readAt != readAt || !asFloat(*state->deviceValue, device)
-        || !asFloat(*state->stagedValue, staged) || device != 2.0F || staged != 2.0F) {
+    if (state == nullptr || state->deviceValue.has_value() || !state->stagedValue || state->dirty
+        || state->error.has_value() || state->stagedAt != stagedAt || state->readAt.has_value()
+        || !asFloat(*state->stagedValue, staged) || staged != 2.0F) {
         return fail("anc_off_verified_clears_dirty");
     }
+    (void)readAt;
     const std::vector<std::vector<std::uint8_t>>& frames = bench.transport.submitted();
-    if (frames.size() != 2U || !slotZeroHeader(frames[0], 0x10) || !slotZeroHeader(frames[1], 0x03)) {
+    if (frames.size() != 1U || !slotZeroHeader(frames[0], 0x10)) {
         return fail("anc_off_verified_clears_dirty");
     }
     return true;
 }
 
-/// @brief 读回字节不同时保留用户目标，并把 deviceValue 改成读回值。
+/// @brief 不从站读回时，镜像里不同字节也不触发 ReadBackMismatch；ACK 后仍 markClean。
 /// @param catalog 正式目录。
 /// @param layout 正式布局。
-/// @return stagedValue 仍是 2、deviceValue 是 1、dirty 为 true 时为 true。
+/// @return stagedValue 仍是 2、无 deviceValue、dirty 为 false、无 error 时为 true。
 bool readbackMismatchKeepsStaged(const ParameterCatalog& catalog, const FirmwareLayout& layout) {
     Bench bench{catalog, layout};
     if (!bench.session.connect().ok()) {
@@ -286,11 +286,14 @@ bool readbackMismatchKeepsStaged(const ParameterCatalog& catalog, const Firmware
         return false;
     }
     const ParameterRuntimeState* state = bench.store.find(id);
-    float device = 0.0F;
     float staged = 0.0F;
-    if (state == nullptr || !state->deviceValue || !state->stagedValue || !state->dirty || state->stagedAt != stagedAt
-        || state->error != ErrorCode::ReadBackMismatch || !asFloat(*state->deviceValue, device)
-        || !asFloat(*state->stagedValue, staged) || device != 1.0F || staged != 2.0F) {
+    if (state == nullptr || state->deviceValue.has_value() || !state->stagedValue || state->dirty
+        || state->stagedAt != stagedAt || state->error.has_value() || !asFloat(*state->stagedValue, staged)
+        || staged != 2.0F) {
+        return fail("readback_mismatch_keeps_staged");
+    }
+    const std::vector<std::vector<std::uint8_t>>& frames = bench.transport.submitted();
+    if (frames.size() != 1U || !slotZeroHeader(frames[0], 0x10)) {
         return fail("readback_mismatch_keeps_staged");
     }
     return true;
@@ -389,10 +392,10 @@ bool canMsgDoesNotEnqueue(const ParameterCatalog& catalog, const FirmwareLayout&
     return true;
 }
 
-/// @brief 写已经发出后又改暂存值时，读回成功也不清 dirty。
+/// @brief 写已经发出后又改暂存值时，ACK 成功也不清 dirty，且不 observe。
 /// @param catalog 正式目录。
 /// @param layout 正式布局。
-/// @return deviceValue 是 2、stagedValue 是 3、dirty 为 true 时为 true。
+/// @return 无 deviceValue、stagedValue 是 3、dirty 为 true 时为 true。
 bool editDuringWriteStaysDirty(const ParameterCatalog& catalog, const FirmwareLayout& layout) {
     Bench bench{catalog, layout};
     if (!bench.session.connect().ok()) {
@@ -418,11 +421,9 @@ bool editDuringWriteStaysDirty(const ParameterCatalog& catalog, const FirmwareLa
         return false;
     }
     const ParameterRuntimeState* state = bench.store.find(id);
-    float device = 0.0F;
     float staged = 0.0F;
-    if (state == nullptr || !state->deviceValue || !state->stagedValue || !state->dirty || state->stagedAt != editedAt
-        || !asFloat(*state->deviceValue, device) || !asFloat(*state->stagedValue, staged) || device != 2.0F
-        || staged != 3.0F) {
+    if (state == nullptr || state->deviceValue.has_value() || !state->stagedValue || !state->dirty
+        || state->stagedAt != editedAt || !asFloat(*state->stagedValue, staged) || staged != 3.0F) {
         return fail("edit_during_write_stays_dirty");
     }
     return true;

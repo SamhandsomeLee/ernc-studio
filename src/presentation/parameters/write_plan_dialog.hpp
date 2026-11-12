@@ -43,7 +43,7 @@ enum class WritePlanColumn : int {
     /// 用户暂存的目标。开关显示开、关或 Unknown。
     Set = 3,
 
-    /// 排除原因，或 Sent、Acked、Verified、Mismatch、Failure 的界面文字。
+    /// 排除原因，或进行中/写入已确认/读回不一致/失败等界面文字。
     Status = 4,
 
     /// 失败时的 ErrorCode 名字。进行中可以是命令号。空表示当前没有诊断。

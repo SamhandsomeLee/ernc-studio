@@ -382,10 +382,10 @@ bool canMsgIsNotSent(const ParameterCatalog& catalog, const FirmwareLayout& layo
     return true;
 }
 
-/// @brief 确认后先显示设备已确认，读回一致后才结束。
+/// @brief 确认后写入，FC16 ACK 即结束为「写入已确认」，不自动 FC03。
 /// @param catalog 正式目录。
 /// @param layout 正式布局。
-/// @return 确认前没有帧；ACK 后状态为设备已确认；结束后为读回一致，且只有一条 slot 0 的 FC16 时为 true。
+/// @return 确认前没有帧；结束后 dirty 为 false、状态为写入已确认，且只有一条 slot 0 的 FC16 时为 true。
 bool ackThenVerified(const ParameterCatalog& catalog, const FirmwareLayout& layout) {
     MemoryBench bench{catalog, layout};
     if (!bench.session.connect().ok()) {
@@ -408,27 +408,22 @@ bool ackThenVerified(const ParameterCatalog& catalog, const FirmwareLayout& layo
         || cellAt(dialog, row, WritePlanColumn::Status) != QStringLiteral("正在写入")) {
         return fail("ack_then_verified");
     }
-    bench.scheduler.pump();
-    dialog.noteProgress();
-    if (cellAt(dialog, row, WritePlanColumn::Status) != QStringLiteral("设备已确认")) {
-        return fail("ack_then_verified");
-    }
     if (!finishMemory(bench, dialog, RuntimeTime{std::chrono::seconds{5}}, "ack_then_verified")) {
         return false;
     }
     const ernc::domain::ParameterRuntimeState* state = bench.store.find(anc);
-    if (state == nullptr || state->dirty || cellAt(dialog, row, WritePlanColumn::Status) != QStringLiteral("读回一致")
-        || !cellAt(dialog, row, WritePlanColumn::Diagnostic).isEmpty() || frames.size() != 2U || !oneSlotHeader(frames[1], 0x03, 0)
-        || countFunction(frames, 0x10) != 1) {
+    if (state == nullptr || state->dirty || cellAt(dialog, row, WritePlanColumn::Status) != QStringLiteral("写入已确认")
+        || !cellAt(dialog, row, WritePlanColumn::Diagnostic).isEmpty() || frames.size() != 1U
+        || countFunction(frames, 0x10) != 1 || countFunction(frames, 0x03) != 0) {
         return fail("ack_then_verified");
     }
     return true;
 }
 
-/// @brief 读回不同显示不一致，并带 ReadBackMismatch。
+/// @brief 不从站读回时，镜像字节不同也不显示读回不一致；ACK 后仍为写入已确认。
 /// @param catalog 正式目录。
 /// @param layout 正式布局。
-/// @return 状态为读回不一致，诊断为 ReadBackMismatch，Set 仍不是关，且只有一条 FC16 时为 true。
+/// @return 状态为写入已确认、dirty 为 false、仅一条 FC16、诊断为空时为 true。
 bool mismatchShowsDiagnostic(const ParameterCatalog& catalog, const FirmwareLayout& layout) {
     MemoryBench bench{catalog, layout};
     if (!bench.session.connect().ok()) {
@@ -452,10 +447,9 @@ bool mismatchShowsDiagnostic(const ParameterCatalog& catalog, const FirmwareLayo
     const int row = dialog.rowOf(QStringLiteral("ANC_OFF"));
     const ernc::domain::ParameterRuntimeState* state = bench.store.find(anc);
     const std::vector<std::vector<std::uint8_t>>& frames = bench.transport.submitted();
-    if (row < 0 || state == nullptr || !state->dirty || cellAt(dialog, row, WritePlanColumn::Status) != QStringLiteral("读回不一致")
-        || cellAt(dialog, row, WritePlanColumn::Diagnostic) != QStringLiteral("ReadBackMismatch")
-        || cellAt(dialog, row, WritePlanColumn::Read) != QStringLiteral("关")
-        || cellAt(dialog, row, WritePlanColumn::Set) == QStringLiteral("关") || countFunction(frames, 0x10) != 1) {
+    if (row < 0 || state == nullptr || state->dirty || cellAt(dialog, row, WritePlanColumn::Status) != QStringLiteral("写入已确认")
+        || !cellAt(dialog, row, WritePlanColumn::Diagnostic).isEmpty() || state->error.has_value()
+        || countFunction(frames, 0x10) != 1 || countFunction(frames, 0x03) != 0) {
         return fail("mismatch_shows_diagnostic");
     }
     return true;
