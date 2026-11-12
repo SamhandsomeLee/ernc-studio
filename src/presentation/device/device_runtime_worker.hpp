@@ -49,8 +49,8 @@ public:
     Q_INVOKABLE bool isWriteBusy() const;
 
     DeviceRuntimeWorker(const ernc::domain::ParameterCatalog& catalog, const ernc::domain::FirmwareLayout& layout,
-                        ernc::domain::ParameterRuntimeStore& store, ernc::serial::SerialTransport* transport,
-                        QObject* parent = nullptr);
+                        ernc::domain::ParameterRuntimeStore& store, ernc::domain::ArrayRuntimeStore& arrayStore,
+                        ernc::serial::SerialTransport* transport, QObject* parent = nullptr);
 
     void attachDiagnosticLog(ernc::infrastructure::DiagnosticLog* log) noexcept;
 
@@ -60,6 +60,7 @@ public slots:
     bool isConnected() const;
     quint64 sessionIdRaw() const;
     bool startBatchRead(const QString& pageId);
+    bool startArrayRead(const QString& parameterId);
     int startBatchWrite(const QString& pageId);
 
 signals:
@@ -76,6 +77,7 @@ private:
     const ernc::domain::ParameterCatalog& catalog_;
     const ernc::domain::FirmwareLayout& layout_;
     ernc::domain::ParameterRuntimeStore& store_;
+    ernc::domain::ArrayRuntimeStore& arrayStore_;
     ernc::serial::SerialTransport* transport_;
 
     std::unique_ptr<SerialLinkedStack> stack_;

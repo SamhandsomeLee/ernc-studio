@@ -1,5 +1,8 @@
 #include "workspace/editor_tabs.hpp"
 
+#include "arrays/array_detail_panel.hpp"
+#include "arrays/array_summary.hpp"
+
 #include "device/device_controller.hpp"
 #include "parameters/write_plan_dialog.hpp"
 
@@ -276,9 +279,29 @@ void EditorTabs::selectParameter(const QString& parameterId) {
     if (showingFunctionView()) {
         emphasizeFunctionViewParameter(parameterId);
     }
+    if (arrayDetail_ != nullptr && catalog_ != nullptr && layout_ != nullptr) {
+        const ernc::domain::ParameterDefinition* definition = catalog_->find(incoming);
+        if (usesCompactArrayUi(definition, layout_)) {
+            arrayDetail_->bindParameter(parameterId);
+        }
+    }
     if (parameterObserver_) {
         parameterObserver_(selection_.parameterId());
     }
+}
+
+void EditorTabs::setArrayRuntimeStore(ernc::domain::ArrayRuntimeStore* store) noexcept {
+    arrayStore_ = store;
+    if (thresholdPage_ != nullptr) {
+        thresholdPage_->setArrayRuntimeStore(store);
+    }
+    if (otherPage_ != nullptr) {
+        otherPage_->setArrayRuntimeStore(store);
+    }
+}
+
+void EditorTabs::setArrayDetailPanel(ArrayDetailPanel* panel) noexcept {
+    arrayDetail_ = panel;
 }
 
 bool EditorTabs::showingFunctionView() const {
@@ -390,6 +413,9 @@ void EditorTabs::notifyParametersUpdated(const ernc::domain::SessionId session, 
         }
     }
     refresh();
+    if (arrayDetail_ != nullptr) {
+        arrayDetail_->onArrayStoreChanged();
+    }
 }
 
 void EditorTabs::noteDeviceDisconnected() {

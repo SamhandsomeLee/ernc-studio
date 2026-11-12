@@ -25,9 +25,9 @@ inline constexpr int kActionButtonWidth = 72;
 /// 第二栏（类型或当前值）与第三栏（值或编辑控件）之间的额外留白。
 inline constexpr int kColumnTwoThreeGap = 20;
 
-/// 多槽/区域参数在函数视图中的读写提示。标量在本页暂存；数组在参数视图读写。
+/// 多槽/区域参数在函数视图中的读写提示。标量在本页暂存；紧凑数组在底部「数组详情」。
 inline QString parameterViewHintText() {
-    return QStringLiteral("读写在参数视图");
+    return QStringLiteral("底部「数组详情」读写");
 }
 
 inline void styleParameterViewHint(QLabel* hint) {

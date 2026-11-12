@@ -2,6 +2,10 @@
 
 #include "ernc/domain/firmware_layout.hpp"
 #include "ernc/domain/runtime_store.hpp"
+
+namespace ernc::domain {
+class ArrayRuntimeStore;
+}
 #include "scheduler.hpp"
 
 #include <cstdint>
@@ -159,7 +163,8 @@ public:
     /// @param session 设备会话，只借用。必须和 scheduler 使用同一条端口。
     /// @param scheduler 命令调度器，只借用。本对象通过它入队 FC03。
     ParameterBatchReader(const ernc::domain::ParameterCatalog& catalog, const ernc::domain::FirmwareLayout& layout,
-                         ernc::domain::ParameterRuntimeStore& store, DeviceSession& session, CommandScheduler& scheduler);
+                         ernc::domain::ParameterRuntimeStore& store, DeviceSession& session, CommandScheduler& scheduler,
+                         ernc::domain::ArrayRuntimeStore* arrayStore = nullptr);
 
     /// @brief 禁止复制。借用的对象只有一份。
     ParameterBatchReader(const ParameterBatchReader&) = delete;
@@ -280,6 +285,9 @@ private:
 
     /// 运行状态。标量成功时修改它。
     ernc::domain::ParameterRuntimeStore& store_;
+
+    /// 数组运行状态。可选。数组成功时写入 observeRead。
+    ernc::domain::ArrayRuntimeStore* arrayStore_{nullptr};
 
     /// 设备会话。本对象不拥有。
     DeviceSession& session_;

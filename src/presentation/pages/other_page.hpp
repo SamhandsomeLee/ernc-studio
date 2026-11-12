@@ -5,6 +5,10 @@
 #include "ernc/domain/firmware_layout.hpp"
 #include "ernc/domain/runtime_store.hpp"
 
+namespace ernc::domain {
+class ArrayRuntimeStore;
+}
+
 #include <QString>
 #include <QWidget>
 
@@ -29,6 +33,8 @@ public:
 
     void setEditObserver(std::function<void(const ernc::domain::ParameterId&)> observer);
     void setSelectionObserver(std::function<void(const ernc::domain::ParameterId&)> observer);
+
+    void setArrayRuntimeStore(ernc::domain::ArrayRuntimeStore* store) noexcept { arrayStore_ = store; }
 
     bool containsParameter(const QString& parameterId) const;
     QString valueText(const QString& parameterId) const;
@@ -55,6 +61,7 @@ private:
     const ernc::domain::ParameterCatalog* catalog_ = nullptr;
     ernc::domain::ParameterRuntimeStore* store_ = nullptr;
     const ernc::domain::FirmwareLayout* layout_ = nullptr;
+    ernc::domain::ArrayRuntimeStore* arrayStore_ = nullptr;
     std::optional<ernc::application::ParameterStager> stager_;
     std::vector<Control> controls_;
 

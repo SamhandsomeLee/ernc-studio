@@ -4,6 +4,7 @@
 #include "ernc/domain/project_bundle.hpp"
 #include "ernc/domain/firmware_layout.hpp"
 #include "ernc/domain/region_catalog.hpp"
+#include "ernc/domain/array_runtime_store.hpp"
 #include "ernc/domain/runtime_store.hpp"
 #include "ernc/infrastructure/legacy_param_json.hpp"
 #include "shell/layout_settings.hpp"
@@ -28,6 +29,7 @@ namespace ernc::presentation {
 
 class EditorTabs;
 class InspectorPanel;
+class ArrayDetailPanel;
 class OperationCenterPanel;
 class DeviceController;
 
@@ -126,6 +128,7 @@ private:
 
     /// 参数运行状态。本窗口拥有。参数表只借用它，不保存第二份数值。
     ernc::domain::ParameterRuntimeStore parameterStore_;
+    ernc::domain::ArrayRuntimeStore arrayParameterStore_;
 
     /// 当前工程摘要。UI 线程持有，SQLite 连接由每次 Storage Worker 操作独占。
     std::optional<ernc::domain::ProjectBundle> project_;
@@ -159,6 +162,7 @@ private:
 
     /// 底部检查器内容。由检查器 Dock 通过 Qt 父子关系拥有。
     InspectorPanel* inspectorPanel_ = nullptr;
+    ArrayDetailPanel* arrayDetailPanel_ = nullptr;
 
     /// 左侧项目树 Dock。由本窗口通过 Qt 父子关系拥有。
     QDockWidget* projectTree_ = nullptr;

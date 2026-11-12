@@ -10,6 +10,8 @@ add_library(ernc_domain STATIC
     analysis/series_mapper.cpp
     parameter/runtime_store.cpp
     parameter/array_state.cpp
+    parameter/array_runtime_store.cpp
+    parameter/array_parameter.cpp
     parameter/write_plan.cpp
     validation/validation.cpp
     control_semantics/toggle_semantics.cpp

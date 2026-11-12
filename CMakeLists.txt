@@ -51,6 +51,9 @@ if(ERNC_BUILD_COMM_LAB)
         message(STATUS
             "ERNC: ERNC_BUILD_COMM_LAB is ON and tools/ernc-comm-lab is not in this phase.")
     endif()
+    if(EXISTS "${CMAKE_SOURCE_DIR}/tools/ernc-serial-slave/CMakeLists.txt")
+        add_subdirectory(tools/ernc-serial-slave)
+    endif()
 endif()
 
 if(ERNC_BUILD_TESTS)

@@ -1518,6 +1518,15 @@ if(ERNC_BUILD_UI)
 
     add_executable(ernc_threshold_page_tests
         threshold_page_test.cpp
+        ../src/presentation/arrays/array_summary.cpp
+        ../src/presentation/arrays/array_detail_panel.cpp
+        ../src/presentation/arrays/array_editor_model.cpp
+        ../src/presentation/pages/can_info_panel.cpp
+        ../src/presentation/parameters/parameter_set_policy.cpp
+        ../src/presentation/device/device_controller.cpp
+        ../src/presentation/device/device_runtime_worker.cpp
+        ../src/presentation/device/serial_linked_stack.cpp
+        ../src/presentation/theme/theme.cpp
         ../src/presentation/pages/threshold.cpp
         ../src/presentation/pages/other_page.cpp
         ../src/presentation/pages/can_names.cpp
@@ -1539,7 +1548,10 @@ if(ERNC_BUILD_UI)
         "${CMAKE_SOURCE_DIR}/src/presentation"
     )
 
-    target_link_libraries(ernc_threshold_page_tests PRIVATE Qt6::Widgets ernc_ui_qwt ernc_filesystem ernc_domain ernc_application)
+    target_link_libraries(ernc_threshold_page_tests PRIVATE Qt6::Widgets ernc_ui_qwt ernc_filesystem
+        ernc_domain ernc_application ernc_device ernc_serial ernc_logging ernc_simulator)
+
+    set_target_properties(ernc_threshold_page_tests PROPERTIES AUTOMOC ON)
 
     foreach(ernc_threshold_case IN ITEMS threshold_groups_have_no_formula threshold_page_follows_tree)
         add_test(
@@ -1565,6 +1577,19 @@ if(ERNC_BUILD_UI)
     add_test(
         NAME "array_editor.set_column_edits_only_that_index"
         COMMAND ernc_array_editor_model_tests set_column_edits_only_that_index
+    )
+
+    add_executable(ernc_array_runtime_store_tests array_runtime_store_test.cpp)
+    target_link_libraries(ernc_array_runtime_store_tests PRIVATE ernc_domain)
+    add_test(NAME "array_runtime_store.observe_and_dirty" COMMAND ernc_array_runtime_store_tests)
+
+    add_executable(ernc_array_parameter_tests array_parameter_test.cpp)
+    target_link_libraries(ernc_array_parameter_tests PRIVATE ernc_domain)
+    add_test(
+        NAME "array_parameter.compact_classification"
+        COMMAND ernc_array_parameter_tests
+            "${CMAKE_SOURCE_DIR}/catalog/parameter_catalog.json"
+            "${CMAKE_SOURCE_DIR}/firmware/layout_manifest.json"
     )
 
     add_executable(ernc_spec_radius_page_tests
@@ -1908,6 +1933,46 @@ foreach(ernc_simulator_slave_case IN LISTS ernc_simulator_slave_cases)
         COMMAND ernc_simulator_slave_tests "${ernc_simulator_slave_case}"
     )
 endforeach()
+
+add_executable(ernc_simulator_mirror_seed_tests
+    simulator_mirror_seed_test.cpp
+)
+
+target_link_libraries(ernc_simulator_mirror_seed_tests PRIVATE ernc_application ernc_protocol)
+
+add_test(
+    NAME "simulator_mirror_seed.defaults_cover_anc_off"
+    COMMAND ernc_simulator_mirror_seed_tests defaults_cover_anc_off
+        "${CMAKE_SOURCE_DIR}/catalog/parameter_catalog.json"
+        "${CMAKE_SOURCE_DIR}/firmware/layout_manifest.json"
+)
+
+add_test(
+    NAME "simulator_mirror_seed.demo_refernum_is_twelve"
+    COMMAND ernc_simulator_mirror_seed_tests demo_refernum_is_twelve
+        "${CMAKE_SOURCE_DIR}/catalog/parameter_catalog.json"
+        "${CMAKE_SOURCE_DIR}/firmware/layout_manifest.json"
+)
+
+add_test(
+    NAME "simulator_mirror_seed.demo_array_spk_order_nonzero"
+    COMMAND ernc_simulator_mirror_seed_tests demo_array_spk_order_nonzero
+        "${CMAKE_SOURCE_DIR}/catalog/parameter_catalog.json"
+        "${CMAKE_SOURCE_DIR}/firmware/layout_manifest.json"
+)
+
+add_executable(ernc_simulator_can_msg_pulse_tests
+    simulator_can_msg_pulse_test.cpp
+)
+
+target_link_libraries(ernc_simulator_can_msg_pulse_tests PRIVATE ernc_application ernc_protocol ernc_simulator)
+
+add_test(
+    NAME "simulator_can_msg_pulse.alternates_zero_and_one"
+    COMMAND ernc_simulator_can_msg_pulse_tests alternates_zero_and_one
+        "${CMAKE_SOURCE_DIR}/catalog/parameter_catalog.json"
+        "${CMAKE_SOURCE_DIR}/firmware/layout_manifest.json"
+)
 
 add_executable(ernc_simulator_fault_tests
     simulator_fault_test.cpp

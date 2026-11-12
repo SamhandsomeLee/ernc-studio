@@ -5,6 +5,10 @@
 #include "ernc/domain/firmware_layout.hpp"
 #include "ernc/domain/runtime_store.hpp"
 
+namespace ernc::domain {
+class ArrayRuntimeStore;
+}
+
 #include <QString>
 #include <QWidget>
 
@@ -46,6 +50,8 @@ public:
     /// @param observer 观察者。空函数表示不再通知。本页复制这份函数。参数标识只在这次调用期间有效。
     /// @note 通知的 ID 与被点行的目录 ID 相同。只在 UI 主线程调用。
     void setSelectionObserver(std::function<void(const ernc::domain::ParameterId&)> observer);
+
+    void setArrayRuntimeStore(ernc::domain::ArrayRuntimeStore* store) noexcept { arrayStore_ = store; }
 
     /// @brief 这一页是否有该目录 ID。
     /// @param parameterId 目录主键。调用方拥有原件，本函数只比较它。
@@ -128,6 +134,8 @@ private:
 
     /// 固件布局。本页不拥有。
     const ernc::domain::FirmwareLayout* layout_ = nullptr;
+
+    ernc::domain::ArrayRuntimeStore* arrayStore_ = nullptr;
 
     /// 暂存入口。目录、布局和 Store 都存在时才创建。本页拥有。
     std::optional<ernc::application::ParameterStager> stager_;

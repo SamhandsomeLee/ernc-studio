@@ -27,8 +27,9 @@ std::string jsonQuote(const std::string& text) {
 DeviceRuntimeWorker::DeviceRuntimeWorker(const ernc::domain::ParameterCatalog& catalog,
                                          const ernc::domain::FirmwareLayout& layout,
                                          ernc::domain::ParameterRuntimeStore& store,
+                                         ernc::domain::ArrayRuntimeStore& arrayStore,
                                          ernc::serial::SerialTransport* transport, QObject* parent)
-    : QObject(parent), catalog_{catalog}, layout_{layout}, store_{store}, transport_{transport} {}
+    : QObject(parent), catalog_{catalog}, layout_{layout}, store_{store}, arrayStore_{arrayStore}, transport_{transport} {}
 
 void DeviceRuntimeWorker::attachDiagnosticLog(ernc::infrastructure::DiagnosticLog* log) noexcept {
     diagnosticLog_ = log;
@@ -42,7 +43,7 @@ bool DeviceRuntimeWorker::doConnect() {
         return false;
     }
     if (stack_ == nullptr) {
-        stack_ = std::make_unique<SerialLinkedStack>(catalog_, layout_, store_, *transport_);
+        stack_ = std::make_unique<SerialLinkedStack>(catalog_, layout_, store_, arrayStore_, *transport_);
         if (diagnosticLog_ != nullptr) {
             stack_->attachDiagnosticLog(diagnosticLog_);
         }
@@ -102,6 +103,28 @@ bool DeviceRuntimeWorker::startBatchRead(const QString& pageId) {
             parametersTouchedThisRead_.push_back(QString::fromStdString(id.text()));
         }
     }
+    return true;
+}
+
+bool DeviceRuntimeWorker::startArrayRead(const QString& parameterId) {
+    if (stack_ == nullptr || !stack_->connected() || stack_->batchReader().busy()) {
+        return false;
+    }
+    const ernc::domain::Result<ernc::domain::ParameterId> parsed = ernc::domain::ParameterId::parse(parameterId.toStdString());
+    if (!parsed.ok()) {
+        return false;
+    }
+    ernc::application::BatchReadScope scope;
+    scope.kind = ernc::application::BatchReadScopeKind::Selected;
+    scope.selected.push_back(parsed.value());
+    lastReadCategory_ = "array:" + parameterId.toStdString();
+    const ernc::domain::Result<ernc::application::BatchReadTicket> started = stack_->batchReader().start(scope);
+    if (!started.ok() || started.tryValue() == nullptr) {
+        return false;
+    }
+    activeRead_ = started.value();
+    parametersTouchedThisRead_.clear();
+    parametersTouchedThisRead_.push_back(parameterId);
     return true;
 }
 

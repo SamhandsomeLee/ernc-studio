@@ -6,6 +6,10 @@
 #include "ernc/domain/firmware_layout.hpp"
 #include "ernc/domain/runtime_store.hpp"
 
+namespace ernc::domain {
+class ArrayRuntimeStore;
+}
+
 #include "scheduler.hpp"
 #include "session.hpp"
 
@@ -26,7 +30,8 @@ namespace ernc::presentation {
 class SerialLinkedStack {
 public:
     SerialLinkedStack(const ernc::domain::ParameterCatalog& catalog, const ernc::domain::FirmwareLayout& layout,
-                      ernc::domain::ParameterRuntimeStore& store, ernc::serial::SerialTransport& transport);
+                      ernc::domain::ParameterRuntimeStore& store, ernc::domain::ArrayRuntimeStore& arrayStore,
+                      ernc::serial::SerialTransport& transport);
 
     ~SerialLinkedStack();
 
@@ -49,6 +54,7 @@ private:
     const ernc::domain::ParameterCatalog& catalog_;
     const ernc::domain::FirmwareLayout& layout_;
     ernc::domain::ParameterRuntimeStore& store_;
+    ernc::domain::ArrayRuntimeStore& arrayStore_;
     ernc::serial::SerialTransport& transport_;
 
     std::unique_ptr<ernc::application::DeviceSession> session_;

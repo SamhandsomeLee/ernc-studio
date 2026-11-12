@@ -1,6 +1,10 @@
 #include "shell/layout_settings.hpp"
 #include "shell/main_window.hpp"
 
+#include "arrays/array_detail_panel.hpp"
+
+#include <QTabWidget>
+
 #include "inspector/inspector_panel.hpp"
 #include "navigator/navigator_model.hpp"
 #include "operation_center/operation_center_panel.hpp"
@@ -157,9 +161,17 @@ MainWindow::MainWindow(ernc::domain::CatalogLoad catalog, QString catalogPath, Q
     }
 
     inspectorPanel_ = new InspectorPanel(loadedCatalog, inspectorDock_);
+    arrayDetailPanel_ = new ArrayDetailPanel(loadedCatalog, firmwareLayout_ ? &*firmwareLayout_ : nullptr,
+                                             &arrayParameterStore_, inspectorDock_);
+    auto* inspectorTabs = new QTabWidget(inspectorDock_);
+    inspectorTabs->setObjectName(QStringLiteral("erncInspectorTabs"));
+    inspectorTabs->addTab(inspectorPanel_, QStringLiteral("检查器"));
+    inspectorTabs->addTab(arrayDetailPanel_, QStringLiteral("数组详情"));
     QWidget* previousInspector = inspectorDock_->widget();
-    inspectorDock_->setWidget(inspectorPanel_);
+    inspectorDock_->setWidget(inspectorTabs);
     delete previousInspector;
+    editorTabs_->setArrayRuntimeStore(&arrayParameterStore_);
+    editorTabs_->setArrayDetailPanel(arrayDetailPanel_);
     editorTabs_->setParameterObserver([panel = inspectorPanel_](std::string_view parameterId) {
         panel->showParameter(parameterId);
     });
@@ -209,7 +221,10 @@ MainWindow::MainWindow(ernc::domain::CatalogLoad catalog, QString catalogPath, Q
     });
 
     if (loadedCatalog != nullptr && firmwareLayout_.has_value()) {
-        deviceController_ = new DeviceController(*loadedCatalog, *firmwareLayout_, parameterStore_, this);
+        deviceController_ = new DeviceController(*loadedCatalog, *firmwareLayout_, parameterStore_, arrayParameterStore_, this);
+        arrayDetailPanel_->setIoHandlers(
+            [controller = deviceController_](const QString& id) { controller->readArrayParameter(id); },
+            [controller = deviceController_](const QString& id) { controller->writeArrayParameter(id); });
         DeviceController::UiRecorder recorder;
         recorder.record = [this](std::string_view action, std::string_view detail, bool success, ernc::domain::ErrorCode error) {
             recordUiAction(action, detail, success, error);
@@ -551,6 +566,9 @@ void MainWindow::onDeviceConnectionChanged(const bool connected, const ernc::dom
 }
 
 void MainWindow::onParametersUpdated(const ernc::domain::SessionId sessionId, const QStringList& parameterIds) {
+    if (arrayDetailPanel_ != nullptr) {
+        arrayDetailPanel_->onArrayStoreChanged();
+    }
     if (editorTabs_ != nullptr) {
         editorTabs_->notifyParametersUpdated(sessionId, parameterIds);
     }

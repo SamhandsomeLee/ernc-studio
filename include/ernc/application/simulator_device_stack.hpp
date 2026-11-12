@@ -9,6 +9,10 @@
 #include "ernc/domain/firmware_layout.hpp"
 #include "ernc/domain/runtime_store.hpp"
 
+namespace ernc::domain {
+class ArrayRuntimeStore;
+}
+
 #include <cstdint>
 #include <memory>
 #include <span>
@@ -34,7 +38,8 @@ public:
     /// @param layout 固件布局，只借用。必须比本对象活得久。
     /// @param store 运行状态，只借用。读/写成功后由批量读写更新它。
     SimulatorDeviceStack(const ernc::domain::ParameterCatalog& catalog, const ernc::domain::FirmwareLayout& layout,
-                         ernc::domain::ParameterRuntimeStore& store);
+                         ernc::domain::ParameterRuntimeStore& store,
+                         ernc::domain::ArrayRuntimeStore& arrayStore);
 
     ~SimulatorDeviceStack();
 
@@ -64,12 +69,16 @@ public:
 
     void attachDiagnosticLog(ernc::infrastructure::DiagnosticLog* log) noexcept;
 
+    /// @brief 仿真用：Can_Msg 全段写 0 或 1。未连接或无 Can_Msg 布局时为 false。
+    bool applyCanMsgPulse(bool high);
+
 private:
     void reset();
 
     const ernc::domain::ParameterCatalog& catalog_;
     const ernc::domain::FirmwareLayout& layout_;
     ernc::domain::ParameterRuntimeStore& store_;
+    ernc::domain::ArrayRuntimeStore& arrayStore_;
 
     std::unique_ptr<ernc::simulator::SlaveImage> image_;
     std::unique_ptr<ernc::simulator::MemorySlaveTransport> transport_;
@@ -89,7 +98,7 @@ std::uint32_t maxLogicalSlotForCatalog(const ernc::domain::ParameterCatalog& cat
 /// @brief 按 slot 数构造零初始化镜像字节。slot 为 0 时返回空。
 std::vector<std::uint8_t> makeZeroSimulatorImage(std::uint32_t slotCount);
 
-/// @brief 写入少量演示原值，便于 UI 肉眼验证读回。
+/// @brief 写入少量演示原值，便于 UI 肉眼验证读回（仅前 3 个 slot 为 1.0f）。
 void seedSimulatorDemoBytes(std::span<std::uint8_t> bytes);
 
 }  // namespace ernc::application

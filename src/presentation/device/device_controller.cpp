@@ -6,6 +6,8 @@
 #include "serial_transport.hpp"
 
 #include "ernc/application/batch_write.hpp"
+#include "ernc/domain/array_parameter.hpp"
+#include "ernc/domain/array_runtime_store.hpp"
 #include "ernc/infrastructure/logging/diagnostic_log.hpp"
 
 #include <QMetaObject>
@@ -45,9 +47,14 @@ std::string jsonQuote(const std::string& text) {
 }  // namespace
 
 DeviceController::DeviceController(const ernc::domain::ParameterCatalog& catalog, const ernc::domain::FirmwareLayout& layout,
-                                   ernc::domain::ParameterRuntimeStore& store, QObject* parent)
-    : QObject(parent), catalog_{catalog}, layout_{layout}, store_{store}, stack_{catalog, layout, store} {
+                                   ernc::domain::ParameterRuntimeStore& store, ernc::domain::ArrayRuntimeStore& arrayStore,
+                                   QObject* parent)
+    : QObject(parent), catalog_{catalog}, layout_{layout}, store_{store}, arrayStore_{arrayStore},
+              stack_{catalog, layout, store, arrayStore} {
     qRegisterMetaType<DeviceRuntimeWorker::PumpReport>("DeviceRuntimeWorker::PumpReport");
+    canMsgPulseTimer_.setInterval(1000);
+    canMsgPulseTimer_.setSingleShot(false);
+    connect(&canMsgPulseTimer_, &QTimer::timeout, this, &DeviceController::onCanMsgPulseTick);
 }
 
 DeviceController::~DeviceController() {
@@ -129,6 +136,7 @@ void DeviceController::tearDownSerial() {
 }
 
 void DeviceController::tearDownAll() {
+    stopCanMsgSimulationPulse();
     if (linkKind_ == LinkKind::Simulator && stack_.connected()) {
         stack_.scheduler().cancel();
         (void)stack_.disconnect();
@@ -172,6 +180,29 @@ void DeviceController::connectSimulator() {
     recordUi("device.simulator.connect", detail.str(), true);
     emit connectionChanged(true, connected.value());
     emit operationLogRefreshRequested();
+    startCanMsgSimulationPulse();
+}
+
+void DeviceController::startCanMsgSimulationPulse() {
+    if (linkKind_ != LinkKind::Simulator || !stack_.connected()) {
+        return;
+    }
+    canMsgPulseHigh_ = true;
+    (void)stack_.applyCanMsgPulse(canMsgPulseHigh_);
+    canMsgPulseTimer_.start();
+}
+
+void DeviceController::stopCanMsgSimulationPulse() {
+    canMsgPulseTimer_.stop();
+}
+
+void DeviceController::onCanMsgPulseTick() {
+    if (linkKind_ != LinkKind::Simulator || !stack_.connected()) {
+        canMsgPulseTimer_.stop();
+        return;
+    }
+    canMsgPulseHigh_ = !canMsgPulseHigh_;
+    (void)stack_.applyCanMsgPulse(canMsgPulseHigh_);
 }
 
 void DeviceController::connectSerial(const QString& portName, const int baudRate) {
@@ -182,7 +213,7 @@ void DeviceController::connectSerial(const QString& portName, const int baudRate
     tearDownAll();
     serialTransport_ = std::make_unique<ernc::serial::SerialTransport>(portName.toStdString(), baudRate);
     serialTransport_->start();
-    serialWorker_ = new DeviceRuntimeWorker(catalog_, layout_, store_, serialTransport_.get());
+    serialWorker_ = new DeviceRuntimeWorker(catalog_, layout_, store_, arrayStore_, serialTransport_.get());
     serialWorker_->moveToThread(serialTransport_->thread());
     if (diagnosticLog_ != nullptr) {
         serialWorker_->attachDiagnosticLog(diagnosticLog_);
@@ -353,6 +384,7 @@ void DeviceController::pumpSimulator() {
     pumpBatchReadSimulator();
     pumpParameterReadSimulator();
     pumpBatchWriteSimulator();
+    pumpArrayIoSimulator();
     if (WritePlanDialog* dialog = writePlanDialog_) {
         dialog->noteProgress();
     }
@@ -612,6 +644,135 @@ void DeviceController::finishBatchReadIfIdleSimulator() {
 
 DeviceController::RuntimeTime DeviceController::now() const noexcept {
     return std::chrono::system_clock::now();
+}
+
+void DeviceController::readArrayParameter(const QString& parameterIdQString) {
+    const QByteArray utf8 = parameterIdQString.toUtf8();
+    const Result<ParameterId> parsed = ParameterId::parse(std::string_view{utf8.constData(), static_cast<std::size_t>(utf8.size())});
+    if (!parsed.ok()) {
+        recordUi("parameter.array_read.start", R"({"reason":"invalid_id"})", false, ErrorCode::InvalidParameter);
+        return;
+    }
+    const ParameterId id = parsed.value();
+    const ernc::domain::ParameterDefinition* definition = catalog_.find(id.text());
+    if (definition == nullptr || !ernc::domain::shouldUseCompactArrayUi(definition, layout_)) {
+        recordUi("parameter.array_read.start", R"({"reason":"not_array"})", false, ErrorCode::InvalidParameter);
+        return;
+    }
+    if (!connected()) {
+        recordUi("parameter.array_read.start", R"({"reason":"disconnected"})", false, ErrorCode::DeviceDisconnected);
+        return;
+    }
+    if (linkKind_ == LinkKind::Serial && serialWorker_ != nullptr) {
+        bool started = false;
+        QMetaObject::invokeMethod(
+            serialWorker_, "startArrayRead", Qt::BlockingQueuedConnection, Q_RETURN_ARG(bool, started),
+            Q_ARG(QString, parameterIdQString));
+        recordUi("parameter.array_read.start", "{\"transport\":\"serial\"}", started,
+                 started ? ErrorCode::Unknown : ErrorCode::InvalidParameter);
+        return;
+    }
+    if (activeArrayIo_.has_value() || stack_.batchReader().busy()) {
+        recordUi("parameter.array_read.start", R"({"reason":"busy"})", false, ErrorCode::InvalidParameter);
+        return;
+    }
+    const ernc::domain::LayoutResolve resolved = layout_.locate(*definition->firmwarePath);
+    if (!resolved.ok()) {
+        recordUi("parameter.array_read.start", R"({"reason":"unlocated"})", false, ErrorCode::InvalidParameter);
+        return;
+    }
+    const ernc::domain::FieldLayout& field = resolved.field();
+    const ernc::domain::ScalarValue::Kind kind = ernc::domain::scalarKindForField(field);
+    ernc::domain::ArrayState& state = arrayStore_.ensure(id, field.slotCount, kind);
+    auto transfer = std::make_unique<ernc::application::ArrayTransfer>(catalog_, layout_, state, stack_.session(),
+                                                                       stack_.scheduler());
+    const Result<void> started = transfer->read(id);
+    if (!started.ok()) {
+        const ErrorCode code = started.tryError() != nullptr ? *started.tryError() : ErrorCode::Unknown;
+        recordUi("parameter.array_read.start", "{\"transport\":\"simulator\"}", false, code);
+        return;
+    }
+    activeArrayIo_ = ActiveArrayIo{id, true, std::move(transfer)};
+    recordUi("parameter.array_read.start", "{\"transport\":\"simulator\"}", true);
+    pumpArrayIoSimulator();
+}
+
+void DeviceController::writeArrayParameter(const QString& parameterIdQString) {
+    const QByteArray utf8 = parameterIdQString.toUtf8();
+    const Result<ParameterId> parsed = ParameterId::parse(std::string_view{utf8.constData(), static_cast<std::size_t>(utf8.size())});
+    if (!parsed.ok()) {
+        recordUi("parameter.array_write.start", R"({"reason":"invalid_id"})", false, ErrorCode::InvalidParameter);
+        return;
+    }
+    const ParameterId id = parsed.value();
+    const ernc::domain::ParameterDefinition* definition = catalog_.find(id.text());
+    if (definition == nullptr || !ernc::domain::shouldUseCompactArrayUi(definition, layout_)) {
+        recordUi("parameter.array_write.start", R"({"reason":"not_array"})", false, ErrorCode::InvalidParameter);
+        return;
+    }
+    if (!connected()) {
+        recordUi("parameter.array_write.start", R"({"reason":"disconnected"})", false, ErrorCode::DeviceDisconnected);
+        return;
+    }
+    if (linkKind_ == LinkKind::Serial) {
+        recordUi("parameter.array_write.start", R"({"reason":"serial_not_supported"})", false, ErrorCode::InvalidParameter);
+        return;
+    }
+    if (activeArrayIo_.has_value() || stack_.batchReader().busy() || stack_.batchWriter().busy()) {
+        recordUi("parameter.array_write.start", R"({"reason":"busy"})", false, ErrorCode::InvalidParameter);
+        return;
+    }
+    const ernc::domain::ArrayState* existing = arrayStore_.find(id);
+    if (existing == nullptr || arrayStore_.dirtyCount(id) == 0U) {
+        recordUi("parameter.array_write.start", R"({"reason":"nothing_dirty"})", false, ErrorCode::InvalidParameter);
+        return;
+    }
+    const ernc::domain::LayoutResolve resolved = layout_.locate(*definition->firmwarePath);
+    if (!resolved.ok()) {
+        recordUi("parameter.array_write.start", R"({"reason":"unlocated"})", false, ErrorCode::InvalidParameter);
+        return;
+    }
+    const ernc::domain::FieldLayout& field = resolved.field();
+    const ernc::domain::ScalarValue::Kind kind = ernc::domain::scalarKindForField(field);
+    ernc::domain::ArrayState& state = arrayStore_.ensure(id, field.slotCount, kind);
+    auto transfer = std::make_unique<ernc::application::ArrayTransfer>(catalog_, layout_, state, stack_.session(),
+                                                                       stack_.scheduler());
+    const Result<void> started = transfer->write(id);
+    if (!started.ok()) {
+        const ErrorCode code = started.tryError() != nullptr ? *started.tryError() : ErrorCode::Unknown;
+        recordUi("parameter.array_write.start", "{\"transport\":\"simulator\"}", false, code);
+        return;
+    }
+    activeArrayIo_ = ActiveArrayIo{id, false, std::move(transfer)};
+    recordUi("parameter.array_write.start", "{\"transport\":\"simulator\"}", true);
+    pumpArrayIoSimulator();
+}
+
+void DeviceController::pumpArrayIoSimulator() {
+    if (!activeArrayIo_.has_value() || activeArrayIo_->transfer == nullptr || !stack_.connected()) {
+        return;
+    }
+    if (const std::optional<CommandId> inflight = activeArrayIo_->transfer->inFlight()) {
+        if (std::optional<CommandOutcome> outcome = stack_.scheduler().takeResult(*inflight)) {
+            activeArrayIo_->transfer->apply(*outcome);
+        }
+    }
+    if (!activeArrayIo_->transfer->busy()) {
+        const ernc::application::ArrayTransferProgress progress = activeArrayIo_->transfer->progress();
+        const bool success = progress.status == ernc::application::ArrayTransferStatus::Completed;
+        std::ostringstream detail;
+        detail << R"({"id":)" << jsonQuote(activeArrayIo_->id.text()) << R"(,"status":)"
+               << static_cast<int>(progress.status) << "}";
+        recordUi(activeArrayIo_->reading ? "parameter.array_read.finish" : "parameter.array_write.finish", detail.str(),
+                 success,
+                 success ? ErrorCode::Unknown
+                         : (progress.error ? *progress.error : ErrorCode::Unknown));
+        if (success) {
+            emit parametersUpdated(stack_.session().currentId(),
+                                   {QString::fromStdString(activeArrayIo_->id.text())});
+        }
+        activeArrayIo_.reset();
+    }
 }
 
 }  // namespace ernc::presentation

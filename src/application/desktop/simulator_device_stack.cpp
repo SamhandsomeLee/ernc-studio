@@ -1,4 +1,6 @@
 #include "ernc/application/simulator_device_stack.hpp"
+#include "ernc/application/simulator_can_msg_pulse.hpp"
+#include "ernc/application/simulator_mirror_seed.hpp"
 
 #include "memory_transport.hpp"
 #include "slave_image.hpp"
@@ -62,8 +64,9 @@ void seedSimulatorDemoBytes(const std::span<std::uint8_t> bytes) {
 
 SimulatorDeviceStack::SimulatorDeviceStack(const ernc::domain::ParameterCatalog& catalog,
                                              const ernc::domain::FirmwareLayout& layout,
-                                             ernc::domain::ParameterRuntimeStore& store)
-    : catalog_{catalog}, layout_{layout}, store_{store} {}
+                                             ernc::domain::ParameterRuntimeStore& store,
+                                             ernc::domain::ArrayRuntimeStore& arrayStore)
+    : catalog_{catalog}, layout_{layout}, store_{store}, arrayStore_{arrayStore} {}
 
 SimulatorDeviceStack::~SimulatorDeviceStack() {
     reset();
@@ -78,7 +81,7 @@ ernc::domain::Result<SessionId> SimulatorDeviceStack::connectSimulator() {
     if (mirror.empty()) {
         return Result<SessionId>::failure(ErrorCode::InvalidParameter);
     }
-    seedSimulatorDemoBytes(mirror);
+    seedSimulatorMirrorDemoProfile(catalog_, layout_, mirror);
     image_ = std::make_unique<ernc::simulator::SlaveImage>(std::move(mirror));
     transport_ = std::make_unique<ernc::simulator::MemorySlaveTransport>(*image_);
     session_ = std::make_unique<DeviceSession>(*transport_);
@@ -87,7 +90,7 @@ ernc::domain::Result<SessionId> SimulatorDeviceStack::connectSimulator() {
         session_->attachDiagnosticLog(diagnosticLog_);
         scheduler_->attachDiagnosticLog(diagnosticLog_);
     }
-    batchReader_ = std::make_unique<ParameterBatchReader>(catalog_, layout_, store_, *session_, *scheduler_);
+    batchReader_ = std::make_unique<ParameterBatchReader>(catalog_, layout_, store_, *session_, *scheduler_, &arrayStore_);
     batchWriter_ = std::make_unique<ParameterBatchWriter>(catalog_, layout_, store_, *session_, *scheduler_);
     parameterReader_ =
         std::make_unique<ParameterReader>(catalog_, layout_, store_, *session_, *scheduler_);
@@ -138,6 +141,13 @@ ParameterReader& SimulatorDeviceStack::parameterReader() {
 
 const ParameterReader& SimulatorDeviceStack::parameterReader() const {
     return *parameterReader_;
+}
+
+bool SimulatorDeviceStack::applyCanMsgPulse(bool high) {
+    if (image_ == nullptr) {
+        return false;
+    }
+    return writeCanMsgMirrorLevel(*image_, layout_, high);
 }
 
 void SimulatorDeviceStack::attachDiagnosticLog(ernc::infrastructure::DiagnosticLog* log) noexcept {

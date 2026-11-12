@@ -38,6 +38,9 @@ qt_add_executable(ernc_app
     ../src/presentation/device/device_runtime_worker.cpp
     ../src/presentation/device/serial_connect_dialog.cpp
     ../src/presentation/device/serial_linked_stack.cpp
+    ../src/presentation/arrays/array_detail_panel.cpp
+    ../src/presentation/arrays/array_summary.cpp
+    ../src/presentation/arrays/array_editor_model.cpp
 )
 
 qt_add_resources(ernc_app "ernc_themes"

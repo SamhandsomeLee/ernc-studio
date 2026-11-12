@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ernc/application/array_operations.hpp"
 #include "ernc/application/batch_read.hpp"
 #include "ernc/application/batch_write.hpp"
 #include "ernc/application/read_parameter.hpp"
@@ -7,10 +8,15 @@
 #include "ernc/domain/catalog.hpp"
 #include "ernc/domain/firmware_layout.hpp"
 #include "ernc/domain/runtime_store.hpp"
+
+namespace ernc::domain {
+class ArrayRuntimeStore;
+}
 #include "ernc/domain/types.hpp"
 
 #include <QObject>
 #include <QString>
+#include <QTimer>
 
 #include <chrono>
 #include <functional>
@@ -48,7 +54,14 @@ public:
     };
 
     DeviceController(const ernc::domain::ParameterCatalog& catalog, const ernc::domain::FirmwareLayout& layout,
-                     ernc::domain::ParameterRuntimeStore& store, QObject* parent = nullptr);
+                     ernc::domain::ParameterRuntimeStore& store, ernc::domain::ArrayRuntimeStore& arrayStore,
+                     QObject* parent = nullptr);
+
+    /// 单数组 FC03 整段读（模拟器同步泵；串口经 Worker 批量读覆盖）。
+    void readArrayParameter(const QString& parameterId);
+
+    /// 单数组写 dirty 元素（当前仅模拟器）。
+    void writeArrayParameter(const QString& parameterId);
 
     ~DeviceController() override;
 
@@ -121,12 +134,18 @@ private:
     void pumpParameterReadSimulator();
     void finishBatchReadIfIdleSimulator();
     void finishCanMsgReadIfIdleSimulator();
+    void pumpArrayIoSimulator();
+
+    void startCanMsgSimulationPulse();
+    void stopCanMsgSimulationPulse();
+    void onCanMsgPulseTick();
 
     RuntimeTime now() const noexcept;
 
     const ernc::domain::ParameterCatalog& catalog_;
     const ernc::domain::FirmwareLayout& layout_;
     ernc::domain::ParameterRuntimeStore& store_;
+    ernc::domain::ArrayRuntimeStore& arrayStore_;
 
     LinkKind linkKind_{LinkKind::None};
     ernc::application::SimulatorDeviceStack stack_;
@@ -146,6 +165,16 @@ private:
     WritePlanDialog* writePlanDialog_{nullptr};
 
     bool wasWriteBusy_{false};
+
+    struct ActiveArrayIo {
+        ernc::domain::ParameterId id;
+        bool reading{true};
+        std::unique_ptr<ernc::application::ArrayTransfer> transfer;
+    };
+    std::optional<ActiveArrayIo> activeArrayIo_;
+
+    QTimer canMsgPulseTimer_;
+    bool canMsgPulseHigh_{true};
 };
 
 }  // namespace ernc::presentation

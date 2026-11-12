@@ -5,8 +5,9 @@
 namespace ernc::presentation {
 
 SerialLinkedStack::SerialLinkedStack(const ernc::domain::ParameterCatalog& catalog, const ernc::domain::FirmwareLayout& layout,
-                                     ernc::domain::ParameterRuntimeStore& store, ernc::serial::SerialTransport& transport)
-    : catalog_{catalog}, layout_{layout}, store_{store}, transport_{transport} {}
+                                     ernc::domain::ParameterRuntimeStore& store, ernc::domain::ArrayRuntimeStore& arrayStore,
+                                     ernc::serial::SerialTransport& transport)
+    : catalog_{catalog}, layout_{layout}, store_{store}, arrayStore_{arrayStore}, transport_{transport} {}
 
 SerialLinkedStack::~SerialLinkedStack() {
     resetKeepTransport();
@@ -18,7 +19,8 @@ ernc::domain::Result<ernc::domain::SessionId> SerialLinkedStack::connectLink() {
     }
     session_ = std::make_unique<ernc::application::DeviceSession>(transport_);
     scheduler_ = std::make_unique<ernc::application::CommandScheduler>(*session_, transport_);
-    batchReader_ = std::make_unique<ernc::application::ParameterBatchReader>(catalog_, layout_, store_, *session_, *scheduler_);
+    batchReader_ = std::make_unique<ernc::application::ParameterBatchReader>(catalog_, layout_, store_, *session_, *scheduler_,
+                                                                             &arrayStore_);
     batchWriter_ = std::make_unique<ernc::application::ParameterBatchWriter>(catalog_, layout_, store_, *session_, *scheduler_);
     if (diagnosticLog_ != nullptr) {
         session_->attachDiagnosticLog(diagnosticLog_);

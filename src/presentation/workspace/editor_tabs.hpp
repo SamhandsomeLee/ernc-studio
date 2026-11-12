@@ -19,7 +19,12 @@
 class QLabel;
 class QLineEdit;
 
+namespace ernc::domain {
+class ArrayRuntimeStore;
+}
+
 namespace ernc::presentation {
+class ArrayDetailPanel;
 class DeviceController;
 class CanNamePage;
 class ThresholdPage;
@@ -111,6 +116,9 @@ public:
 
     /// @brief 绑定桌面设备控制器。空指针表示无设备能力。
     void setDeviceController(DeviceController* controller);
+
+    void setArrayRuntimeStore(ernc::domain::ArrayRuntimeStore* store) noexcept;
+    void setArrayDetailPanel(ArrayDetailPanel* panel) noexcept;
 
     /// @brief 读取当前项目树页面分类的参数。未连接时提示由控制器记录。
     void readCurrentPage();
@@ -210,6 +218,8 @@ private:
 
     /// 设备控制器。不拥有。
     DeviceController* deviceController_{nullptr};
+    ernc::domain::ArrayRuntimeStore* arrayStore_{nullptr};
+    ArrayDetailPanel* arrayDetail_{nullptr};
 };
 
 } // namespace ernc::presentation

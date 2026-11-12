@@ -1,5 +1,6 @@
 #include "pages/threshold.hpp"
 
+#include "arrays/array_summary.hpp"
 #include "pages/function_view_layout.hpp"
 
 #include "theme/theme_tokens.hpp"
@@ -143,7 +144,9 @@ ThresholdPage::ThresholdPage(const ernc::domain::ParameterCatalog* catalog, ernc
     }
     const auto addParameterRow = [&](const QString& groupKey, const ernc::domain::ParameterDefinition& definition) {
         const QString parameterId = QString::fromStdString(definition.id.text());
-        const bool oneSlot = definition.firmwarePath && isOneScalarSlot(layout_, *definition.firmwarePath);
+        const bool compactArray = usesCompactArrayUi(&definition, layout_);
+        const bool oneSlot =
+            definition.firmwarePath && isOneScalarSlot(layout_, *definition.firmwarePath) && !compactArray;
         auto* row = new QWidget(content);
         auto* line = new QHBoxLayout(row);
         line->setContentsMargins(0, 0, 0, 0);
@@ -152,7 +155,11 @@ ThresholdPage::ThresholdPage(const ernc::domain::ParameterCatalog* catalog, ernc
         name->setFlat(true);
         name->setStyleSheet(QStringLiteral("text-align: left; padding: 0 4px;"));
         function_view_layout::styleParameterNameButton(name);
-        auto* value = new QLabel(oneSlot ? kBlank.toString() : kArrayMark.toString(), row);
+        auto* value = new QLabel(
+            compactArray && layout_ != nullptr
+                ? compactArrayCaption(definition, *layout_, arrayStore_)
+                : (oneSlot ? kBlank.toString() : kArrayMark.toString()),
+            row);
         function_view_layout::styleValueLabel(value);
         line->addWidget(name);
         line->addWidget(value);
@@ -222,12 +229,24 @@ ThresholdPage::ThresholdPage(const ernc::domain::ParameterCatalog* catalog, ernc
 void ThresholdPage::reload() {
     reloading_ = true;
     for (Control& control : controls_) {
-        if (control.editor == nullptr || catalog_ == nullptr) {
+        if (catalog_ == nullptr) {
             continue;
         }
         const ernc::domain::ParameterDefinition* definition = catalog_->find(control.id.toStdString());
+        if (definition == nullptr) {
+            continue;
+        }
+        if (usesCompactArrayUi(definition, layout_)) {
+            if (layout_ != nullptr) {
+                control.value->setText(compactArrayCaption(*definition, *layout_, arrayStore_));
+            }
+            continue;
+        }
+        if (control.editor == nullptr) {
+            continue;
+        }
         const ernc::domain::ParameterRuntimeState* state =
-            definition == nullptr || store_ == nullptr ? nullptr : store_->find(definition->id);
+            store_ == nullptr ? nullptr : store_->find(definition->id);
         const QString text = formatScalar(shownValue(state));
         control.value->setText(text);
         control.editor->setText(text == kBlank.toString() ? QString() : text);

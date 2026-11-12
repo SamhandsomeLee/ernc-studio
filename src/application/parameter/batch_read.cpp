@@ -1,5 +1,7 @@
 #include "ernc/application/batch_read.hpp"
 
+#include "ernc/domain/array_runtime_store.hpp"
+
 #include "ernc/domain/chunk_plan.hpp"
 #include "ernc/protocol/typed_codec.hpp"
 
@@ -52,8 +54,8 @@ bool fitsFrameAddress(std::uint32_t slot, std::uint32_t slotCount) noexcept {
 ParameterBatchReader::ParameterBatchReader(const ernc::domain::ParameterCatalog& catalog,
                                            const ernc::domain::FirmwareLayout& layout,
                                            ernc::domain::ParameterRuntimeStore& store, DeviceSession& session,
-                                           CommandScheduler& scheduler)
-    : catalog_{catalog}, layout_{layout}, store_{store}, session_{session}, scheduler_{scheduler} {}
+                                           CommandScheduler& scheduler, ernc::domain::ArrayRuntimeStore* arrayStore)
+    : catalog_{catalog}, layout_{layout}, store_{store}, session_{session}, scheduler_{scheduler}, arrayStore_{arrayStore} {}
 
 ernc::domain::ScalarValue::Kind ParameterBatchReader::kindOf(ernc::domain::DataType type) noexcept {
     if (type == ernc::domain::DataType::Int32) {
@@ -337,7 +339,16 @@ void ParameterBatchReader::publishField(PendingField& field, ernc::domain::Runti
         failField(field, ernc::domain::ErrorCode::PayloadSizeMismatch);
         return;
     }
-    images_.push_back(BatchParameterImage{field.id, false, std::nullopt, *decoded.tryValue()});
+    const std::vector<ernc::domain::ScalarValue>& elements = *decoded.tryValue();
+    images_.push_back(BatchParameterImage{field.id, false, std::nullopt, elements});
+    if (arrayStore_ != nullptr) {
+        const ernc::domain::Result<void> stored =
+            arrayStore_->observeRead(field.id, field.kind, elements, readAt);
+        if (!stored.ok()) {
+            failField(field, stored.tryError() != nullptr ? *stored.tryError() : ernc::domain::ErrorCode::Unknown);
+            return;
+        }
+    }
     field.published = true;
     ++completed_;
 }
