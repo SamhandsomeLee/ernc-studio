@@ -9,6 +9,7 @@ add_library(ernc_application STATIC
     ../region/region_writer.cpp
     ../region/transfer_cancellation.cpp
     ../workflows/workflow_runner.cpp
+    ../workflows/enc_echo.cpp
 )
 
 target_include_directories(ernc_application PUBLIC

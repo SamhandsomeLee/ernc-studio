@@ -221,6 +221,28 @@ foreach(ernc_workflow_case IN LISTS ernc_workflow_cases)
     )
 endforeach()
 
+add_executable(ernc_enc_echo_workflow_tests
+    enc_echo_workflow_test.cpp
+)
+
+target_link_libraries(ernc_enc_echo_workflow_tests PRIVATE ernc_application)
+
+set(ernc_enc_echo_workflow_cases
+    definition_has_six_steps_no_write
+    forbidden_check_triggers_blocked
+    materialize_decodes_echo_field
+    workflow_reaches_operator_review
+)
+
+foreach(ernc_enc_echo_workflow_case IN LISTS ernc_enc_echo_workflow_cases)
+    add_test(
+        NAME "enc_echo_workflow.${ernc_enc_echo_workflow_case}"
+        COMMAND ernc_enc_echo_workflow_tests
+            "${ernc_enc_echo_workflow_case}"
+            "${CMAKE_SOURCE_DIR}/firmware/layout_manifest.json"
+    )
+endforeach()
+
 add_executable(ernc_write_plan_tests
     write_plan_test.cpp
 )
