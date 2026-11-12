@@ -1,5 +1,11 @@
 #include "workspace/editor_tabs.hpp"
 
+#include "device/device_controller.hpp"
+#include "parameters/write_plan_dialog.hpp"
+
+#include "ernc/application/batch_write.hpp"
+#include "scheduler.hpp"
+
 #include "analysis/analysis_panel.hpp"
 #include "controls/parameter_delegates.hpp"
 #include "pages/can_names.hpp"
@@ -10,7 +16,6 @@
 #include "pages/rnc_param.hpp"
 #include "pages/ernc_flag.hpp"
 #include "pages/ernc_in_out.hpp"
-#include "parameters/write_plan_dialog.hpp"
 #include "parameters/fake_parameter_rows.hpp"
 #include "parameters/parameter_filter_proxy.hpp"
 #include "parameters/parameter_table_model.hpp"
@@ -80,6 +85,9 @@ QWidget* makeParameterView(QWidget* parent, const ernc::domain::ParameterCatalog
     dirtyOnly->setObjectName(QStringLiteral("erncParameterDirtyOnly"));
     filters->addWidget(search, 1);
     filters->addWidget(dirtyOnly);
+    auto* readPage = new QPushButton(QStringLiteral("读取本页"), view);
+    readPage->setObjectName(QStringLiteral("erncReadCurrentPage"));
+    filters->addWidget(readPage);
     auto* writePlan = new QPushButton(QStringLiteral("写入已修改参数"), view);
     writePlan->setObjectName(QStringLiteral("erncOpenWritePlan"));
     filters->addWidget(writePlan);
@@ -212,6 +220,9 @@ EditorTabs::EditorTabs(const ernc::domain::ParameterCatalog* catalog, ernc::doma
         addTab(curveAnalysis_, QStringLiteral("曲线分析"));
     }
     auto* table = parameterView->findChild<QTableView*>(QStringLiteral("erncParameterTable"));
+    if (auto* readCurrent = parameterView->findChild<QPushButton*>(QStringLiteral("erncReadCurrentPage"))) {
+        connect(readCurrent, &QPushButton::clicked, this, &EditorTabs::readCurrentPage);
+    }
     if (auto* openWritePlan = parameterView->findChild<QPushButton*>(QStringLiteral("erncOpenWritePlan"))) {
         connect(openWritePlan, &QPushButton::clicked, this, &EditorTabs::openWritePlan);
     }
@@ -282,14 +293,65 @@ void EditorTabs::showNamedPage(const QString& objectName) {
     }
 }
 
+void EditorTabs::setDeviceController(DeviceController* controller) {
+    deviceController_ = controller;
+}
+
+void EditorTabs::readCurrentPage() {
+    if (deviceController_ == nullptr) {
+        return;
+    }
+    deviceController_->readCategory(selection_.pageId());
+}
+
+void EditorTabs::bindParameterSession(const ernc::domain::SessionId session) {
+    if (parameterModel_ != nullptr) {
+        parameterModel_->bindSession(session);
+    }
+}
+
+void EditorTabs::notifyParametersUpdated(const ernc::domain::SessionId session, const QStringList& parameterIds) {
+    if (parameterModel_ == nullptr) {
+        return;
+    }
+    for (const QString& text : parameterIds) {
+        const ernc::domain::Result<ernc::domain::ParameterId> parsed = ernc::domain::ParameterId::parse(text.toStdString());
+        if (parsed.ok() && parsed.tryValue() != nullptr) {
+            parameterModel_->noteUpdated(session, *parsed.tryValue());
+        }
+    }
+    refresh();
+}
+
+void EditorTabs::noteDeviceDisconnected() {
+    if (parameterModel_ != nullptr) {
+        parameterModel_->noteDisconnected();
+    }
+    refresh();
+}
+
 void EditorTabs::openWritePlan() {
     WritePlanDialog::Sources sources;
     sources.catalog = catalog_;
     sources.store = store_;
     sources.layout = layout_;
     sources.pageId = QString::fromStdString(selection_.pageId());
-    WritePlanDialog dialog(sources, this);
-    dialog.exec();
+    auto* dialog = new WritePlanDialog(sources, this);
+    dialog->setAttribute(Qt::WA_DeleteOnClose);
+    if (deviceController_ != nullptr) {
+        dialog->setDeviceController(deviceController_);
+        ernc::application::CommandScheduler* scheduler = deviceController_->scheduler();
+        ernc::application::ParameterBatchWriter* writer = deviceController_->batchWriter();
+        if (scheduler != nullptr && writer != nullptr) {
+            dialog->setWriter(writer, scheduler);
+        }
+        deviceController_->setWritePlanDialog(dialog);
+        QObject::connect(dialog, &QObject::destroyed, deviceController_, [controller = deviceController_](QObject* dead) {
+            (void)dead;
+            controller->setWritePlanDialog(nullptr);
+        });
+    }
+    dialog->show();
 }
 
 void EditorTabs::showFunctionView() {

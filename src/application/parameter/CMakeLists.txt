@@ -1,4 +1,5 @@
 add_library(ernc_application STATIC
+    ../desktop/simulator_device_stack.cpp
     read_parameter.cpp
     stage_value.cpp
     write_parameter.cpp
@@ -18,6 +19,6 @@ target_include_directories(ernc_application PUBLIC
     "${CMAKE_SOURCE_DIR}/include"
 )
 
-target_link_libraries(ernc_application PUBLIC ernc_device ernc_protocol)
+target_link_libraries(ernc_application PUBLIC ernc_device ernc_protocol ernc_simulator)
 
 target_compile_features(ernc_application PUBLIC cxx_std_20)

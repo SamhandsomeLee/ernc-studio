@@ -20,6 +20,7 @@ class QLabel;
 class QLineEdit;
 
 namespace ernc::presentation {
+class DeviceController;
 class CanNamePage;
 class ThresholdPage;
 class CheckPage;
@@ -101,6 +102,16 @@ public:
     /// @note 通知参数是内部 id 的视图，只在这次调用期间有效。观察者不得再调用 `selectParameter`。
     void setParameterObserver(std::function<void(std::string_view)> observer);
 
+    /// @brief 绑定桌面设备控制器。空指针表示无设备能力。
+    void setDeviceController(DeviceController* controller);
+
+    /// @brief 读取当前项目树页面分类的参数。未连接时提示由控制器记录。
+    void readCurrentPage();
+
+    void bindParameterSession(ernc::domain::SessionId session);
+    void notifyParametersUpdated(ernc::domain::SessionId session, const QStringList& parameterIds);
+    void noteDeviceDisconnected();
+
 private:
     /// @brief 按当前选择重写 Function View，并让当前功能页占满剩余高度。
     /// @note 参数表不在这里改写。没有功能页时，说明文字仍停在上方。
@@ -111,7 +122,7 @@ private:
     void showNamedPage(const QString& objectName);
 
     /// @brief 打开当前分类的写入预览。
-    /// @note 不创建会话，不打开串口。确认只在对话框里发生。只在 UI 主线程调用。
+    /// @note 已连接时绑定批量写。非模态；泵由主窗口定时器驱动。
     void openWritePlan();
 
     /// @brief 参数表换行时，把该行参数 id 写入共用选择。
@@ -176,6 +187,9 @@ private:
 
     /// 参数 id 写入成功后的通知。空表示没有观察者。不拥有检查器。
     std::function<void(std::string_view)> parameterObserver_;
+
+    /// 设备控制器。不拥有。
+    DeviceController* deviceController_{nullptr};
 };
 
 } // namespace ernc::presentation

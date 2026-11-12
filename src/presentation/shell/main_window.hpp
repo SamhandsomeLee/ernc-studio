@@ -14,6 +14,7 @@
 
 class QCloseEvent;
 class QDockWidget;
+class QTimer;
 
 namespace ernc::infrastructure {
 class AppSessionLog;
@@ -24,9 +25,9 @@ namespace ernc::presentation {
 class EditorTabs;
 class InspectorPanel;
 class OperationCenterPanel;
+class DeviceController;
 
-/// 无设备主窗口。左侧项目树显示目录页面，中间工作区用两个页签显示同一份选择。
-/// 底部检查器跟随这份参数 id。右侧任务卡和操作中心是无设备原型。本类不保存参数值，也不持有串口。
+/// 桌面主窗口。P1 可在 UI 线程连接内存虚拟从站。不持有 QSerialPort。
 class MainWindow final : public QMainWindow {
 public:
     /// @brief 创建主窗口。目录加载结果决定项目树显示入口还是失败原因。
@@ -88,8 +89,15 @@ private:
     void recordUiAction(std::string_view action, std::string_view detail, bool success,
                         ernc::domain::ErrorCode error = ernc::domain::ErrorCode::Unknown);
 
+    void updateDeviceStatusBar(bool connected, ernc::domain::SessionId sessionId);
+    void onDeviceConnectionChanged(bool connected, ernc::domain::SessionId sessionId);
+    void onParametersUpdated(ernc::domain::SessionId sessionId, const QStringList& parameterIds);
+
     /// 参数运行状态。本窗口拥有。参数表只借用它，不保存第二份数值。
     ernc::domain::ParameterRuntimeStore parameterStore_;
+
+    /// 已加载的参数目录。由项目树模型拥有内容，本窗口只保存指针。
+    const ernc::domain::ParameterCatalog* catalog_{nullptr};
 
     /// 固件布局。加载成功时持有。参数委托只借用它来暂存。
     std::optional<ernc::domain::FirmwareLayout> firmwareLayout_;
@@ -120,6 +128,12 @@ private:
 
     /// 本次桌面运行的会话日志。失败创建目录时为空。
     std::unique_ptr<ernc::infrastructure::AppSessionLog> sessionLog_;
+
+    /// 虚拟从站与命令泵。目录和布局齐全时创建。
+    DeviceController* deviceController_{nullptr};
+
+    /// 连接设备时驱动调度器。由本窗口拥有。
+    QTimer* devicePumpTimer_{nullptr};
 };
 
 } // namespace ernc::presentation

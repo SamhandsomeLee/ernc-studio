@@ -1,10 +1,12 @@
 #pragma once
 
+#include "ernc/application/batch_write.hpp"
 #include "ernc/domain/types.hpp"
 
 #include <QDialog>
 #include <QString>
 
+#include <optional>
 #include <vector>
 
 class QCloseEvent;
@@ -24,6 +26,8 @@ class ParameterRuntimeStore;
 }  // namespace ernc::domain
 
 namespace ernc::presentation {
+
+class DeviceController;
 
 /// 写入预览表的列。顺序固定，不随搜索或表头排序改变。
 enum class WritePlanColumn : int {
@@ -88,6 +92,16 @@ public:
     /// @note 不发送命令，也不取走调度器结果。没有绑定写对象时什么都不做。只在 UI 主线程调用。
     void noteProgress();
 
+    /// @brief 串口 Worker 上的批量写快照刷新表格。只在 UI 主线程调用。
+    void noteProgressFromWorker(const std::vector<ernc::application::BatchWriteItem>& items,
+                                const std::optional<ernc::application::CommandId>& inflight,
+                                const std::optional<ernc::application::WritePhase>& phase);
+
+    /// @brief 绑定设备门面。串口模式用 remote 写入，本地 writer 可空。
+    void setDeviceController(DeviceController* controller) noexcept;
+
+    bool writeBusy() const;
+
     /// @brief 预览行数。
     /// @return 表格行数。`ALL` 或没有待写参数时为 0。
     int planRowCount() const;
@@ -145,6 +159,9 @@ private:
 
     /// 调度器。不拥有。只用来查看在途写的阶段。
     ernc::application::CommandScheduler* scheduler_ = nullptr;
+
+    /// 串口等设备门面。不拥有。
+    DeviceController* deviceController_{nullptr};
 
     /// 当前页面名称。由本对话框通过 Qt 父子关系拥有。
     QLabel* scopeLabel_ = nullptr;

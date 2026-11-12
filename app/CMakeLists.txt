@@ -1,4 +1,4 @@
-find_package(Qt6 REQUIRED COMPONENTS Widgets Core)
+find_package(Qt6 REQUIRED COMPONENTS Widgets Core SerialPort)
 
 qt_standard_project_setup()
 
@@ -29,6 +29,10 @@ qt_add_executable(ernc_app
     ../src/presentation/operation_center/operation_center_panel.cpp
     ../src/presentation/diagnostics/diagnostic_log_presenter.cpp
     ../src/presentation/diagnostics/session_log_paths.cpp
+    ../src/presentation/device/device_controller.cpp
+    ../src/presentation/device/device_runtime_worker.cpp
+    ../src/presentation/device/serial_connect_dialog.cpp
+    ../src/presentation/device/serial_linked_stack.cpp
 )
 
 qt_add_resources(ernc_app "ernc_themes"
@@ -48,7 +52,8 @@ target_compile_definitions(ernc_app PRIVATE
     "ERNC_SHELL_KEYMAP_PATH=\"${CMAKE_SOURCE_DIR}/resources/keymap/shell.txt\""
 )
 
-target_link_libraries(ernc_app PRIVATE Qt6::Widgets ernc_ui_qwt ernc_domain ernc_application ernc_logging ernc_filesystem)
+target_link_libraries(ernc_app PRIVATE Qt6::Widgets Qt6::SerialPort ernc_ui_qwt ernc_domain ernc_application ernc_device
+    ernc_logging ernc_filesystem ernc_serial)
 
 set_target_properties(ernc_app PROPERTIES
     OUTPUT_NAME "ernc-studio"

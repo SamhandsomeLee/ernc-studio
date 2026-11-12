@@ -7,6 +7,8 @@
 #include "task_cards/task_card_panel.hpp"
 #include "theme/theme_tokens.hpp"
 #include "workspace/editor_tabs.hpp"
+#include "device/device_controller.hpp"
+#include "device/serial_connect_dialog.hpp"
 
 #include "diagnostics/session_log_paths.hpp"
 #include "ernc/domain/region_catalog.hpp"
@@ -26,6 +28,7 @@
 #include <QSettings>
 #include <QShortcut>
 #include <QStatusBar>
+#include <QTimer>
 #include <QTreeView>
 #include <QVBoxLayout>
 
@@ -100,6 +103,7 @@ MainWindow::MainWindow(ernc::domain::CatalogLoad catalog, QString catalogPath, Q
             showNavigatorError(projectTree_, error);
         } else {
             loadedCatalog = model->catalog();
+            catalog_ = loadedCatalog;
             auto* tree = new QTreeView(projectTree_);
             tree->setObjectName(QStringLiteral("erncProjectNavigator"));
             tree->setHeaderHidden(true);
@@ -188,12 +192,77 @@ MainWindow::MainWindow(ernc::domain::CatalogLoad catalog, QString catalogPath, Q
 
     QStatusBar* bar = statusBar();
     bar->setObjectName(QStringLiteral("erncStatusBar"));
-    if (sessionLog_ != nullptr) {
-        bar->showMessage(QStringLiteral("会话日志：%1")
-            .arg(QString::fromStdWString(sessionLog_->sessionDirectory().wstring())));
-    } else {
-        bar->showMessage(QStringLiteral("未连接（会话日志目录创建失败）"));
+    devicePumpTimer_ = new QTimer(this);
+    devicePumpTimer_->setInterval(10);
+    QObject::connect(devicePumpTimer_, &QTimer::timeout, this, [this] {
+        if (deviceController_ != nullptr) {
+            deviceController_->pumpTick();
+        }
+    });
+
+    if (loadedCatalog != nullptr && firmwareLayout_.has_value()) {
+        deviceController_ = new DeviceController(*loadedCatalog, *firmwareLayout_, parameterStore_, this);
+        DeviceController::UiRecorder recorder;
+        recorder.record = [this](std::string_view action, std::string_view detail, bool success, ernc::domain::ErrorCode error) {
+            recordUiAction(action, detail, success, error);
+        };
+        deviceController_->setUiRecorder(std::move(recorder));
+        if (sessionLog_ != nullptr) {
+            deviceController_->attachSessionDiagnosticLog(&sessionLog_->diagnosticLog());
+        }
+        editorTabs_->setDeviceController(deviceController_);
+        QObject::connect(deviceController_, &DeviceController::connectionChanged, this, &MainWindow::onDeviceConnectionChanged);
+        QObject::connect(deviceController_, &DeviceController::parametersUpdated, this, &MainWindow::onParametersUpdated);
+        QObject::connect(deviceController_, &DeviceController::operationLogRefreshRequested, this, [this] {
+            if (operationPanel_ != nullptr) {
+                operationPanel_->refreshFromSession();
+            }
+        });
+        QObject::connect(deviceController_, &DeviceController::readPageFinished, this, [this](bool success, QString detail) {
+            if (success) {
+                statusBar()->showMessage(QStringLiteral("读取本页完成：%1").arg(detail), 5000);
+            } else {
+                statusBar()->showMessage(QStringLiteral("读取本页失败：%1").arg(detail), 8000);
+            }
+        });
     }
+
+    if (sessionLog_ != nullptr) {
+        updateDeviceStatusBar(false, ernc::domain::SessionId::none());
+    } else {
+        bar->showMessage(QStringLiteral("未连接设备（会话日志目录创建失败）"));
+    }
+
+    QMenu* deviceMenu = menuBar()->addMenu(QStringLiteral("设备"));
+    QAction* connectSimulator = deviceMenu->addAction(QStringLiteral("连接虚拟从站"));
+    QAction* connectSerial = deviceMenu->addAction(QStringLiteral("连接串口设备…"));
+    QAction* disconnectDevice = deviceMenu->addAction(QStringLiteral("断开设备"));
+    QAction* readCurrentPage = deviceMenu->addAction(QStringLiteral("读取本页参数"));
+    QObject::connect(connectSimulator, &QAction::triggered, this, [this] {
+        if (deviceController_ != nullptr) {
+            deviceController_->connectSimulator();
+        }
+    });
+    QObject::connect(connectSerial, &QAction::triggered, this, [this] {
+        if (deviceController_ == nullptr) {
+            return;
+        }
+        SerialConnectDialog dialog(this);
+        if (dialog.exec() != QDialog::Accepted) {
+            return;
+        }
+        deviceController_->connectSerial(dialog.portName(), dialog.baudRate());
+    });
+    QObject::connect(disconnectDevice, &QAction::triggered, this, [this] {
+        if (deviceController_ != nullptr) {
+            deviceController_->disconnectDevice();
+        }
+    });
+    QObject::connect(readCurrentPage, &QAction::triggered, this, [this] {
+        if (editorTabs_ != nullptr) {
+            editorTabs_->readCurrentPage();
+        }
+    });
 
     QMenu* viewMenu = menuBar()->addMenu(QStringLiteral("视图"));
     viewMenu->addAction(projectTree_->toggleViewAction());
@@ -382,7 +451,11 @@ void MainWindow::runBoundAction(std::string_view action) {
         return;
     }
     if (action == "refresh-view") {
-        editorTabs_->focusCurrentPage();
+        if (deviceController_ != nullptr && deviceController_->connected()) {
+            editorTabs_->readCurrentPage();
+        } else {
+            editorTabs_->focusCurrentPage();
+        }
         return;
     }
     if (action == "close-overlay") {
@@ -390,7 +463,53 @@ void MainWindow::runBoundAction(std::string_view action) {
     }
 }
 
+void MainWindow::updateDeviceStatusBar(const bool connected, const ernc::domain::SessionId sessionId) {
+    QString deviceText;
+    if (connected && deviceController_ != nullptr && deviceController_->linkKind() == DeviceController::LinkKind::Serial) {
+        deviceText = QStringLiteral("设备：串口 #%1").arg(sessionId.raw());
+    } else if (connected) {
+        deviceText = QStringLiteral("设备：虚拟从站 #%1").arg(sessionId.raw());
+    } else {
+        deviceText = QStringLiteral("设备：未连接");
+    }
+    QString message = deviceText;
+    if (sessionLog_ != nullptr) {
+        message += QStringLiteral("  |  日志：") + QString::fromStdWString(sessionLog_->sessionDirectory().wstring());
+    }
+    statusBar()->showMessage(message);
+}
+
+void MainWindow::onDeviceConnectionChanged(const bool connected, const ernc::domain::SessionId sessionId) {
+    if (connected) {
+        if (devicePumpTimer_ != nullptr) {
+            devicePumpTimer_->start();
+        }
+        if (editorTabs_ != nullptr) {
+            editorTabs_->bindParameterSession(sessionId);
+        }
+    } else {
+        if (devicePumpTimer_ != nullptr) {
+            devicePumpTimer_->stop();
+        }
+        parameterStore_.markOffline();
+        if (editorTabs_ != nullptr) {
+            editorTabs_->noteDeviceDisconnected();
+            editorTabs_->bindParameterSession(ernc::domain::SessionId::none());
+        }
+    }
+    updateDeviceStatusBar(connected, sessionId);
+}
+
+void MainWindow::onParametersUpdated(const ernc::domain::SessionId sessionId, const QStringList& parameterIds) {
+    if (editorTabs_ != nullptr) {
+        editorTabs_->notifyParametersUpdated(sessionId, parameterIds);
+    }
+}
+
 void MainWindow::closeEvent(QCloseEvent* event) {
+    if (deviceController_ != nullptr && deviceController_->connected()) {
+        deviceController_->disconnectDevice();
+    }
     if (sessionLog_ != nullptr) {
         recordUiAction("app.session.end", "{}", true);
         (void)sessionLog_->exportSnapshot();

@@ -1,6 +1,6 @@
 #include "diagnostics/session_log_paths.hpp"
 
-#include <QStandardPaths>
+#include <QCoreApplication>
 
 #include <chrono>
 #include <cstdint>
@@ -17,8 +17,8 @@
 namespace ernc::presentation {
 
 std::filesystem::path createSessionLogDirectory() {
-    const QString root = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
-    if (root.isEmpty()) {
+    const QString exeDir = QCoreApplication::applicationDirPath();
+    if (exeDir.isEmpty()) {
         return {};
     }
     const auto now = std::chrono::system_clock::now();
@@ -38,7 +38,7 @@ std::filesystem::path createSessionLogDirectory() {
 #endif
     stamp << '-' << pid;
     const std::filesystem::path directory =
-        std::filesystem::path(root.toStdWString()) / "logs" / stamp.str();
+        std::filesystem::path(exeDir.toStdWString()) / "logs" / stamp.str();
     std::error_code error;
     std::filesystem::create_directories(directory, error);
     if (error) {

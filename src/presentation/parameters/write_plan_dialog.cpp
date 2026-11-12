@@ -1,5 +1,9 @@
 #include "parameters/write_plan_dialog.hpp"
 
+#include "device/device_controller.hpp"
+
+#include "write_verification.hpp"
+
 #include "ernc/application/batch_write.hpp"
 #include "ernc/domain/catalog.hpp"
 #include "ernc/domain/control_semantics.hpp"
@@ -303,12 +307,35 @@ void WritePlanDialog::rebuild() {
     }
 }
 
-void WritePlanDialog::confirmWrite() {
+void WritePlanDialog::setDeviceController(DeviceController* controller) noexcept {
+    deviceController_ = controller;
+}
+
+bool WritePlanDialog::writeBusy() const {
     if (writer_ != nullptr && writer_->busy()) {
+        return true;
+    }
+    if (deviceController_ != nullptr && deviceController_->writeBusy()) {
+        return true;
+    }
+    return false;
+}
+
+void WritePlanDialog::confirmWrite() {
+    if (writeBusy()) {
         return;
     }
     rebuild();
     if (!confirmButton_->isEnabled() || !scopeReady_) {
+        return;
+    }
+    if (deviceController_ != nullptr && deviceController_->linkKind() == DeviceController::LinkKind::Serial) {
+        const ernc::domain::ErrorCode code = deviceController_->startWriteCategory(sources_.pageId);
+        confirmButton_->setEnabled(false);
+        noteProgress();
+        if (code != ernc::domain::ErrorCode::Unknown) {
+            diagnosticLabel_->setText(errorName(code));
+        }
         return;
     }
     if (writer_ == nullptr || scheduler_ == nullptr) {
@@ -328,14 +355,26 @@ void WritePlanDialog::confirmWrite() {
 }
 
 void WritePlanDialog::noteProgress() {
+    if (deviceController_ != nullptr && deviceController_->linkKind() == DeviceController::LinkKind::Serial) {
+        deviceController_->refreshWritePlanFromWorker(this);
+        return;
+    }
     if (writer_ == nullptr || sources_.catalog == nullptr || sources_.store == nullptr || table_ == nullptr) {
         return;
     }
-    const std::vector<ernc::application::BatchWriteItem>& items = writer_->items();
     const std::optional<ernc::application::CommandId> inflight = writer_->inFlight();
     std::optional<ernc::application::WritePhase> phase;
     if (inflight.has_value() && scheduler_ != nullptr) {
         phase = scheduler_->phaseOf(*inflight);
+    }
+    noteProgressFromWorker(writer_->items(), inflight, phase);
+}
+
+void WritePlanDialog::noteProgressFromWorker(const std::vector<ernc::application::BatchWriteItem>& items,
+                                             const std::optional<ernc::application::CommandId>& inflight,
+                                             const std::optional<ernc::application::WritePhase>& phase) {
+    if (sources_.catalog == nullptr || sources_.store == nullptr || table_ == nullptr) {
+        return;
     }
     int currentRow = -1;
     if (inflight.has_value()) {
@@ -438,7 +477,7 @@ QString WritePlanDialog::diagnosticText() const {
 }
 
 void WritePlanDialog::closeEvent(QCloseEvent* event) {
-    if (writer_ != nullptr && writer_->busy()) {
+    if (writeBusy()) {
         event->ignore();
         return;
     }
