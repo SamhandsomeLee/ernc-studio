@@ -1804,3 +1804,17 @@ foreach(ernc_storage_case IN ITEMS
         COMMAND ernc_storage_tests "${ernc_storage_case}"
     )
 endforeach()
+
+# ES-084: *.erncproj directory bundle create/open/close.
+add_executable(ernc_project_tests
+    project_store_test.cpp
+)
+
+target_link_libraries(ernc_project_tests PRIVATE ernc_project)
+
+foreach(ernc_project_case IN ITEMS create_empty_project close_and_reopen schema_version_guard)
+    add_test(
+        NAME "project.${ernc_project_case}"
+        COMMAND ernc_project_tests "${ernc_project_case}"
+    )
+endforeach()
