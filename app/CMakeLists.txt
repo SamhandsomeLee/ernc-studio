@@ -47,7 +47,7 @@ target_compile_definitions(ernc_app PRIVATE
     "ERNC_SHELL_KEYMAP_PATH=\"${CMAKE_SOURCE_DIR}/resources/keymap/shell.txt\""
 )
 
-target_link_libraries(ernc_app PRIVATE Qt6::Widgets ernc_domain ernc_application ernc_logging)
+target_link_libraries(ernc_app PRIVATE Qt6::Widgets ernc_ui_qwt ernc_domain ernc_application ernc_logging ernc_filesystem)
 
 set_target_properties(ernc_app PROPERTIES
     OUTPUT_NAME "ernc-studio"

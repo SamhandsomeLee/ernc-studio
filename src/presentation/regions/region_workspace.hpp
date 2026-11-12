@@ -1,15 +1,21 @@
 #pragma once
 
+#include <QWidget>
+
+#ifdef slots
+#undef slots
+#endif
+
 #include "ernc/application/region_reader.hpp"
 #include "ernc/application/region_writer.hpp"
 #include "ernc/application/transfer_cancellation.hpp"
 #include "ernc/domain/region_catalog.hpp"
 
-#include <QWidget>
-
 #include <cstdint>
 #include <filesystem>
+#include <functional>
 #include <optional>
+#include <span>
 #include <vector>
 
 class QComboBox;
@@ -104,7 +110,18 @@ public:
     /// @return 表可见时为 120。不可见时为 0。
     int specRadiusRows() const noexcept;
 
+    /// @brief 有完整可读字节时通知分析页。
+    /// @param handler 回调。空表示不再通知。当前区域定义与字节只在回调期间有效。
+    void setBytesAvailableHandler(
+        std::function<void(const ernc::domain::RegionDefinition&, std::span<const std::uint8_t>)> handler);
+
 private:
+    /// @brief 导入成功后把字节交给已注册的处理器。
+    void emitBytesAvailable();
+
+    /// 导入完成后的通知。空表示不通知。
+    std::function<void(const ernc::domain::RegionDefinition&, std::span<const std::uint8_t>)> bytesHandler_;
+
     /// @brief 按当前区域和子字段确定要操作的定义。
     /// @return 有选择时指向内部副本。没有时为空。
     const ernc::domain::RegionDefinition* selectedRegion() const noexcept;

@@ -8,6 +8,8 @@
 #include "theme/theme_tokens.hpp"
 #include "workspace/editor_tabs.hpp"
 
+#include "ernc/domain/region_catalog.hpp"
+
 #include <QAbstractItemView>
 #include <QAction>
 #include <QApplication>
@@ -116,10 +118,16 @@ MainWindow::MainWindow(ernc::domain::CatalogLoad catalog, QString catalogPath, Q
     const ernc::domain::LayoutLoad layoutLoad = ernc::domain::FirmwareLayoutLoader::loadFile(ERNC_LAYOUT_MANIFEST_PATH);
     if (layoutLoad.ok()) {
         firmwareLayout_ = layoutLoad.layout();
+        const ernc::domain::Result<ernc::domain::RegionCatalog> regionLoad =
+            ernc::domain::RegionCatalog::load(*firmwareLayout_);
+        if (regionLoad.ok() && regionLoad.tryValue() != nullptr) {
+            regionCatalog_ = regionLoad.value();
+        }
     }
 #endif
     const ernc::domain::FirmwareLayout* layout = firmwareLayout_ ? &*firmwareLayout_ : nullptr;
-    auto* editorTabs = new EditorTabs(loadedCatalog, &parameterStore_, layout, workArea);
+    const ernc::domain::RegionCatalog* regionCatalog = regionCatalog_ ? &*regionCatalog_ : nullptr;
+    auto* editorTabs = new EditorTabs(loadedCatalog, &parameterStore_, layout, regionCatalog, workArea);
 #ifdef ERNC_CAN_NAMES_PATH
     editorTabs->setCanNamesPath(QString::fromUtf8(ERNC_CAN_NAMES_PATH));
 #endif
@@ -228,6 +236,8 @@ void MainWindow::applyWorkspace(const WorkspaceLayout& layout) {
     }
     if (layout.editorPage == ShellEditorPage::FunctionView) {
         editorTabs_->showFunctionView();
+    } else if (layout.editorPage == ShellEditorPage::CurveAnalysis) {
+        editorTabs_->showCurveAnalysis();
     } else if (layout.editorPage == ShellEditorPage::ParameterView) {
         editorTabs_->showParameterView();
     }

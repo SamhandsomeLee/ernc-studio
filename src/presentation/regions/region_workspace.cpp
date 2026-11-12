@@ -4,6 +4,7 @@
 #include "regions/spec_radius_page.hpp"
 
 #include <QComboBox>
+#include <QFileDialog>
 #include <QLabel>
 #include <QPushButton>
 #include <QStackedWidget>
@@ -95,6 +96,28 @@ RegionWorkspace::RegionWorkspace(const ernc::domain::RegionCatalog& catalog, ern
         selectField(path == QStringLiteral("全部") ? QString() : path);
     });
     QObject::connect(readButton, &QPushButton::clicked, this, [this]() { readSelected(); });
+    QObject::connect(importButton, &QPushButton::clicked, this, [this]() {
+        const QString fileName = QFileDialog::getOpenFileName(
+            this, QStringLiteral("导入区域文件"), QString(),
+            QStringLiteral("区域数据 (*.bin *.txt);;二进制 (*.bin);;文本 (*.txt);;所有文件 (*)"));
+        if (fileName.isEmpty()) {
+            return;
+        }
+        const std::filesystem::path path = fileName.toStdString();
+        if (fileName.endsWith(QStringLiteral(".txt"), Qt::CaseInsensitive)) {
+            (void)importTxt(path);
+        } else {
+            (void)importBin(path);
+        }
+    });
+    QObject::connect(exportButton, &QPushButton::clicked, this, [this]() {
+        const QString fileName = QFileDialog::getSaveFileName(
+            this, QStringLiteral("导出区域 BIN"), QString(), QStringLiteral("二进制 (*.bin)"));
+        if (fileName.isEmpty()) {
+            return;
+        }
+        (void)exportBin(fileName.toStdString());
+    });
     QObject::connect(previewButton, &QPushButton::clicked, this, [this]() { previewSelected(); });
     QObject::connect(writeButton_, &QPushButton::clicked, this, [this]() { writeSelected(); });
     QObject::connect(cancelButton, &QPushButton::clicked, this, [this]() { cancelTransfer(); });
@@ -178,6 +201,7 @@ ernc::domain::Result<void> RegionWorkspace::importBin(const std::filesystem::pat
     statusLabel_->setText(status_);
     writeButton_->setEnabled(false);
     refreshProgress();
+    emitBytesAvailable();
     return ernc::domain::Result<void>::success();
 }
 
@@ -202,7 +226,20 @@ ernc::domain::Result<void> RegionWorkspace::importTxt(const std::filesystem::pat
     statusLabel_->setText(status_);
     writeButton_->setEnabled(false);
     refreshProgress();
+    emitBytesAvailable();
     return ernc::domain::Result<void>::success();
+}
+
+void RegionWorkspace::setBytesAvailableHandler(
+    std::function<void(const ernc::domain::RegionDefinition&, std::span<const std::uint8_t>)> handler) {
+    bytesHandler_ = std::move(handler);
+}
+
+void RegionWorkspace::emitBytesAvailable() {
+    if (!bytesHandler_ || !selected_ || !imported_ || imported_->size() != selected_->size) {
+        return;
+    }
+    bytesHandler_(*selected_, *imported_);
 }
 
 ernc::domain::Result<ernc::application::RegionWritePreview> RegionWorkspace::previewSelected() {

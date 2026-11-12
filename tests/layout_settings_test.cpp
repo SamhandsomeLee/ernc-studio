@@ -78,7 +78,7 @@ bool presets() {
     if (!samePreset(presetLayout(WorkspacePreset::ParameterDebug), true, true, true, false,
             ShellEditorPage::ParameterView, ShellInspectorPage::Properties)
         || !samePreset(presetLayout(WorkspacePreset::CurveAnalysis), true, false, false, false,
-            ShellEditorPage::FunctionView, ShellInspectorPage::Unchanged)
+            ShellEditorPage::CurveAnalysis, ShellInspectorPage::Unchanged)
         || !samePreset(presetLayout(WorkspacePreset::FaultDiagnosis), true, true, true, true,
             ShellEditorPage::Unchanged, ShellInspectorPage::Diagnostics)) {
         return fail("presets");

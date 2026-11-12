@@ -2,6 +2,7 @@
 
 #include "ernc/domain/catalog.hpp"
 #include "ernc/domain/firmware_layout.hpp"
+#include "ernc/domain/region_catalog.hpp"
 #include "ernc/domain/runtime_store.hpp"
 #include "shell/layout_settings.hpp"
 
@@ -80,6 +81,9 @@ private:
 
     /// 固件布局。加载成功时持有。参数委托只借用它来暂存。
     std::optional<ernc::domain::FirmwareLayout> firmwareLayout_;
+
+    /// 区域目录。布局加载成功时持有。曲线分析页只借用。
+    std::optional<ernc::domain::RegionCatalog> regionCatalog_;
 
     /// 中央工作页。由本窗口通过 Qt 父子关系拥有。
     EditorTabs* editorTabs_ = nullptr;

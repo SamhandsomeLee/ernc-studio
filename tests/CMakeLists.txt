@@ -1144,7 +1144,7 @@ if(ERNC_BUILD_UI)
         "${CMAKE_SOURCE_DIR}/src/presentation"
     )
 
-    target_link_libraries(ernc_parameter_delegate_tests PRIVATE Qt6::Widgets ernc_domain ernc_application)
+    target_link_libraries(ernc_parameter_delegate_tests PRIVATE Qt6::Widgets ernc_ui_qwt ernc_filesystem ernc_domain ernc_application)
 
     set(ernc_parameter_delegate_cases
         anc_off_toggle_words
@@ -1215,7 +1215,7 @@ if(ERNC_BUILD_UI)
         "${CMAKE_SOURCE_DIR}/src/presentation"
     )
 
-    target_link_libraries(ernc_flag_page_tests PRIVATE Qt6::Widgets ernc_domain ernc_application)
+    target_link_libraries(ernc_flag_page_tests PRIVATE Qt6::Widgets ernc_ui_qwt ernc_filesystem ernc_domain ernc_application)
 
     set(ernc_flag_page_cases
         reverse_switches_stage_wire_values
@@ -1257,7 +1257,7 @@ if(ERNC_BUILD_UI)
         "${CMAKE_SOURCE_DIR}/src/presentation"
     )
 
-    target_link_libraries(ernc_in_out_page_tests PRIVATE Qt6::Widgets ernc_domain ernc_application)
+    target_link_libraries(ernc_in_out_page_tests PRIVATE Qt6::Widgets ernc_ui_qwt ernc_filesystem ernc_domain ernc_application)
 
     set(ernc_in_out_page_cases
         refernum_stages_count
@@ -1298,7 +1298,7 @@ if(ERNC_BUILD_UI)
         "${CMAKE_SOURCE_DIR}/src/presentation"
     )
 
-    target_link_libraries(ernc_enc_param_page_tests PRIVATE Qt6::Widgets ernc_domain ernc_application)
+    target_link_libraries(ernc_enc_param_page_tests PRIVATE Qt6::Widgets ernc_ui_qwt ernc_filesystem ernc_domain ernc_application)
 
     set(ernc_enc_param_page_cases
         orders_share_fields_and_keep_raw_flag
@@ -1338,7 +1338,7 @@ if(ERNC_BUILD_UI)
         "${CMAKE_SOURCE_DIR}/src/presentation"
     )
 
-    target_link_libraries(ernc_rnc_param_page_tests PRIVATE Qt6::Widgets ernc_domain ernc_application)
+    target_link_libraries(ernc_rnc_param_page_tests PRIVATE Qt6::Widgets ernc_ui_qwt ernc_filesystem ernc_domain ernc_application)
 
     set(ernc_rnc_param_page_cases
         step_has_no_writer
@@ -1379,7 +1379,7 @@ if(ERNC_BUILD_UI)
         "${CMAKE_SOURCE_DIR}/src/presentation"
     )
 
-    target_link_libraries(ernc_check_page_tests PRIVATE Qt6::Widgets ernc_domain ernc_application)
+    target_link_libraries(ernc_check_page_tests PRIVATE Qt6::Widgets ernc_ui_qwt ernc_filesystem ernc_domain ernc_application)
 
     set(ernc_check_page_cases
         check_mode_requires_confirm
@@ -1418,7 +1418,7 @@ if(ERNC_BUILD_UI)
         "${CMAKE_SOURCE_DIR}/src/presentation"
     )
 
-    target_link_libraries(ernc_switch_state_page_tests PRIVATE Qt6::Widgets ernc_domain ernc_application)
+    target_link_libraries(ernc_switch_state_page_tests PRIVATE Qt6::Widgets ernc_ui_qwt ernc_filesystem ernc_domain ernc_application)
 
     foreach(ernc_switch_case IN ITEMS switch_state_is_unnamed switch_page_follows_tree)
         add_test(
@@ -1451,7 +1451,7 @@ if(ERNC_BUILD_UI)
         "${CMAKE_SOURCE_DIR}/src/presentation"
     )
 
-    target_link_libraries(ernc_can_names_page_tests PRIVATE Qt6::Widgets ernc_domain ernc_application)
+    target_link_libraries(ernc_can_names_page_tests PRIVATE Qt6::Widgets ernc_ui_qwt ernc_filesystem ernc_domain ernc_application)
 
     foreach(ernc_can_case IN ITEMS can_names_stay_unmapped can_catalog_opens_from_check)
         add_test(
@@ -1485,7 +1485,7 @@ if(ERNC_BUILD_UI)
         "${CMAKE_SOURCE_DIR}/src/presentation"
     )
 
-    target_link_libraries(ernc_threshold_page_tests PRIVATE Qt6::Widgets ernc_domain ernc_application)
+    target_link_libraries(ernc_threshold_page_tests PRIVATE Qt6::Widgets ernc_ui_qwt ernc_filesystem ernc_domain ernc_application)
 
     foreach(ernc_threshold_case IN ITEMS threshold_groups_have_no_formula threshold_page_follows_tree)
         add_test(
@@ -1558,17 +1558,8 @@ if(ERNC_BUILD_UI)
     endforeach()
 
     find_package(Qt6 REQUIRED COMPONENTS Concurrent PrintSupport Svg OpenGL)
-
-    if(NOT DEFINED ERNC_MINGW64_ROOT OR ERNC_MINGW64_ROOT STREQUAL "")
-        message(FATAL_ERROR "ERNC_MINGW64_ROOT is required to find Qwt")
-    endif()
-    set(ernc_qwt_include "${ERNC_MINGW64_ROOT}/include/qwt-qt6")
-    set(ernc_qwt_library "${ERNC_MINGW64_ROOT}/lib/libqwt-qt6.dll.a")
-    if(NOT EXISTS "${ernc_qwt_include}/qwt.h" OR NOT EXISTS "${ernc_qwt_library}")
-        message(FATAL_ERROR
-            "Qwt 6 for Qt 6 is missing under ${ERNC_MINGW64_ROOT}. "
-            "Expected include/qwt-qt6/qwt.h and lib/libqwt-qt6.dll.a.")
-    endif()
+    include(FindQwt)
+    ernc_require_qwt()
 
     add_executable(ernc_plot_workspace_tests
         plot_workspace_test.cpp

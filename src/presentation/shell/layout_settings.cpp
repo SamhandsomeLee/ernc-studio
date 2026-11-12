@@ -92,7 +92,7 @@ WorkspaceLayout presetLayout(WorkspacePreset preset) {
         layout.editorPage = ShellEditorPage::ParameterView;
         layout.inspectorPage = ShellInspectorPage::Properties;
     } else if (preset == WorkspacePreset::CurveAnalysis) {
-        layout.editorPage = ShellEditorPage::FunctionView;
+        layout.editorPage = ShellEditorPage::CurveAnalysis;
         layout.inspectorPage = ShellInspectorPage::Unchanged;
     } else {
         layout.editorPage = ShellEditorPage::Unchanged;

@@ -40,6 +40,7 @@ add_subdirectory(src/application/experiment)
 add_subdirectory(simulator)
 
 if(ERNC_BUILD_UI)
+    add_subdirectory(src/presentation/ui_qwt)
     add_subdirectory(app)
 endif()
 

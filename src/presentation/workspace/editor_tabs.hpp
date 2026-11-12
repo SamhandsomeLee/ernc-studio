@@ -4,6 +4,7 @@
 
 #include "ernc/domain/catalog.hpp"
 #include "ernc/domain/firmware_layout.hpp"
+#include "ernc/domain/region_catalog.hpp"
 #include "ernc/domain/runtime_store.hpp"
 
 #include <QModelIndex>
@@ -25,6 +26,7 @@ class EncParamPage;
 class RncParamPage;
 class ErncFlagPage;
 class ErncInOutPage;
+class AnalysisPanel;
 class ParameterFilterProxy;
 class ParameterTableModel;
 }
@@ -42,7 +44,8 @@ public:
     /// @param parent 父控件。非空时由 Qt 父子关系拥有本控件。必须在 UI 主线程创建。
     /// @note 启动时停在 Function View。预置可以切换页签，窗口状态不单独保存这个页签。
     explicit EditorTabs(const ernc::domain::ParameterCatalog* catalog, ernc::domain::ParameterRuntimeStore* store,
-                        const ernc::domain::FirmwareLayout* layout, QWidget* parent = nullptr);
+                        const ernc::domain::FirmwareLayout* layout,
+                        const ernc::domain::RegionCatalog* regionCatalog = nullptr, QWidget* parent = nullptr);
 
     /// @brief 切到 Function View。
     /// @note 不改参数 id，也不读取设备。只在 UI 主线程调用。
@@ -50,7 +53,10 @@ public:
 
     /// @brief 切到 Parameter View。
     /// @note 不改参数 id，也不把焦点送进参数表。只在 UI 主线程调用。
-    void showParameterView();
+      void showParameterView();
+
+    /// @brief 切到曲线分析页。无区域目录时仍停在当前页。
+    void showCurveAnalysis();
 
     /// @brief 切到 Parameter View，并把焦点送进搜索框。
     /// @note 不改搜索文字，不改状态栏。只在 UI 主线程调用。
@@ -141,6 +147,9 @@ private:
 
     /// 阈值页。由 Function View 通过 Qt 父子关系拥有。其它页面隐藏它。
     ThresholdPage* thresholdPage_ = nullptr;
+
+    /// 曲线分析页。有区域目录时创建。
+    AnalysisPanel* curveAnalysis_ = nullptr;
 
     /// 为 true 时，Check 树页显示 CAN 名称而不是检测页。
     bool canShown_{false};

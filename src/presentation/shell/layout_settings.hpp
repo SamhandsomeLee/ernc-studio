@@ -46,7 +46,10 @@ enum class ShellEditorPage {
     FunctionView,
 
     /// 切到 Parameter View。
-    ParameterView
+    ParameterView,
+
+    /// 切到曲线分析页。
+    CurveAnalysis
 };
 
 /// 预置要切换的检查器页。`Unchanged` 表示不动当前标签。
@@ -76,12 +79,12 @@ struct WorkspaceLayout {
     ShellInspectorPage inspectorPage = ShellInspectorPage::Unchanged;
 };
 
-/// 三个预置工作区。曲线分析不创建曲线页面。
+/// 三个预置工作区。曲线分析打开曲线分析页签。
 enum class WorkspacePreset {
     /// 参数调试。显示项目树、任务卡和检查器，并打开 Parameter View。
     ParameterDebug,
 
-    /// 曲线分析。只保留项目树和 Function View。
+    /// 曲线分析。保留项目树，并打开曲线分析页。
     CurveAnalysis,
 
     /// 故障诊断。打开 Diagnostics，右侧停在操作中心。

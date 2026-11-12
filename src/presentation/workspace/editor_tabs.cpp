@@ -1,5 +1,6 @@
 #include "workspace/editor_tabs.hpp"
 
+#include "analysis/analysis_panel.hpp"
 #include "controls/parameter_delegates.hpp"
 #include "pages/can_names.hpp"
 #include "pages/check.hpp"
@@ -109,7 +110,8 @@ QWidget* makeParameterView(QWidget* parent, const ernc::domain::ParameterCatalog
 } // namespace
 
 EditorTabs::EditorTabs(const ernc::domain::ParameterCatalog* catalog, ernc::domain::ParameterRuntimeStore* store,
-                         const ernc::domain::FirmwareLayout* layout, QWidget* parent)
+                       const ernc::domain::FirmwareLayout* layout, const ernc::domain::RegionCatalog* regionCatalog,
+                       QWidget* parent)
     : QTabWidget(parent), catalog_{catalog}, store_{store}, layout_{layout} {
     setObjectName(QStringLiteral("erncEditorTabs"));
     setTabsClosable(false);
@@ -205,6 +207,10 @@ EditorTabs::EditorTabs(const ernc::domain::ParameterCatalog* catalog, ernc::doma
     addTab(functionView, QStringLiteral("Function View"));
     auto* parameterView = makeParameterView(this, catalog, store, layout, parameterSearch_, parameterProxy_, parameterModel_);
     addTab(parameterView, QStringLiteral("Parameter View"));
+    if (regionCatalog != nullptr) {
+        curveAnalysis_ = new AnalysisPanel(*regionCatalog, nullptr, nullptr, this);
+        addTab(curveAnalysis_, QStringLiteral("曲线分析"));
+    }
     auto* table = parameterView->findChild<QTableView*>(QStringLiteral("erncParameterTable"));
     if (auto* openWritePlan = parameterView->findChild<QPushButton*>(QStringLiteral("erncOpenWritePlan"))) {
         connect(openWritePlan, &QPushButton::clicked, this, &EditorTabs::openWritePlan);
@@ -292,6 +298,12 @@ void EditorTabs::showFunctionView() {
 
 void EditorTabs::showParameterView() {
     showNamedPage(QStringLiteral("erncParameterView"));
+}
+
+void EditorTabs::showCurveAnalysis() {
+    if (curveAnalysis_ != nullptr) {
+        setCurrentWidget(curveAnalysis_);
+    }
 }
 
 void EditorTabs::focusParameterTable() {
