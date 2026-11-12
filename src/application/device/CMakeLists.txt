@@ -4,6 +4,7 @@ add_library(ernc_device STATIC
     retry_policy.cpp
     write_verification.cpp
     cancellation.cpp
+    can_mapping.cpp
 )
 
 target_include_directories(ernc_device PUBLIC

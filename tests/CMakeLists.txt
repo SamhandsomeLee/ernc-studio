@@ -885,6 +885,31 @@ foreach(ernc_device_session_case IN LISTS ernc_device_session_cases)
     )
 endforeach()
 
+add_executable(ernc_can_mapping_tests
+    can_mapping_test.cpp
+)
+
+target_link_libraries(ernc_can_mapping_tests PRIVATE ernc_device)
+
+set(ernc_can_mapping_cases
+    catalog_loads_36_names
+    speed_blocked_when_mapping_unconfirmed
+    speed_blocked_when_entry_unmapped
+    stale_observation_blocks
+    unit_unconfirmed_blocks_threshold
+    allowed_when_fully_confirmed
+    raw_value_alone_does_not_bypass_mapping
+)
+
+foreach(ernc_can_mapping_case IN LISTS ernc_can_mapping_cases)
+    add_test(
+        NAME "can_mapping.${ernc_can_mapping_case}"
+        COMMAND ernc_can_mapping_tests
+            "${ernc_can_mapping_case}"
+            "${CMAKE_SOURCE_DIR}/catalog/source/can_names.raw.json"
+    )
+endforeach()
+
 add_executable(ernc_scheduler_tests
     scheduler_test.cpp
 )
