@@ -23,6 +23,7 @@
 #include <QItemSelectionModel>
 #include <QKeySequence>
 #include <QLabel>
+#include <QMessageBox>
 #include <QMenuBar>
 #include <QScreen>
 #include <QSettings>
@@ -167,7 +168,7 @@ MainWindow::MainWindow(ernc::domain::CatalogLoad catalog, QString catalogPath, Q
         dock->raise();
     });
 
-    auto* taskCardPanel = new TaskCardPanel(taskCards_);
+    TaskCardPanel* taskCardPanel = new TaskCardPanel(taskCards_);
     QWidget* previousTasks = taskCards_->widget();
     taskCards_->setWidget(taskCardPanel);
     delete previousTasks;
@@ -226,10 +227,47 @@ MainWindow::MainWindow(ernc::domain::CatalogLoad catalog, QString catalogPath, Q
             }
         });
         QObject::connect(deviceController_, &DeviceController::readPageFinished, this, [this](bool success, QString detail) {
+            const bool allScalars = detail.contains(QStringLiteral("all_scalars"));
             if (success) {
-                statusBar()->showMessage(QStringLiteral("读取本页完成：%1").arg(detail), 5000);
+                statusBar()->showMessage(allScalars ? QStringLiteral("读取所有参数完成：%1").arg(detail)
+                                                    : QStringLiteral("读取本页完成：%1").arg(detail),
+                                         5000);
             } else {
-                statusBar()->showMessage(QStringLiteral("读取本页失败：%1").arg(detail), 8000);
+                statusBar()->showMessage(allScalars ? QStringLiteral("读取所有参数失败：%1").arg(detail)
+                                                    : QStringLiteral("读取本页失败：%1").arg(detail),
+                                         8000);
+            }
+        });
+        QObject::connect(taskCardPanel, &TaskCardPanel::readCurrentPageRequested, editorTabs, &EditorTabs::readCurrentPage);
+        QObject::connect(taskCardPanel, &TaskCardPanel::writeModifiedPageRequested, editorTabs, &EditorTabs::openWritePlan);
+        QObject::connect(taskCardPanel, &TaskCardPanel::readAllScalarsRequested, deviceController_, &DeviceController::readAllScalars);
+        QObject::connect(taskCardPanel, &TaskCardPanel::writeAllDirtyRequested, this, [this] {
+            if (deviceController_ == nullptr) {
+                statusBar()->showMessage(QStringLiteral("未初始化设备控制器"), 5000);
+                return;
+            }
+            if (!deviceController_->connected()) {
+                statusBar()->showMessage(QStringLiteral("请先连接设备"), 5000);
+                return;
+            }
+            if (deviceController_->writeBusy()) {
+                statusBar()->showMessage(QStringLiteral("写入任务仍在进行"), 5000);
+                return;
+            }
+            const auto answer = QMessageBox::question(
+                this, QStringLiteral("写入所有参数"),
+                QStringLiteral("将写入全部已修改标量（跳过区域与只读项）。继续吗？"),
+                QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+            if (answer != QMessageBox::Yes) {
+                return;
+            }
+            const ernc::domain::ErrorCode code = deviceController_->startWriteAllDirty();
+            if (code == ernc::domain::ErrorCode::Unknown) {
+                statusBar()->showMessage(QStringLiteral("批量写入已启动"), 5000);
+            } else if (code != ernc::domain::ErrorCode::DeviceDisconnected) {
+                statusBar()->showMessage(QStringLiteral("批量写入启动失败"), 8000);
+            } else {
+                statusBar()->showMessage(QStringLiteral("请先连接设备"), 5000);
             }
         });
     }

@@ -3,29 +3,48 @@
 #include "theme/theme_tokens.hpp"
 
 #include <QLabel>
+#include <QPushButton>
 #include <QToolBox>
 #include <QVBoxLayout>
 
 namespace ernc::presentation {
 namespace {
 
-/// @brief 做一张只含说明文字的任务卡页面。
-/// @param text 页面正文。调用方拥有原件，本函数复制它。它不是一个可点击的命令。
-/// @param parent 工具盒。它通过 Qt 父子关系拥有返回的页面。
-/// @return 带边距的页面。
-QWidget* makeCardPage(const QString& text, QWidget* parent) {
+QWidget* makeCardPage(TaskCardPanel* panel, QWidget* parent) {
     auto* page = new QWidget(parent);
     auto* layout = new QVBoxLayout(page);
     layout->setContentsMargins(kSpace16, kSpace16, kSpace16, kSpace16);
-    auto* label = new QLabel(text, page);
-    label->setWordWrap(true);
-    label->setAlignment(Qt::AlignLeft | Qt::AlignTop);
-    layout->addWidget(label, 0, Qt::AlignLeft | Qt::AlignTop);
+    layout->setSpacing(kSpace8);
+
+    auto* hint = new QLabel(
+        QStringLiteral("标量批量 FC03/FC16。读取/写入「所有」时跳过 check_data 与 ERNC_TF 等区域，不触发传函 BIN 传输。"), page);
+    hint->setWordWrap(true);
+    layout->addWidget(hint);
+
+    auto* readCurrent = new QPushButton(QStringLiteral("读取当前参数"), page);
+    readCurrent->setObjectName(QStringLiteral("erncTaskReadCurrent"));
+    auto* writeModified = new QPushButton(QStringLiteral("写入修改参数"), page);
+    writeModified->setObjectName(QStringLiteral("erncTaskWriteModified"));
+    auto* readAll = new QPushButton(QStringLiteral("读取所有参数"), page);
+    readAll->setObjectName(QStringLiteral("erncTaskReadAll"));
+    auto* writeAll = new QPushButton(QStringLiteral("写入所有参数"), page);
+    writeAll->setObjectName(QStringLiteral("erncTaskWriteAll"));
+
+    layout->addWidget(readCurrent);
+    layout->addWidget(writeModified);
+    layout->addWidget(readAll);
+    layout->addWidget(writeAll);
     layout->addStretch(1);
+
+    QObject::connect(readCurrent, &QPushButton::clicked, panel, &TaskCardPanel::readCurrentPageRequested);
+    QObject::connect(writeModified, &QPushButton::clicked, panel, &TaskCardPanel::writeModifiedPageRequested);
+    QObject::connect(readAll, &QPushButton::clicked, panel, &TaskCardPanel::readAllScalarsRequested);
+    QObject::connect(writeAll, &QPushButton::clicked, panel, &TaskCardPanel::writeAllDirtyRequested);
+
     return page;
 }
 
-} // namespace
+}  // namespace
 
 TaskCardPanel::TaskCardPanel(QWidget* parent)
     : QWidget(parent) {
@@ -33,12 +52,19 @@ TaskCardPanel::TaskCardPanel(QWidget* parent)
     layout->setContentsMargins(0, 0, 0, 0);
     auto* cards = new QToolBox(this);
     cards->setObjectName(QStringLiteral("erncTaskCards"));
-    cards->addItem(makeCardPage(QStringLiteral("读取当前参数  未接入\n写入已修改参数  未接入"), cards),
-        QStringLiteral("常用操作"));
-    cards->addItem(makeCardPage(QStringLiteral("未接入"), cards), QStringLiteral("批量传输"));
-    cards->addItem(makeCardPage(QStringLiteral("未接入"), cards), QStringLiteral("收藏与分析"));
+    cards->addItem(makeCardPage(this, cards), QStringLiteral("常用操作"));
+    {
+        auto* favorites = new QWidget(cards);
+        auto* favLayout = new QVBoxLayout(favorites);
+        favLayout->setContentsMargins(kSpace16, kSpace16, kSpace16, kSpace16);
+        auto* label = new QLabel(QStringLiteral("未接入"), favorites);
+        label->setWordWrap(true);
+        favLayout->addWidget(label);
+        favLayout->addStretch(1);
+        cards->addItem(favorites, QStringLiteral("收藏与分析"));
+    }
     cards->setCurrentIndex(0);
     layout->addWidget(cards);
 }
 
-} // namespace ernc::presentation
+}  // namespace ernc::presentation

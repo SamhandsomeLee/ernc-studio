@@ -78,8 +78,8 @@ bool observeShowsRead(const ParameterCatalog& catalog) {
     const QString expectedTime =
         QDateTime::fromSecsSinceEpoch(10, QTimeZone::UTC).toString(Qt::ISODate);
     if (cell(model, row, FakeParameterColumn::Status) != QStringLiteral("已读取")
-        || cell(model, row, FakeParameterColumn::Read) != QString::number(1.0, 'g', 9)
-        || cell(model, row, FakeParameterColumn::Set) != QStringLiteral("—")
+        || cell(model, row, FakeParameterColumn::Read) != QString()
+        || cell(model, row, FakeParameterColumn::Set) != QString()
         || cell(model, row, FakeParameterColumn::UpdatedAt) != expectedTime) {
         return fail("observe_shows_read");
     }
@@ -107,8 +107,8 @@ bool stageShowsSet(const ParameterCatalog& catalog) {
     store.stage(id, ScalarValue::fromFloat(2.0F), RuntimeTime{std::chrono::seconds{11}});
     model.noteUpdated(session, id);
     if (cell(model, row, FakeParameterColumn::Status) != QStringLiteral("待写入")
-        || cell(model, row, FakeParameterColumn::Read) != QString::number(1.0, 'g', 9)
-        || cell(model, row, FakeParameterColumn::Set) != QString::number(2.0, 'g', 9)) {
+        || cell(model, row, FakeParameterColumn::Read) != QString()
+        || cell(model, row, FakeParameterColumn::Set) != QString()) {
         return fail("stage_shows_set");
     }
     return true;
@@ -132,8 +132,8 @@ bool offlineShowsStale(const ParameterCatalog& catalog) {
     store.markOffline();
     model.noteDisconnected();
     if (cell(model, row, FakeParameterColumn::Status) != QStringLiteral("数据已过期")
-        || cell(model, row, FakeParameterColumn::Read) != QString::number(1.0, 'g', 9)
-        || cell(model, row, FakeParameterColumn::Set) != QString::number(2.0, 'g', 9)) {
+        || cell(model, row, FakeParameterColumn::Read) != QString()
+        || cell(model, row, FakeParameterColumn::Set) != QString()) {
         return fail("offline_shows_stale");
     }
     return true;
@@ -156,12 +156,12 @@ bool otherSessionIsIgnored(const ParameterCatalog& catalog) {
     store.observe(id, ScalarValue::fromFloat(1.0F), RuntimeTime{std::chrono::seconds{10}});
     model.noteUpdated(other, id);
     if (cell(model, row, FakeParameterColumn::Status) != QStringLiteral("未读取")
-        || cell(model, row, FakeParameterColumn::Read) != QStringLiteral("—")) {
+        || cell(model, row, FakeParameterColumn::Read) != QString()) {
         return fail("other_session_is_ignored");
     }
     model.noteUpdated(current, id);
     if (cell(model, row, FakeParameterColumn::Status) != QStringLiteral("已读取")
-        || cell(model, row, FakeParameterColumn::Read) != QString::number(1.0, 'g', 9)) {
+        || cell(model, row, FakeParameterColumn::Read) != QString()) {
         return fail("other_session_is_ignored");
     }
     return true;

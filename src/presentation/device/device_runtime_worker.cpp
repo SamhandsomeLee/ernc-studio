@@ -1,5 +1,6 @@
 #include "device/device_runtime_worker.hpp"
 
+#include "batch_operation_tags.hpp"
 #include "write_verification.hpp"
 
 #include <sstream>
@@ -77,19 +78,24 @@ bool DeviceRuntimeWorker::startBatchRead(const QString& pageId) {
     if (stack_ == nullptr || !stack_->connected() || stack_->batchReader().busy()) {
         return false;
     }
-    const std::string category = pageId.toStdString();
-    if (category.empty()) {
-        return false;
-    }
     ernc::application::BatchReadScope scope;
-    scope.kind = ernc::application::BatchReadScopeKind::Category;
-    scope.category = category;
+    if (pageId == kBatchReadAllTag || isNavigatorAllPage(pageId)) {
+        scope.kind = ernc::application::BatchReadScopeKind::All;
+        lastReadCategory_ = "all_scalars";
+    } else {
+        const std::string category = pageId.toStdString();
+        if (category.empty()) {
+            return false;
+        }
+        scope.kind = ernc::application::BatchReadScopeKind::Category;
+        scope.category = category;
+        lastReadCategory_ = category;
+    }
     const ernc::domain::Result<ernc::application::BatchReadTicket> started = stack_->batchReader().start(scope);
     if (!started.ok() || started.tryValue() == nullptr) {
         return false;
     }
     activeRead_ = started.value();
-    lastReadCategory_ = category;
     parametersTouchedThisRead_.clear();
     for (const ernc::application::BatchFramePlan& frame : activeRead_->frames()) {
         for (const ernc::domain::ParameterId& id : frame.parameters) {
@@ -104,8 +110,12 @@ int DeviceRuntimeWorker::startBatchWrite(const QString& pageId) {
         return static_cast<int>(ernc::domain::ErrorCode::DeviceDisconnected);
     }
     ernc::domain::WriteScope scope;
-    scope.kind = ernc::domain::WriteScopeKind::Category;
-    scope.category = pageId.toStdString();
+    if (pageId == kBatchWriteAllTag || isNavigatorAllPage(pageId)) {
+        scope.kind = ernc::domain::WriteScopeKind::All;
+    } else {
+        scope.kind = ernc::domain::WriteScopeKind::Category;
+        scope.category = pageId.toStdString();
+    }
     const ernc::domain::Result<void> started = stack_->batchWriter().start(scope);
     if (!started.ok()) {
         if (started.tryError() != nullptr) {
@@ -185,8 +195,13 @@ void DeviceRuntimeWorker::finishBatchReadIfIdle(PumpReport& report) {
     }
     const ernc::application::BatchReadProgress progress = stack_->batchReader().progress();
     std::ostringstream detail;
-    detail << R"({"scope":"category","category":)" << jsonQuote(lastReadCategory_) << R"(,"completed":)"
-           << progress.completed << R"(,"failed":)" << progress.failed << R"(,"skipped":)" << progress.skipped << "}";
+    if (lastReadCategory_ == "all_scalars") {
+        detail << R"({"scope":"all_scalars","completed":)" << progress.completed << R"(,"failed":)" << progress.failed
+               << R"(,"skipped":)" << progress.skipped << "}";
+    } else {
+        detail << R"({"scope":"category","category":)" << jsonQuote(lastReadCategory_) << R"(,"completed":)"
+               << progress.completed << R"(,"failed":)" << progress.failed << R"(,"skipped":)" << progress.skipped << "}";
+    }
     report.readFinished = true;
     report.readSuccess = progress.failed == 0U;
     report.readDetailJson = detail.str();

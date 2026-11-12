@@ -69,6 +69,9 @@ public:
 
     void readCategory(const std::string& pageId);
 
+    /// @brief 批量读目录标量。大块区域（check_data、ERNC_TF）按布局跳过，不触发区域传函流程。
+    void readAllScalars();
+
     /// @brief 读固件 Can_Msg float[72]。仅模拟器路径；与批量读不要并发。
     void readCanMsg();
 
@@ -85,6 +88,9 @@ public:
 
     /// 串口模式下由写入预览调用，在 Worker 上 start 批量写。
     ernc::domain::ErrorCode startWriteCategory(const QString& pageId);
+
+    /// @brief 批量写全部 dirty 标量。区域参数只进排除列表，不打开 BIN 传函传输。
+    ernc::domain::ErrorCode startWriteAllDirty();
 
     /// 串口模式下刷新写入预览。模拟器路径仍用 WritePlanDialog::noteProgress。
     void refreshWritePlanFromWorker(WritePlanDialog* dialog);

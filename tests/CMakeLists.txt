@@ -1213,7 +1213,7 @@ if(ERNC_BUILD_UI)
     set(ernc_write_plan_dialog_cases
         flag_preview_before_write
         rnc_time_and_step
-        all_page_disables_confirm
+        all_page_includes_dirty
         can_msg_is_not_sent
         ack_then_verified
         mismatch_shows_diagnostic

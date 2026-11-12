@@ -15,7 +15,10 @@ enum class WriteScopeKind {
     Selected,
 
     /// 只考虑 category 与目录分类相同的参数，顺序与目录文件一致。
-    Category
+    Category,
+
+    /// 目录里全部待写脏标量。大块区域（如 check_data、ERNC_TF）由布局排除，不进批量写预览。
+    All
 };
 
 /// 调用方给出的计划范围。Store 和目录都不由这里拥有。

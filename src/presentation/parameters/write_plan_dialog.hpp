@@ -65,7 +65,7 @@ public:
         /// 固件布局。空指针时不生成计划。调用方保证它比本对话框活得久。
         const ernc::domain::FirmwareLayout* layout = nullptr;
 
-        /// 项目树页面 id。`ALL` 或空文本不能作为写入范围。其它文本当作目录分类。
+        /// 项目树页面 id。`ALL` 表示全目录 dirty 标量；空文本不能预览。其它文本当作目录分类。
         QString pageId;
     };
 
@@ -103,7 +103,7 @@ public:
     bool writeBusy() const;
 
     /// @brief 预览行数。
-    /// @return 表格行数。`ALL` 或没有待写参数时为 0。
+    /// @return 表格行数。没有待写参数时为 0。
     int planRowCount() const;
 
     /// @brief 按参数 id 查找预览行。
@@ -118,11 +118,11 @@ public:
     QString cell(int row, int column) const;
 
     /// @brief 确认按钮当前能否点击。
-    /// @return 范围内至少有一个 1 slot 标量待写时为 true。`ALL`、空页面和只有排除项时为 false。
+    /// @return 范围内至少有一个 1 slot 标量待写时为 true。空页面和只有排除项时为 false。
     bool confirmEnabled() const;
 
     /// @brief 对话框顶部的诊断文字。
-    /// @return 未连接确认后为 DeviceDisconnected。`ALL` 时说明不能作为写入范围。没有诊断时为空。
+    /// @return 未连接确认后为 DeviceDisconnected。没有诊断时为空。
     QString diagnosticText() const;
 
 protected:

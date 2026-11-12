@@ -33,6 +33,21 @@ QString formatScalar(const ernc::domain::ScalarValue& value) {
     return kBlank.toString();
 }
 
+/// @brief 按目录控件把标量格式成界面文字。Toggle 为开、关或未知。
+QString formatDisplayValue(const ernc::domain::ParameterDefinition& definition, const ernc::domain::ScalarValue& value) {
+    if (definition.editor && *definition.editor == ernc::domain::EditorKind::Toggle) {
+        switch (ernc::domain::decodeToggle(definition, value)) {
+        case ernc::domain::TogglePosition::On:
+            return QStringLiteral("开");
+        case ernc::domain::TogglePosition::Off:
+            return QStringLiteral("关");
+        case ernc::domain::TogglePosition::Unknown:
+            return QStringLiteral("未知");
+        }
+    }
+    return formatScalar(value);
+}
+
 /// @brief 把调用方给出的时刻写成 UTC 的 ISO 文字。
 /// @param time 系统钟时间点。本函数不读取当前时间。
 /// @return 例如 1970-01-01T00:00:10Z。秒以下被丢掉。
@@ -197,10 +212,11 @@ void ParameterTableModel::refreshRow(int row) {
     text.parameter = QString::fromStdString(definition.id.text());
     text.path = definition.firmwarePath ? QString::fromStdString(*definition.firmwarePath) : kBlank.toString();
     const auto* read = state == nullptr ? nullptr : state->displayedRead();
-    text.read = read != nullptr ? formatScalar(*read) : kBlank.toString();
     if (definition.editor && *definition.editor == ernc::domain::EditorKind::Toggle) {
+        text.read.clear();
         text.set.clear();
     } else {
+        text.read = read != nullptr ? formatDisplayValue(definition, *read) : kBlank.toString();
         text.set = state != nullptr && state->stagedValue ? formatScalar(*state->stagedValue) : kBlank.toString();
     }
     if (state != nullptr && !state->projectReadValue && state->readAt) {

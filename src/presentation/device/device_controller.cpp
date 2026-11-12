@@ -1,5 +1,6 @@
 #include "device/device_controller.hpp"
 
+#include "batch_operation_tags.hpp"
 #include "device/device_runtime_worker.hpp"
 #include "parameters/write_plan_dialog.hpp"
 #include "serial_transport.hpp"
@@ -24,6 +25,8 @@ using ernc::domain::ErrorCode;
 using ernc::domain::ParameterId;
 using ernc::domain::Result;
 using ernc::domain::SessionId;
+using ernc::domain::WriteScope;
+using ernc::domain::WriteScopeKind;
 
 std::string jsonQuote(const std::string& text) {
     std::string out;
@@ -223,6 +226,10 @@ void DeviceController::disconnectDevice() {
 }
 
 void DeviceController::readCategory(const std::string& pageId) {
+    if (pageId == "ALL") {
+        readAllScalars();
+        return;
+    }
     if (!connected()) {
         recordUi("parameter.batch_read.start", R"({"reason":"disconnected"})", false, ErrorCode::DeviceDisconnected);
         emit readPageFinished(false, QStringLiteral("未连接设备"));
@@ -276,6 +283,55 @@ void DeviceController::readCategory(const std::string& pageId) {
     std::ostringstream detail;
     detail << R"({"scope":"category","category":)" << jsonQuote(pageId) << R"(,"frames":)" << activeRead_->frames().size()
            << R"(,"commands":)" << activeRead_->commands().size() << R"(,"transport":"simulator"})";
+    recordUi("parameter.batch_read.start", detail.str(), true);
+    pumpBatchReadSimulator();
+    finishBatchReadIfIdleSimulator();
+}
+
+void DeviceController::readAllScalars() {
+    if (!connected()) {
+        recordUi("parameter.batch_read.start", R"({"reason":"disconnected"})", false, ErrorCode::DeviceDisconnected);
+        emit readPageFinished(false, QStringLiteral("未连接设备"));
+        return;
+    }
+    if (linkKind_ == LinkKind::Serial && serialWorker_ != nullptr) {
+        bool started = false;
+        QMetaObject::invokeMethod(
+            serialWorker_, "startBatchRead", Qt::BlockingQueuedConnection, Q_RETURN_ARG(bool, started),
+            Q_ARG(QString, kBatchReadAllTag));
+        if (!started) {
+            recordUi("parameter.batch_read.start", R"({"reason":"start_failed"})", false, ErrorCode::InvalidParameter);
+            emit readPageFinished(false, QStringLiteral("批量读入队失败"));
+            return;
+        }
+        recordUi("parameter.batch_read.start", R"({"scope":"all_scalars","transport":"serial"})", true);
+        return;
+    }
+    if (stack_.batchReader().busy() || activeCanMsgRead_.has_value() || stack_.parameterReader().busy()) {
+        recordUi("parameter.batch_read.start", R"({"reason":"reader_busy"})", false, ErrorCode::InvalidParameter);
+        return;
+    }
+    BatchReadScope scope;
+    scope.kind = BatchReadScopeKind::All;
+    const Result<ernc::application::BatchReadTicket> started = stack_.batchReader().start(scope);
+    if (!started.ok() || started.tryValue() == nullptr) {
+        const ErrorCode code = started.tryError() != nullptr ? *started.tryError() : ErrorCode::Unknown;
+        recordUi("parameter.batch_read.start", R"({"scope":"all_scalars","error":)" + std::to_string(static_cast<int>(code)) + "}",
+                  false, code);
+        emit readPageFinished(false, QStringLiteral("批量读入队失败"));
+        return;
+    }
+    activeRead_ = started.value();
+    lastReadCategory_ = "all_scalars";
+    parametersTouchedThisRead_.clear();
+    for (const ernc::application::BatchFramePlan& frame : activeRead_->frames()) {
+        for (const ParameterId& id : frame.parameters) {
+            parametersTouchedThisRead_.push_back(QString::fromStdString(id.text()));
+        }
+    }
+    std::ostringstream detail;
+    detail << R"({"scope":"all_scalars","frames":)" << activeRead_->frames().size() << R"(,"commands":)"
+           << activeRead_->commands().size() << R"(,"transport":"simulator"})";
     recordUi("parameter.batch_read.start", detail.str(), true);
     pumpBatchReadSimulator();
     finishBatchReadIfIdleSimulator();
@@ -413,13 +469,16 @@ void DeviceController::pumpSerial() {
 }
 
 ErrorCode DeviceController::startWriteCategory(const QString& pageId) {
+    if (isNavigatorAllPage(pageId)) {
+        return startWriteAllDirty();
+    }
     if (linkKind_ != LinkKind::Serial || serialWorker_ == nullptr) {
         return ErrorCode::DeviceDisconnected;
     }
     int code = static_cast<int>(ErrorCode::Unknown);
     QMetaObject::invokeMethod(
         serialWorker_, "startBatchWrite", Qt::BlockingQueuedConnection, Q_RETURN_ARG(int, code), Q_ARG(QString, pageId));
-  if (code == 0) {
+    if (code == 0) {
         std::ostringstream detail;
         detail << R"({"scope":"category","category":)" << jsonQuote(pageId.toStdString()) << R"(,"transport":"serial"})";
         recordUi("parameter.batch_write.start", detail.str(), true);
@@ -427,6 +486,42 @@ ErrorCode DeviceController::startWriteCategory(const QString& pageId) {
     }
     recordUi("parameter.batch_write.start", "{\"transport\":\"serial\"}", false, static_cast<ErrorCode>(code));
     return static_cast<ErrorCode>(code);
+}
+
+ernc::domain::ErrorCode DeviceController::startWriteAllDirty() {
+    if (!connected()) {
+        recordUi("parameter.batch_write.start", R"({"reason":"disconnected"})", false, ErrorCode::DeviceDisconnected);
+        return ErrorCode::DeviceDisconnected;
+    }
+    if (linkKind_ == LinkKind::Serial && serialWorker_ != nullptr) {
+        int code = static_cast<int>(ErrorCode::Unknown);
+        QMetaObject::invokeMethod(serialWorker_, "startBatchWrite", Qt::BlockingQueuedConnection, Q_RETURN_ARG(int, code),
+                                  Q_ARG(QString, kBatchWriteAllTag));
+        if (code == 0) {
+            recordUi("parameter.batch_write.start", R"({"scope":"all_dirty","transport":"serial"})", true);
+            return ErrorCode::Unknown;
+        }
+        recordUi("parameter.batch_write.start", R"({"scope":"all_dirty","transport":"serial"})", false,
+                  static_cast<ErrorCode>(code));
+        return static_cast<ErrorCode>(code);
+    }
+    if (linkKind_ == LinkKind::Simulator && stack_.connected()) {
+        if (stack_.batchWriter().busy()) {
+            return ErrorCode::InvalidParameter;
+        }
+        WriteScope scope;
+        scope.kind = WriteScopeKind::All;
+        const Result<void> started = stack_.batchWriter().start(scope);
+        if (!started.ok()) {
+            const ErrorCode code = started.tryError() != nullptr ? *started.tryError() : ErrorCode::Unknown;
+            recordUi("parameter.batch_write.start", R"({"scope":"all_dirty","transport":"simulator"})", false, code);
+            return code;
+        }
+        recordUi("parameter.batch_write.start", R"({"scope":"all_dirty","transport":"simulator"})", true);
+        wasWriteBusy_ = stack_.batchWriter().busy();
+        return ErrorCode::Unknown;
+    }
+    return ErrorCode::DeviceDisconnected;
 }
 
 void DeviceController::refreshWritePlanFromWorker(WritePlanDialog* dialog) {
@@ -497,8 +592,13 @@ void DeviceController::finishBatchReadIfIdleSimulator() {
     }
     const ernc::application::BatchReadProgress progress = stack_.batchReader().progress();
     std::ostringstream detail;
-    detail << R"({"scope":"category","category":)" << jsonQuote(lastReadCategory_) << R"(,"completed":)"
-           << progress.completed << R"(,"failed":)" << progress.failed << R"(,"skipped":)" << progress.skipped << "}";
+    if (lastReadCategory_ == "all_scalars") {
+        detail << R"({"scope":"all_scalars","completed":)" << progress.completed << R"(,"failed":)" << progress.failed
+               << R"(,"skipped":)" << progress.skipped << "}";
+    } else {
+        detail << R"({"scope":"category","category":)" << jsonQuote(lastReadCategory_) << R"(,"completed":)"
+               << progress.completed << R"(,"failed":)" << progress.failed << R"(,"skipped":)" << progress.skipped << "}";
+    }
     const bool success = progress.failed == 0U;
     recordUi("parameter.batch_read.finish", detail.str(), success,
              success ? ErrorCode::Unknown : ErrorCode::ResponseMismatch);

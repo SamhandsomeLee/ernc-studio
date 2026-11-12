@@ -37,6 +37,10 @@ public:
     QString setCaption(const ernc::domain::ParameterDefinition& definition,
                        const ernc::domain::ParameterRuntimeState* state) const;
 
+    /// @brief Read 列展示文字。Toggle 仅依据 displayedRead，不含 Set 覆盖。
+    QString readCaption(const ernc::domain::ParameterDefinition& definition,
+                        const ernc::domain::ParameterRuntimeState* state) const;
+
     /// @brief 为可编辑的 Set 格创建控件。
     /// @param parent 编辑器的父控件。调用方拥有，Qt 在编辑结束时销毁编辑器。
     /// @param option 视图给出的样式。本函数不读取它来决定控件种类。
@@ -70,6 +74,8 @@ protected:
 
 private:
     bool isToggleSetCell(const QModelIndex& index) const;
+
+    bool isToggleReadCell(const QModelIndex& index) const;
 
     bool stageToggleChoice(const ernc::domain::ParameterDefinition& definition, const QString& word,
                            QAbstractItemModel* model, const QModelIndex& index) const;

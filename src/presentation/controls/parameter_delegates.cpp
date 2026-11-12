@@ -60,6 +60,25 @@ ParameterDelegate::ParameterDelegate(const ernc::domain::ParameterCatalog* catal
     }
 }
 
+QString ParameterDelegate::readCaption(const ernc::domain::ParameterDefinition& definition,
+                                       const ernc::domain::ParameterRuntimeState* state) const {
+    const ernc::domain::ScalarValue* value = state == nullptr ? nullptr : state->displayedRead();
+    if (definition.editor && *definition.editor == ernc::domain::EditorKind::Toggle) {
+        if (value == nullptr) {
+            return QStringLiteral("未知");
+        }
+        switch (ernc::domain::decodeToggle(definition, *value)) {
+        case ernc::domain::TogglePosition::On:
+            return QStringLiteral("开");
+        case ernc::domain::TogglePosition::Off:
+            return QStringLiteral("关");
+        case ernc::domain::TogglePosition::Unknown:
+            return QStringLiteral("未知");
+        }
+    }
+    return value == nullptr ? kBlank.toString() : formatScalar(*value);
+}
+
 QString ParameterDelegate::setCaption(const ernc::domain::ParameterDefinition& definition,
                                       const ernc::domain::ParameterRuntimeState* state) const {
     const ernc::domain::ScalarValue* value = shownValue(state);
@@ -167,11 +186,20 @@ void ParameterDelegate::setModelData(QWidget* editor, QAbstractItemModel* model,
 
 void ParameterDelegate::initStyleOption(QStyleOptionViewItem* option, const QModelIndex& index) const {
     QStyledItemDelegate::initStyleOption(option, index);
-    if (option == nullptr || index.column() != static_cast<int>(FakeParameterColumn::Set)) {
+    if (option == nullptr) {
         return;
     }
     const ernc::domain::ParameterDefinition* definition = definitionFor(index);
     if (definition == nullptr) {
+        return;
+    }
+    const ernc::domain::ParameterRuntimeState* state = store_ == nullptr ? nullptr : store_->find(definition->id);
+    if (isToggleReadCell(index)) {
+        option->text.clear();
+        option->displayAlignment = Qt::AlignCenter;
+        return;
+    }
+    if (index.column() != static_cast<int>(FakeParameterColumn::Set)) {
         return;
     }
     if (definition->editor && *definition->editor == ernc::domain::EditorKind::Toggle) {
@@ -179,12 +207,13 @@ void ParameterDelegate::initStyleOption(QStyleOptionViewItem* option, const QMod
         option->displayAlignment = Qt::AlignCenter;
         return;
     }
-    const ernc::domain::ParameterRuntimeState* state = store_ == nullptr ? nullptr : store_->find(definition->id);
     option->text = setCaption(*definition, state);
 }
 
 void ParameterDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const {
-    if (painter == nullptr || !isToggleSetCell(index)) {
+    const bool toggleRead = isToggleReadCell(index);
+    const bool toggleSet = isToggleSetCell(index);
+    if (painter == nullptr || (!toggleRead && !toggleSet)) {
         QStyledItemDelegate::paint(painter, option, index);
         return;
     }
@@ -197,8 +226,8 @@ void ParameterDelegate::paint(QPainter* painter, const QStyleOptionViewItem& opt
         return;
     }
     const ernc::domain::ParameterRuntimeState* state = store_ == nullptr ? nullptr : store_->find(definition->id);
-    const ParameterToggleSwitch::VisualState visual =
-        visualStateFromCaption(setCaption(*definition, state));
+    const QString caption = toggleSet ? setCaption(*definition, state) : readCaption(*definition, state);
+    const ParameterToggleSwitch::VisualState visual = visualStateFromCaption(caption);
     painter->save();
     painter->setRenderHint(QPainter::Antialiasing, true);
     paintParameterToggleSwitch(*painter, styled.rect, visual, styled.state.testFlag(QStyle::State_HasFocus));
@@ -236,6 +265,14 @@ bool ParameterDelegate::editorEvent(QEvent* event, QAbstractItemModel* model, co
 
 bool ParameterDelegate::isToggleSetCell(const QModelIndex& index) const {
     if (index.column() != static_cast<int>(FakeParameterColumn::Set)) {
+        return false;
+    }
+    const ernc::domain::ParameterDefinition* definition = definitionFor(index);
+    return definition != nullptr && definition->editor && *definition->editor == ernc::domain::EditorKind::Toggle;
+}
+
+bool ParameterDelegate::isToggleReadCell(const QModelIndex& index) const {
+    if (index.column() != static_cast<int>(FakeParameterColumn::Read)) {
         return false;
     }
     const ernc::domain::ParameterDefinition* definition = definitionFor(index);

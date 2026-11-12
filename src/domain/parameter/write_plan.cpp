@@ -120,6 +120,17 @@ WritePlan buildWritePlan(
         return plan;
     }
 
+    if (scope.kind == WriteScopeKind::All) {
+        for (const ParameterDefinition& definition : catalog.entries()) {
+            const ParameterRuntimeState* state = store.find(definition.id);
+            if (!isPending(state)) {
+                continue;
+            }
+            appendCandidate(plan, definition.id, *state, &definition, layout);
+        }
+        return plan;
+    }
+
     std::vector<std::string> seen;
     for (const ParameterId& id : scope.selected) {
         bool duplicated = false;

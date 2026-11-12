@@ -345,21 +345,20 @@ bool rncTimeAndStep(const ParameterCatalog& catalog, const FirmwareLayout& layou
     return true;
 }
 
-/// @brief ALL 不是写入范围。
+/// @brief ALL 页包含全目录 dirty 标量，与其它页的写入预览语义一致。
 /// @param catalog 正式目录。
 /// @param layout 正式布局。
-/// @return 没有预览行，确认不可用，并且诊断说明 ALL 不能作为写入范围时为 true。
-bool allPageDisablesConfirm(const ParameterCatalog& catalog, const FirmwareLayout& layout) {
+/// @return 暂存 ANC_OFF 后 ALL 范围出现可写行且确认可用时为 true。
+bool allPageIncludesDirty(const ParameterCatalog& catalog, const FirmwareLayout& layout) {
     ParameterRuntimeStore store;
     ParameterId anc = ParameterId::parse("ANC_OFF").value();
-    if (!parseId("ANC_OFF", "all_page_disables_confirm", anc)) {
+    if (!parseId("ANC_OFF", "all_page_includes_dirty", anc)) {
         return false;
     }
     store.stage(anc, ScalarValue::fromFloat(0.0F), RuntimeTime{std::chrono::seconds{1}});
     WritePlanDialog dialog(sourcesFor(catalog, store, layout, "ALL"));
-    if (dialog.planRowCount() != 0 || dialog.confirmEnabled() || dialog.rowOf(QStringLiteral("ANC_OFF")) >= 0
-        || dialog.diagnosticText() != QStringLiteral("ALL 不能作为写入范围")) {
-        return fail("all_page_disables_confirm");
+    if (dialog.planRowCount() == 0 || !dialog.confirmEnabled() || dialog.rowOf(QStringLiteral("ANC_OFF")) < 0) {
+        return fail("all_page_includes_dirty");
     }
     return true;
 }
@@ -521,8 +520,8 @@ bool runCase(std::string_view name, const ParameterCatalog& catalog, const Firmw
     if (name == "rnc_time_and_step") {
         return rncTimeAndStep(catalog, layout);
     }
-    if (name == "all_page_disables_confirm") {
-        return allPageDisablesConfirm(catalog, layout);
+    if (name == "all_page_includes_dirty") {
+        return allPageIncludesDirty(catalog, layout);
     }
     if (name == "can_msg_is_not_sent") {
         return canMsgIsNotSent(catalog, layout);

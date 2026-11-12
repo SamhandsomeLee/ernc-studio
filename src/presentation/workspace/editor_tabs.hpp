@@ -115,6 +115,9 @@ public:
     /// @brief 读取当前项目树页面分类的参数。未连接时提示由控制器记录。
     void readCurrentPage();
 
+    /// @brief 打开当前分类的写入预览（仅本页已修改参数）。
+    void openWritePlan();
+
     void bindParameterSession(ernc::domain::SessionId session);
     void notifyParametersUpdated(ernc::domain::SessionId session, const QStringList& parameterIds);
     void noteDeviceDisconnected();
@@ -131,10 +134,6 @@ private:
     /// @brief 按对象名切到一个工作页。
     /// @param objectName 页面对象名。调用方拥有原件，本函数只比较它。找不到时不改当前页。
     void showNamedPage(const QString& objectName);
-
-    /// @brief 打开当前分类的写入预览。
-    /// @note 已连接时绑定批量写。非模态；泵由主窗口定时器驱动。
-    void openWritePlan();
 
     /// @brief 参数表换行时，把该行参数 id 写入共用选择。
     /// @param current 新的当前行。无效时不改选择。本函数不清除页面 id。

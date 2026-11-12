@@ -1,5 +1,6 @@
 #include "parameters/write_plan_dialog.hpp"
 
+#include "batch_operation_tags.hpp"
 #include "device/device_controller.hpp"
 
 #include "write_verification.hpp"
@@ -31,6 +32,18 @@ namespace {
 
 /// 没有读数或没有目标时的占位。不是数值 0，也不是关。
 constexpr QStringView kBlank = u"—";
+
+/// @brief 按项目树页面 id 生成写入预览范围。`ALL` 表示目录内全部 dirty 标量。
+ernc::domain::WriteScope writeScopeForPage(const QString& page) {
+    ernc::domain::WriteScope scope;
+    if (isNavigatorAllPage(page)) {
+        scope.kind = ernc::domain::WriteScopeKind::All;
+    } else {
+        scope.kind = ernc::domain::WriteScopeKind::Category;
+        scope.category = page.toStdString();
+    }
+    return scope;
+}
 
 /// @brief 把标量格式化成最短十进制。不把时间备注换算成秒。
 /// @param value 标量，只借用。
@@ -258,19 +271,13 @@ void WritePlanDialog::rebuild() {
         diagnosticLabel_->setText(QStringLiteral("未选择页面"));
         return;
     }
-    if (page == QStringLiteral("ALL")) {
-        diagnosticLabel_->setText(QStringLiteral("ALL 不能作为写入范围"));
-        return;
-    }
     if (sources_.catalog == nullptr || sources_.store == nullptr || sources_.layout == nullptr) {
         diagnosticLabel_->setText(QStringLiteral("没有目录或布局"));
         return;
     }
 
     diagnosticLabel_->clear();
-    ernc::domain::WriteScope scope;
-    scope.kind = ernc::domain::WriteScopeKind::Category;
-    scope.category = page.toStdString();
+    const ernc::domain::WriteScope scope = writeScopeForPage(page);
     const ernc::domain::WritePlan plan = ernc::domain::buildWritePlan(*sources_.catalog, *sources_.store, *sources_.layout, scope);
     scopeReady_ = true;
 
@@ -305,7 +312,7 @@ void WritePlanDialog::rebuild() {
     }
     confirmButton_->setEnabled(anySend);
     if (rows_.empty()) {
-        diagnosticLabel_->setText(QStringLiteral("这个分类里没有待写入的参数"));
+        diagnosticLabel_->setText(QStringLiteral("当前范围没有待写入的参数"));
     }
 }
 
@@ -345,9 +352,7 @@ void WritePlanDialog::confirmWrite() {
         confirmButton_->setEnabled(false);
         return;
     }
-    ernc::domain::WriteScope scope;
-    scope.kind = ernc::domain::WriteScopeKind::Category;
-    scope.category = sources_.pageId.toStdString();
+    const ernc::domain::WriteScope scope = writeScopeForPage(sources_.pageId);
     const ernc::domain::Result<void> started = writer_->start(scope);
     confirmButton_->setEnabled(false);
     noteProgress();
