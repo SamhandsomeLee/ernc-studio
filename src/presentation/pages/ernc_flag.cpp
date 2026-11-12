@@ -108,6 +108,7 @@ ErncFlagPage::ErncFlagPage(const ernc::domain::ParameterCatalog* catalog, ernc::
                            const ernc::domain::FirmwareLayout* layout, QWidget* parent)
     : QWidget(parent), catalog_{catalog}, store_{store} {
     setObjectName(QStringLiteral("erncFlagPage"));
+    setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
     if (catalog_ != nullptr && layout != nullptr && store_ != nullptr) {
         stager_.emplace(*catalog_, *layout, *store_);
     }

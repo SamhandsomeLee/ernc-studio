@@ -105,6 +105,7 @@ EncParamPage::EncParamPage(const ernc::domain::ParameterCatalog* catalog, ernc::
                            const ernc::domain::FirmwareLayout* layout, QWidget* parent)
     : QWidget(parent), catalog_{catalog}, store_{store}, layout_{layout} {
     setObjectName(QStringLiteral("erncEncParamPage"));
+    setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
     if (catalog_ != nullptr && layout_ != nullptr && store_ != nullptr) {
         stager_.emplace(*catalog_, *layout_, *store_);
     }
@@ -113,12 +114,14 @@ EncParamPage::EncParamPage(const ernc::domain::ParameterCatalog* catalog, ernc::
     auto* scroll = new QScrollArea(this);
     scroll->setWidgetResizable(true);
     scroll->setFrameShape(QFrame::NoFrame);
+    scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    scroll->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     auto* content = new QWidget(scroll);
     auto* root = new QVBoxLayout(content);
     root->setContentsMargins(0, 0, 0, 0);
     root->setSpacing(kSpace8);
     scroll->setWidget(content);
-    pageLayout->addWidget(scroll);
+    pageLayout->addWidget(scroll, 1);
     scroll_ = scroll;
     if (catalog_ == nullptr) {
         return;
@@ -189,6 +192,7 @@ void EncParamPage::addRow(QWidget* parent, QVBoxLayout* layout, const QString& p
         auto* hint = new QLabel(function_view_layout::parameterViewHintText(), row);
         hint->setWordWrap(true);
         hint->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+        function_view_layout::styleParameterViewHint(hint);
         line->addWidget(hint);
     }
     function_view_layout::sealFormRow(line);

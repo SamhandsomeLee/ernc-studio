@@ -16,6 +16,7 @@
 #include <chrono>
 #include <cmath>
 #include <map>
+#include <set>
 
 namespace ernc::presentation {
 namespace {
@@ -65,23 +66,44 @@ QString formatScalar(const ernc::domain::ScalarValue* value) {
     return kBlank.toString();
 }
 
+/// @brief 内部导航键，须与 kGroupOrder 一致（测试与 EditorTabs 依赖英文键）。
 QString groupFor(const QString& id) {
     if (id.startsWith(QStringLiteral("ENCEcho"))) {
-        return QStringLiteral("ENC 回声");
+        return QStringLiteral("ENC Echo");
     }
     if (id.startsWith(QStringLiteral("ENC_Divergence"))) {
-        return QStringLiteral("ENC 发散");
+        return QStringLiteral("ENC Divergence");
     }
-    if (id.startsWith(QStringLiteral("horn_")) || id.startsWith(QStringLiteral("Horn"))) {
-        return QStringLiteral("喇叭");
+    if (id.startsWith(QStringLiteral("horn_")) || id.startsWith(QStringLiteral("Horn"))
+        || id == QStringLiteral("RefChooseFloat")) {
+        return QStringLiteral("Horn");
     }
     if (id.startsWith(QStringLiteral("rnc_dicergence."))) {
-        return QStringLiteral("RNC 发散");
+        return QStringLiteral("RNC Divergence");
     }
     if (id == QStringLiteral("Input_threshold") || id == QStringLiteral("Output_Threshold")) {
-        return QStringLiteral("IO 阈值");
+        return QStringLiteral("IO Threshold");
     }
     return QStringLiteral("其他阈值");
+}
+
+QString groupHeadingFor(const QString& groupKey) {
+    if (groupKey == QStringLiteral("ENC Echo")) {
+        return QStringLiteral("ENC 回声");
+    }
+    if (groupKey == QStringLiteral("ENC Divergence")) {
+        return QStringLiteral("ENC 发散");
+    }
+    if (groupKey == QStringLiteral("Horn")) {
+        return QStringLiteral("喇叭");
+    }
+    if (groupKey == QStringLiteral("RNC Divergence")) {
+        return QStringLiteral("RNC 发散");
+    }
+    if (groupKey == QStringLiteral("IO Threshold")) {
+        return QStringLiteral("IO 阈值");
+    }
+    return groupKey;
 }
 
 }  // namespace
@@ -90,6 +112,7 @@ ThresholdPage::ThresholdPage(const ernc::domain::ParameterCatalog* catalog, ernc
                              const ernc::domain::FirmwareLayout* layout, QWidget* parent)
     : QWidget(parent), catalog_{catalog}, store_{store}, layout_{layout} {
     setObjectName(QStringLiteral("erncThresholdPage"));
+    setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
     if (catalog_ != nullptr && layout_ != nullptr && store_ != nullptr) {
         stager_.emplace(*catalog_, *layout_, *store_);
     }
@@ -98,12 +121,14 @@ ThresholdPage::ThresholdPage(const ernc::domain::ParameterCatalog* catalog, ernc
     auto* scroll = new QScrollArea(this);
     scroll->setWidgetResizable(true);
     scroll->setFrameShape(QFrame::NoFrame);
+    scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    scroll->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     auto* content = new QWidget(scroll);
     auto* root = new QVBoxLayout(content);
     root->setContentsMargins(0, 0, 0, 0);
     root->setSpacing(kSpace4);
     scroll->setWidget(content);
-    pageLayout->addWidget(scroll);
+    pageLayout->addWidget(scroll, 1);
     scroll_ = scroll;
     if (catalog_ == nullptr) {
         return;
@@ -116,59 +141,79 @@ ThresholdPage::ThresholdPage(const ernc::domain::ParameterCatalog* catalog, ernc
         }
         grouped[groupFor(QString::fromStdString(definition.id.text()))].push_back(&definition);
     }
+    const auto addParameterRow = [&](const QString& groupKey, const ernc::domain::ParameterDefinition& definition) {
+        const QString parameterId = QString::fromStdString(definition.id.text());
+        const bool oneSlot = definition.firmwarePath && isOneScalarSlot(layout_, *definition.firmwarePath);
+        auto* row = new QWidget(content);
+        auto* line = new QHBoxLayout(row);
+        line->setContentsMargins(0, 0, 0, 0);
+        line->setSpacing(kSpace8);
+        auto* name = new QPushButton(parameterId, row);
+        name->setFlat(true);
+        name->setStyleSheet(QStringLiteral("text-align: left; padding: 0 4px;"));
+        function_view_layout::styleParameterNameButton(name);
+        auto* value = new QLabel(oneSlot ? kBlank.toString() : kArrayMark.toString(), row);
+        function_view_layout::styleValueLabel(value);
+        line->addWidget(name);
+        line->addWidget(value);
+        function_view_layout::gapBetweenSecondAndThirdColumns(line);
+        Control control;
+        control.id = parameterId;
+        control.group = groupKey;
+        control.value = value;
+        control.row = row;
+        connect(name, &QPushButton::clicked, this, [this, parameterId] { activate(parameterId); });
+        if (oneSlot) {
+            auto* editor = new QLineEdit(row);
+            function_view_layout::styleScalarEditor(editor);
+            line->addWidget(editor);
+            control.editor = editor;
+            connect(editor, &QLineEdit::editingFinished, this, [this, parameterId] {
+                if (reloading_) {
+                    return;
+                }
+                const Control* rowControl = findControl(parameterId);
+                if (rowControl != nullptr && rowControl->editor != nullptr) {
+                    commitValue(parameterId, rowControl->editor->text());
+                }
+            });
+        } else {
+            auto* hint = new QLabel(function_view_layout::parameterViewHintText(), row);
+            hint->setWordWrap(true);
+            hint->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+            function_view_layout::styleParameterViewHint(hint);
+            line->addWidget(hint);
+        }
+        function_view_layout::sealFormRow(line);
+        controls_.push_back(control);
+        root->addWidget(row);
+    };
+
+    const auto renderGroup = [&](const QString& groupKey, const std::vector<const ernc::domain::ParameterDefinition*>& defs) {
+        auto* heading = new QLabel(groupHeadingFor(groupKey), content);
+        root->addWidget(heading);
+        for (const ernc::domain::ParameterDefinition* definition : defs) {
+            if (definition != nullptr) {
+                addParameterRow(groupKey, *definition);
+            }
+        }
+    };
+
+    std::set<QString> renderedGroups;
     for (const char* groupName : kGroupOrder) {
-        const auto found = grouped.find(QString::fromUtf8(groupName));
+        const QString groupKey = QString::fromUtf8(groupName);
+        const auto found = grouped.find(groupKey);
         if (found == grouped.end()) {
             continue;
         }
-        auto* heading = new QLabel(QString::fromUtf8(groupName), content);
-        root->addWidget(heading);
-        for (const ernc::domain::ParameterDefinition* definition : found->second) {
-            const QString parameterId = QString::fromStdString(definition->id.text());
-            const bool oneSlot = definition->firmwarePath && isOneScalarSlot(layout_, *definition->firmwarePath);
-            auto* row = new QWidget(content);
-            auto* line = new QHBoxLayout(row);
-            line->setContentsMargins(0, 0, 0, 0);
-            line->setSpacing(kSpace8);
-            auto* name = new QPushButton(parameterId, row);
-            name->setFlat(true);
-            name->setStyleSheet(QStringLiteral("text-align: left; padding: 0 4px;"));
-            function_view_layout::styleParameterNameButton(name);
-            auto* value = new QLabel(oneSlot ? kBlank.toString() : kArrayMark.toString(), row);
-            function_view_layout::styleValueLabel(value);
-            line->addWidget(name);
-            line->addWidget(value);
-            function_view_layout::gapBetweenSecondAndThirdColumns(line);
-            Control control;
-            control.id = parameterId;
-            control.group = found->first;
-            control.value = value;
-            control.row = row;
-            connect(name, &QPushButton::clicked, this, [this, parameterId] { activate(parameterId); });
-            if (oneSlot) {
-                auto* editor = new QLineEdit(row);
-                function_view_layout::styleScalarEditor(editor);
-                line->addWidget(editor);
-                control.editor = editor;
-                connect(editor, &QLineEdit::editingFinished, this, [this, parameterId] {
-                    if (reloading_) {
-                        return;
-                    }
-                    const Control* rowControl = findControl(parameterId);
-                    if (rowControl != nullptr && rowControl->editor != nullptr) {
-                        commitValue(parameterId, rowControl->editor->text());
-                    }
-                });
-            } else {
-                auto* hint = new QLabel(function_view_layout::parameterViewHintText(), row);
-                hint->setWordWrap(true);
-                hint->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-                line->addWidget(hint);
-            }
-            function_view_layout::sealFormRow(line);
-            controls_.push_back(control);
-            root->addWidget(row);
+        renderGroup(groupKey, found->second);
+        renderedGroups.insert(groupKey);
+    }
+    for (const auto& entry : grouped) {
+        if (renderedGroups.contains(entry.first)) {
+            continue;
         }
+        renderGroup(entry.first, entry.second);
     }
     root->addStretch(1);
     reload();

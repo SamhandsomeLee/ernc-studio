@@ -30,10 +30,15 @@ inline QString parameterViewHintText() {
     return QStringLiteral("读写在参数视图");
 }
 
+inline void styleParameterViewHint(QLabel* hint) {
+    hint->setMinimumWidth(kEditorColumnWidth);
+    hint->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
+}
+
 inline void styleParameterNameButton(QPushButton* name) {
     name->setMinimumWidth(kNameColumnWidth);
-    name->setMaximumWidth(kNameColumnWidth);
-    name->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    name->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    name->setToolTip(name->text());
 }
 
 inline void styleParameterIdLabel(QLabel* name) {
