@@ -1781,3 +1781,26 @@ if(TARGET ernc_comm_lab)
         )
     endforeach()
 endif()
+
+# ES-083: SQLite schema and migrations. Runs in both comm and dev presets.
+add_executable(ernc_storage_tests
+    storage_migration_test.cpp
+)
+
+target_link_libraries(ernc_storage_tests PRIVATE ernc_storage)
+
+foreach(ernc_storage_case IN ITEMS
+    memory_database_migrates
+    migrate_is_idempotent
+    newer_schema_rejected
+    foreign_keys_enforced
+    failed_migration_rolls_back
+    invalid_migration_list_rejected
+    closed_connection_rejected
+    expected_columns
+    indexes_created)
+    add_test(
+        NAME "storage.${ernc_storage_case}"
+        COMMAND ernc_storage_tests "${ernc_storage_case}"
+    )
+endforeach()
