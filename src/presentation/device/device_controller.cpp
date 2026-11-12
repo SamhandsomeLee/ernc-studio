@@ -6,6 +6,17 @@
 #include "serial_transport.hpp"
 
 #include "ernc/application/batch_write.hpp"
+#ifdef slots
+#pragma push_macro("slots")
+#undef slots
+#define ERNC_RESTORE_QT_SLOTS_MACRO
+#endif
+#include "ernc/application/region_reader.hpp"
+#include "ernc/application/region_writer.hpp"
+#ifdef ERNC_RESTORE_QT_SLOTS_MACRO
+#pragma pop_macro("slots")
+#undef ERNC_RESTORE_QT_SLOTS_MACRO
+#endif
 #include "ernc/domain/array_parameter.hpp"
 #include "ernc/domain/array_runtime_store.hpp"
 #include "ernc/infrastructure/logging/diagnostic_log.hpp"
@@ -44,6 +55,41 @@ std::string jsonQuote(const std::string& text) {
     return out;
 }
 
+/// @brief 按完整路径取得父区域或直接子字段的独立定义。
+/// @param catalog 区域目录，只在本次调用期间借用。
+/// @param path 固件完整路径。
+/// @return 找到时调用方拥有定义副本；未知路径为空。
+std::optional<ernc::domain::RegionDefinition> regionDefinitionFor(
+    const ernc::domain::RegionCatalog& catalog, const std::string_view path) {
+    if (const ernc::domain::RegionDefinition* region = catalog.find(path)) {
+        return *region;
+    }
+    for (const std::string_view root : {std::string_view{"ERNC_TF"}, std::string_view{"check_data"}}) {
+        const ernc::domain::RegionDefinition* region = catalog.find(root);
+        if (region == nullptr) {
+            continue;
+        }
+        for (const ernc::domain::SubRegion& child : region->subregions) {
+            if (child.path != path) {
+                continue;
+            }
+            ernc::domain::RegionDefinition definition;
+            definition.path = child.path;
+            definition.slot = child.slot;
+            definition.slotCount = child.slotCount;
+            definition.size = child.size;
+            definition.offset = child.offset;
+            definition.typeName = child.typeName;
+            definition.scalarType = child.scalarType;
+            definition.shape = child.shape;
+            definition.evidence = child.evidence;
+            definition.writable = child.writable;
+            return definition;
+        }
+    }
+    return std::nullopt;
+}
+
 }  // namespace
 
 DeviceController::DeviceController(const ernc::domain::ParameterCatalog& catalog, const ernc::domain::FirmwareLayout& layout,
@@ -52,6 +98,10 @@ DeviceController::DeviceController(const ernc::domain::ParameterCatalog& catalog
     : QObject(parent), catalog_{catalog}, layout_{layout}, store_{store}, arrayStore_{arrayStore},
               stack_{catalog, layout, store, arrayStore} {
     qRegisterMetaType<DeviceRuntimeWorker::PumpReport>("DeviceRuntimeWorker::PumpReport");
+    const Result<ernc::domain::RegionCatalog> regions = ernc::domain::RegionCatalog::load(layout_);
+    if (regions.ok() && regions.tryValue() != nullptr) {
+        regionCatalog_ = regions.value();
+    }
     canMsgPulseTimer_.setInterval(1000);
     canMsgPulseTimer_.setSingleShot(false);
     connect(&canMsgPulseTimer_, &QTimer::timeout, this, &DeviceController::onCanMsgPulseTick);
@@ -138,6 +188,10 @@ void DeviceController::tearDownSerial() {
 void DeviceController::tearDownAll() {
     wasWriteBusy_ = false;
     stopCanMsgSimulationPulse();
+    simulatorRegionReader_.reset();
+    simulatorRegionWriter_.reset();
+    activeRegionPath_.clear();
+    activeRegionIsWrite_ = false;
     if (linkKind_ == LinkKind::Simulator && stack_.connected()) {
         stack_.scheduler().cancel();
         (void)stack_.disconnect();
@@ -175,6 +229,8 @@ void DeviceController::connectSimulator() {
         return;
     }
     linkKind_ = LinkKind::Simulator;
+    simulatorRegionReader_ = std::make_unique<ernc::application::RegionReader>(stack_.session(), stack_.scheduler());
+    simulatorRegionWriter_ = std::make_unique<ernc::application::RegionWriter>(stack_.session(), stack_.scheduler());
     std::ostringstream detail;
     detail << R"({"transport":"simulator","slots":)" << mirrorSlots << R"(,"session_id":)" << connected.value().raw()
            << "}";
@@ -255,6 +311,134 @@ void DeviceController::disconnectDevice() {
     recordUi("device.disconnect", detail.str(), true);
     emit connectionChanged(false, SessionId::none());
     emit operationLogRefreshRequested();
+}
+
+Result<void> DeviceController::startRegionRead(const QString& path) {
+    if (!connected()) {
+        return Result<void>::failure(ErrorCode::DeviceDisconnected);
+    }
+    if (!regionCatalog_ || !activeRegionPath_.empty()) {
+        return Result<void>::failure(ErrorCode::InvalidParameter);
+    }
+    const std::optional<ernc::domain::RegionDefinition> region =
+        regionDefinitionFor(*regionCatalog_, path.toStdString());
+    if (!region) {
+        return Result<void>::failure(ErrorCode::InvalidParameter);
+    }
+    if (linkKind_ == LinkKind::Serial && serialWorker_ != nullptr) {
+        int code = static_cast<int>(ErrorCode::Unknown);
+        QMetaObject::invokeMethod(serialWorker_, "startRegionRead", Qt::BlockingQueuedConnection,
+                                  Q_RETURN_ARG(int, code), Q_ARG(QString, path));
+        if (code != 0) {
+            return Result<void>::failure(static_cast<ErrorCode>(code));
+        }
+        activeRegionPath_ = region->path;
+        activeRegionIsWrite_ = false;
+        emit regionReadProgress(path, 0, region->size);
+        return Result<void>::success();
+    }
+    if (linkKind_ != LinkKind::Simulator || simulatorRegionReader_ == nullptr || activeRead_.has_value()
+        || activeCanMsgRead_.has_value() || stack_.batchReader().busy() || stack_.parameterReader().busy()
+        || stack_.batchWriter().busy()) {
+        return Result<void>::failure(ErrorCode::InvalidParameter);
+    }
+    const Result<void> started = simulatorRegionReader_->start(*region);
+    if (!started.ok()) {
+        return started;
+    }
+    activeRegionPath_ = region->path;
+    activeRegionIsWrite_ = false;
+    emit regionReadProgress(path, 0, region->size);
+    finishRegionReadSimulator();
+    return Result<void>::success();
+}
+
+void DeviceController::cancelRegionRead() {
+    if (activeRegionPath_.empty() || activeRegionIsWrite_) {
+        return;
+    }
+    if (linkKind_ == LinkKind::Serial && serialWorker_ != nullptr) {
+        QMetaObject::invokeMethod(serialWorker_, "cancelRegionRead", Qt::QueuedConnection);
+        return;
+    }
+    if (simulatorRegionReader_ != nullptr) {
+        simulatorRegionReader_->cancel();
+    }
+}
+
+Result<ernc::application::RegionWritePreview> DeviceController::previewRegionWrite(const QString& path,
+                                                                                   const QByteArray& bytes) {
+    if (!regionCatalog_) {
+        return Result<ernc::application::RegionWritePreview>::failure(ErrorCode::InvalidParameter);
+    }
+    const std::optional<ernc::domain::RegionDefinition> region =
+        regionDefinitionFor(*regionCatalog_, path.toStdString());
+    if (!region) {
+        return Result<ernc::application::RegionWritePreview>::failure(ErrorCode::InvalidParameter);
+    }
+    const std::span<const std::uint8_t> payload(reinterpret_cast<const std::uint8_t*>(bytes.constData()),
+                                                 static_cast<std::size_t>(bytes.size()));
+    return ernc::application::previewRegionTransfer(*region, payload);
+}
+
+Result<void> DeviceController::startRegionWrite(const QString& path, const QByteArray& bytes) {
+    if (!connected()) {
+        return Result<void>::failure(ErrorCode::DeviceDisconnected);
+    }
+    if (!regionCatalog_ || !activeRegionPath_.empty()) {
+        return Result<void>::failure(ErrorCode::InvalidParameter);
+    }
+    const std::optional<ernc::domain::RegionDefinition> region =
+        regionDefinitionFor(*regionCatalog_, path.toStdString());
+    if (!region || bytes.size() != static_cast<qsizetype>(region->size)) {
+        return Result<void>::failure(ErrorCode::InvalidParameter);
+    }
+  const std::span<const std::uint8_t> payload(reinterpret_cast<const std::uint8_t*>(bytes.constData()),
+                                                 static_cast<std::size_t>(bytes.size()));
+    const Result<ernc::application::RegionWritePreview> preview =
+        ernc::application::previewRegionTransfer(*region, payload);
+    if (!preview.ok() || preview.tryValue() == nullptr || !preview.value().commitPermitted) {
+        return Result<void>::failure(ErrorCode::InvalidParameter);
+    }
+    if (linkKind_ == LinkKind::Serial && serialWorker_ != nullptr) {
+        int code = static_cast<int>(ErrorCode::Unknown);
+        QMetaObject::invokeMethod(serialWorker_, "startRegionWrite", Qt::BlockingQueuedConnection, Q_RETURN_ARG(int, code),
+                                  Q_ARG(QString, path), Q_ARG(QByteArray, bytes));
+        if (code != 0) {
+            return Result<void>::failure(static_cast<ErrorCode>(code));
+        }
+        activeRegionPath_ = region->path;
+        activeRegionIsWrite_ = true;
+        emit regionWriteProgress(path, 0, region->size);
+        return Result<void>::success();
+    }
+    if (linkKind_ != LinkKind::Simulator || simulatorRegionWriter_ == nullptr || activeRead_.has_value()
+        || activeCanMsgRead_.has_value() || stack_.batchReader().busy() || stack_.parameterReader().busy()
+        || stack_.batchWriter().busy()) {
+        return Result<void>::failure(ErrorCode::InvalidParameter);
+    }
+    const Result<void> started = simulatorRegionWriter_->start(*region, payload);
+    if (!started.ok()) {
+        return started;
+    }
+    activeRegionPath_ = region->path;
+    activeRegionIsWrite_ = true;
+    emit regionWriteProgress(path, 0, region->size);
+    finishRegionWriteSimulator();
+    return Result<void>::success();
+}
+
+void DeviceController::cancelRegionWrite() {
+    if (activeRegionPath_.empty() || !activeRegionIsWrite_) {
+        return;
+    }
+    if (linkKind_ == LinkKind::Serial && serialWorker_ != nullptr) {
+        QMetaObject::invokeMethod(serialWorker_, "cancelRegionWrite", Qt::QueuedConnection);
+        return;
+    }
+    if (simulatorRegionWriter_ != nullptr) {
+        simulatorRegionWriter_->cancel();
+    }
 }
 
 void DeviceController::readCategory(const std::string& pageId) {
@@ -386,11 +570,88 @@ void DeviceController::pumpSimulator() {
     pumpParameterReadSimulator();
     pumpBatchWriteSimulator();
     pumpArrayIoSimulator();
+    pumpRegionReadSimulator();
+    pumpRegionWriteSimulator();
     if (WritePlanDialog* dialog = writePlanDialog_) {
         dialog->noteProgress();
     }
     finishBatchReadIfIdleSimulator();
     finishCanMsgReadIfIdleSimulator();
+    finishRegionReadSimulator();
+    finishRegionWriteSimulator();
+}
+
+void DeviceController::pumpRegionReadSimulator() {
+    if (simulatorRegionReader_ == nullptr || activeRegionPath_.empty() || !simulatorRegionReader_->busy()) {
+        return;
+    }
+    if (const std::optional<CommandId> command = simulatorRegionReader_->inFlight()) {
+        if (std::optional<CommandOutcome> outcome = stack_.scheduler().takeResult(*command)) {
+            simulatorRegionReader_->apply(*outcome);
+        }
+    }
+    const ernc::application::RegionReadProgress progress = simulatorRegionReader_->progress();
+    emit regionReadProgress(QString::fromStdString(activeRegionPath_), progress.filledBytes, progress.plannedBytes);
+}
+
+void DeviceController::finishRegionReadSimulator() {
+    if (simulatorRegionReader_ == nullptr || activeRegionPath_.empty() || simulatorRegionReader_->busy()) {
+        return;
+    }
+    const QString path = QString::fromStdString(activeRegionPath_);
+    const ernc::application::RegionSnapshot* snapshot = simulatorRegionReader_->snapshot();
+    if (snapshot != nullptr && snapshot->complete) {
+        const QByteArray bytes(reinterpret_cast<const char*>(snapshot->bytes.data()),
+                               static_cast<qsizetype>(snapshot->bytes.size()));
+        emit regionReadProgress(path, snapshot->bytes.size(), snapshot->bytes.size());
+        emit regionReadFinished(true, path, bytes, static_cast<int>(ErrorCode::Unknown));
+    } else {
+        const ernc::application::RegionReadProgress progress = simulatorRegionReader_->progress();
+        const ErrorCode code = progress.error.value_or(ErrorCode::Unknown);
+        emit regionReadFinished(false, path, {}, static_cast<int>(code));
+    }
+    activeRegionPath_.clear();
+    activeRegionIsWrite_ = false;
+}
+
+void DeviceController::pumpRegionWriteSimulator() {
+    if (simulatorRegionWriter_ == nullptr || activeRegionPath_.empty() || !activeRegionIsWrite_
+        || !simulatorRegionWriter_->busy()) {
+        return;
+    }
+    if (const std::optional<CommandId> command = simulatorRegionWriter_->inFlight()) {
+        if (std::optional<CommandOutcome> outcome = stack_.scheduler().takeResult(*command)) {
+            simulatorRegionWriter_->apply(*outcome);
+        }
+    }
+    const ernc::application::RegionWriteProgress progress = simulatorRegionWriter_->progress();
+    std::size_t plannedBytes = progress.verifiedBytes;
+    if (regionCatalog_) {
+        if (const std::optional<ernc::domain::RegionDefinition> region =
+                regionDefinitionFor(*regionCatalog_, activeRegionPath_)) {
+            plannedBytes = region->size;
+        }
+    }
+    emit regionWriteProgress(QString::fromStdString(activeRegionPath_), progress.verifiedBytes, plannedBytes);
+}
+
+void DeviceController::finishRegionWriteSimulator() {
+    if (simulatorRegionWriter_ == nullptr || activeRegionPath_.empty() || !activeRegionIsWrite_
+        || simulatorRegionWriter_->busy()) {
+        return;
+    }
+    const QString path = QString::fromStdString(activeRegionPath_);
+    const ernc::application::RegionWriteSnapshot* snapshot = simulatorRegionWriter_->snapshot();
+    if (snapshot != nullptr && snapshot->verified) {
+        emit regionWriteProgress(path, snapshot->bytes.size(), snapshot->bytes.size());
+        emit regionWriteFinished(true, path, static_cast<int>(ErrorCode::Unknown));
+    } else {
+        const ernc::application::RegionWriteProgress progress = simulatorRegionWriter_->progress();
+        const ErrorCode code = progress.error.value_or(ErrorCode::Unknown);
+        emit regionWriteFinished(false, path, static_cast<int>(code));
+    }
+    activeRegionPath_.clear();
+    activeRegionIsWrite_ = false;
 }
 
 void DeviceController::readCanMsg() {
@@ -496,6 +757,26 @@ void DeviceController::pumpSerial() {
                  report.writeSuccess ? ErrorCode::Unknown : ErrorCode::ResponseMismatch);
         publishWriteResult(report.writeItems);
         emit operationLogRefreshRequested();
+    }
+    if (report.regionPlannedBytes > 0U && !report.regionPath.empty()) {
+        const QString path = QString::fromStdString(report.regionPath);
+        if (report.regionIsWrite) {
+            emit regionWriteProgress(path, report.regionFilledBytes, report.regionPlannedBytes);
+        } else {
+            emit regionReadProgress(path, report.regionFilledBytes, report.regionPlannedBytes);
+        }
+    }
+    if (report.regionFinished) {
+        const QString path = QString::fromStdString(report.regionPath);
+        if (report.regionIsWrite) {
+            emit regionWriteFinished(report.regionSuccess, path, report.regionErrorCode);
+        } else {
+            const QByteArray bytes(reinterpret_cast<const char*>(report.regionBytes.data()),
+                                   static_cast<qsizetype>(report.regionBytes.size()));
+            emit regionReadFinished(report.regionSuccess, path, bytes, report.regionErrorCode);
+        }
+        activeRegionPath_.clear();
+        activeRegionIsWrite_ = false;
     }
     if (WritePlanDialog* dialog = writePlanDialog_) {
         dialog->noteProgressFromWorker(report.writeItems, report.writeInflight, report.writePhase);

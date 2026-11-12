@@ -6,6 +6,7 @@
 #include "analysis/analysis_panel.hpp"
 #include "device/device_controller.hpp"
 #include "parameters/write_plan_dialog.hpp"
+#include "regions/region_workspace.hpp"
 
 #include "ernc/application/batch_write.hpp"
 #include "scheduler.hpp"
@@ -279,7 +280,7 @@ EditorTabs::EditorTabs(const ernc::domain::ParameterCatalog* catalog, ernc::doma
     auto* parameterView = makeParameterView(this, catalog, store, layout, parameterSearch_, parameterProxy_, parameterModel_);
     addTab(parameterView, QStringLiteral("参数视图"));
     if (regionCatalog != nullptr) {
-        // 本次只开放离线文件导入与画图。Region 设备读写端口保持为空，不新增真实设备操作路径。
+        // Region 写入仍保持为空；读取稍后通过 DeviceController 绑定，串口对象不进入 UI 线程。
         curveAnalysis_ = new AnalysisPanel(*regionCatalog, nullptr, nullptr, this);
         addTab(curveAnalysis_, QStringLiteral("曲线分析"));
     }
@@ -472,7 +473,42 @@ void EditorTabs::showNamedPage(const QString& objectName) {
 }
 
 void EditorTabs::setDeviceController(DeviceController* controller) {
+    DeviceController* previous = deviceController_;
     deviceController_ = controller;
+    if (curveAnalysis_ != nullptr) {
+        RegionWorkspace* workspace = curveAnalysis_->regionWorkspace();
+        if (previous != nullptr && workspace != nullptr) {
+            QObject::disconnect(previous, nullptr, workspace, nullptr);
+        }
+        if (workspace != nullptr && controller != nullptr) {
+            workspace->setReadHandlers(
+                [controller](const QString& path) { return controller->startRegionRead(path); },
+                [controller]() { controller->cancelRegionRead(); });
+            QObject::connect(controller, &DeviceController::regionReadProgress, workspace,
+                             [workspace](const QString& path, const quint64 filled, const quint64 planned) {
+                                 workspace->noteReadProgress(path, filled, planned);
+                             });
+            QObject::connect(controller, &DeviceController::regionReadFinished, workspace,
+                             [workspace](const bool success, const QString& path, const QByteArray& bytes,
+                                         const int error) {
+                                 workspace->noteReadFinished(success, path, bytes, error);
+                             });
+            workspace->setWriteHandlers(
+                [controller](const QString& path, const QByteArray& bytes) { return controller->startRegionWrite(path, bytes); },
+                [controller]() { controller->cancelRegionWrite(); });
+            QObject::connect(controller, &DeviceController::regionWriteProgress, workspace,
+                             [workspace](const QString& path, const quint64 verified, const quint64 planned) {
+                                 workspace->noteWriteProgress(path, verified, planned);
+                             });
+            QObject::connect(controller, &DeviceController::regionWriteFinished, workspace,
+                             [workspace](const bool success, const QString& path, const int error) {
+                                 workspace->noteWriteFinished(success, path, error);
+                             });
+        } else if (workspace != nullptr) {
+            workspace->setReadHandlers({}, {});
+            workspace->setWriteHandlers({}, {});
+        }
+    }
     if (canInfoPanel_ != nullptr) {
         canInfoPanel_->setDeviceController(controller);
     }

@@ -165,12 +165,12 @@ Result<void> acceptComment(const std::string& line, const RegionDefinition& regi
 /// @brief 解析一行 value,。
 /// @param line 已经去掉空白、并且不是注释的行。
 /// @param value 成功时写入 float。
-/// @return 有一个 float 且以逗号结束时成功。
+/// @return 有一个 float 时成功；末尾的一个逗号可有可无，以兼容旧版人工文件和导出文件。
 Result<void> acceptValue(const std::string& line, float& value) {
-    if (line.empty() || line.back() != ',') {
+    if (line.empty()) {
         return Result<void>::failure(ErrorCode::InvalidParameter);
     }
-    const std::string number = line.substr(0, line.size() - 1);
+    const std::string number = line.back() == ',' ? line.substr(0, line.size() - 1) : line;
     if (number.empty()) {
         return Result<void>::failure(ErrorCode::InvalidParameter);
     }
@@ -243,14 +243,17 @@ Result<std::vector<float>> readRegionTxt(const RegionDefinition& region, const s
     return Result<std::vector<float>>::success(std::move(values));
 }
 
-Result<void> writeRegionTxt(const RegionDefinition& region, std::span<const float> values, const std::filesystem::path& destination) {
+Result<void> writeRegionTxt(const RegionDefinition& region, std::span<const float> values,
+                            const std::filesystem::path& destination, const RegionTxtLayout layout) {
     if (!geometryOk(region) || !extensionIs(destination, ".txt") || values.size() != region.slotCount) {
         return Result<void>::failure(ErrorCode::InvalidParameter);
     }
     std::string text;
-    text += "# region=" + region.path + "\n";
-    text += "# format=slot_floats\n";
-    text += "# slots=" + std::to_string(region.slotCount) + "\n";
+    if (layout == RegionTxtLayout::WholeRegion) {
+        text += "# region=" + region.path + "\n";
+        text += "# format=slot_floats\n";
+        text += "# slots=" + std::to_string(region.slotCount) + "\n";
+    }
     for (const float value : values) {
         const std::string formatted = formatFloat(value);
         if (formatted.empty()) {

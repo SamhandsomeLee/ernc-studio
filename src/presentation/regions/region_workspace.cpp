@@ -1,16 +1,26 @@
 #include "regions/region_workspace.hpp"
 
+#include "ernc/application/region_writer.hpp"
+
 #include "ernc/infrastructure/legacy_region_codec.hpp"
 #include "regions/spec_radius_page.hpp"
 
 #include <QComboBox>
 #include <QFileDialog>
+#include <QFileInfo>
+#include <QFormLayout>
+#include <QGroupBox>
+#include <QHBoxLayout>
+#include <QInputDialog>
 #include <QLabel>
+#include <QProgressBar>
 #include <QPushButton>
 #include <QStackedWidget>
 #include <QVBoxLayout>
 
 #include <bit>
+#include <algorithm>
+#include <climits>
 #include <cstdint>
 #include <sstream>
 #include <system_error>
@@ -81,6 +91,62 @@ std::vector<std::uint8_t> bytesFromFloats(const std::vector<float>& values) {
     return bytes;
 }
 
+/// @brief 把小端的 4-byte slot 还原成 float，供旧版 TXT 导出。
+std::optional<std::vector<float>> floatsFromBytes(const std::span<const std::uint8_t> bytes) {
+    if ((bytes.size() % 4U) != 0U) {
+        return std::nullopt;
+    }
+    std::vector<float> values;
+    values.reserve(bytes.size() / 4U);
+    for (std::size_t offset = 0; offset < bytes.size(); offset += 4U) {
+        const std::uint32_t bits = static_cast<std::uint32_t>(bytes[offset])
+            | (static_cast<std::uint32_t>(bytes[offset + 1U]) << 8U)
+            | (static_cast<std::uint32_t>(bytes[offset + 2U]) << 16U)
+            | (static_cast<std::uint32_t>(bytes[offset + 3U]) << 24U);
+        values.push_back(std::bit_cast<float>(bits));
+    }
+    return values;
+}
+
+std::optional<ernc::domain::RegionDefinition> definitionForPath(
+    const ernc::domain::RegionCatalog& catalog, const std::string_view path) {
+    if (const ernc::domain::RegionDefinition* region = catalog.find(path)) {
+        return *region;
+    }
+    for (const std::string_view root : {std::string_view{"ERNC_TF"}, std::string_view{"check_data"}}) {
+        const ernc::domain::RegionDefinition* parent = catalog.find(root);
+        if (parent == nullptr) {
+            continue;
+        }
+        for (const ernc::domain::SubRegion& child : parent->subregions) {
+            if (child.path == path) {
+                return definitionFrom(child);
+            }
+        }
+    }
+    return std::nullopt;
+}
+
+std::vector<ernc::domain::RegionDefinition> importDefinitions(const ernc::domain::RegionCatalog& catalog) {
+    std::vector<ernc::domain::RegionDefinition> definitions;
+    for (const std::string_view root : {std::string_view{"ERNC_TF"}, std::string_view{"check_data"}}) {
+        const ernc::domain::RegionDefinition* parent = catalog.find(root);
+        if (parent == nullptr) {
+            continue;
+        }
+        definitions.push_back(*parent);
+        for (const ernc::domain::SubRegion& child : parent->subregions) {
+            definitions.push_back(definitionFrom(child));
+        }
+    }
+    return definitions;
+}
+
+QString leafName(const std::string& path) {
+    const std::size_t separator = path.rfind('.');
+    return QString::fromStdString(separator == std::string::npos ? path : path.substr(separator + 1U));
+}
+
 }  // namespace
 
 RegionWorkspace::RegionWorkspace(const ernc::domain::RegionCatalog& catalog, ernc::application::RegionReader* reader,
@@ -95,6 +161,11 @@ RegionWorkspace::RegionWorkspace(const ernc::domain::RegionCatalog& catalog, ern
     , fieldBox_(new QComboBox(this))
     , statusLabel_(new QLabel(status_, this))
     , progressLabel_(new QLabel(progress_, this))
+    , progressBar_(new QProgressBar(this))
+    , readButton_(new QPushButton(QStringLiteral("从设备读取"), this))
+    , importButton_(new QPushButton(QStringLiteral("导入 BIN/TXT"), this))
+    , exportButton_(new QPushButton(QStringLiteral("导出 BIN/TXT"), this))
+    , cancelButton_(new QPushButton(QStringLiteral("取消"), this))
     , writeButton_(new QPushButton(QStringLiteral("写入"), this))
     , stack_(new QStackedWidget(this))
     , specPage_(nullptr) {
@@ -105,53 +176,72 @@ RegionWorkspace::RegionWorkspace(const ernc::domain::RegionCatalog& catalog, ern
         }
     }
     auto* layout = new QVBoxLayout(this);
-    layout->addWidget(regionBox_);
-    layout->addWidget(fieldBox_);
+    layout->setContentsMargins(12, 12, 12, 12);
+    layout->setSpacing(8);
+    auto* scopeGroup = new QGroupBox(QStringLiteral("数据范围"), this);
+    auto* scopeLayout = new QFormLayout(scopeGroup);
+    scopeLayout->addRow(QStringLiteral("区域"), regionBox_);
+    scopeLayout->addRow(QStringLiteral("字段"), fieldBox_);
+    layout->addWidget(scopeGroup);
     layout->addWidget(statusLabel_);
     layout->addWidget(progressLabel_);
-    auto* readButton = new QPushButton(QStringLiteral("读取"), this);
-    auto* importButton = new QPushButton(QStringLiteral("导入"), this);
+    progressBar_->setObjectName(QStringLiteral("erncRegionReadProgress"));
+    progressBar_->setRange(0, 100);
+    progressBar_->setValue(0);
+    progressBar_->setFormat(QStringLiteral("%v / %m slots  ·  %p%"));
+    progressBar_->setVisible(false);
+    layout->addWidget(progressBar_);
     auto* previewButton = new QPushButton(QStringLiteral("预览"), this);
-    auto* exportButton = new QPushButton(QStringLiteral("导出"), this);
-    auto* cancelButton = new QPushButton(QStringLiteral("取消"), this);
+    auto* primaryActions = new QHBoxLayout();
+    primaryActions->addWidget(readButton_);
+    primaryActions->addWidget(importButton_);
+    layout->addLayout(primaryActions);
+    auto* fileActions = new QHBoxLayout();
+    fileActions->addWidget(exportButton_);
+    fileActions->addWidget(cancelButton_);
+    layout->addLayout(fileActions);
+    auto* advancedActions = new QHBoxLayout();
+    advancedActions->addWidget(previewButton);
+    advancedActions->addWidget(writeButton_);
+    layout->addLayout(advancedActions);
     writeButton_->setEnabled(false);
-    layout->addWidget(readButton);
-    layout->addWidget(importButton);
-    layout->addWidget(previewButton);
-    layout->addWidget(writeButton_);
-    layout->addWidget(exportButton);
-    layout->addWidget(cancelButton);
+    cancelButton_->setEnabled(false);
     layout->addWidget(stack_, 1);
     QObject::connect(regionBox_, &QComboBox::currentTextChanged, this, [this](const QString& path) { selectRegion(path); });
     QObject::connect(fieldBox_, &QComboBox::currentTextChanged, this, [this](const QString& path) {
         selectField(path == QStringLiteral("全部") ? QString() : path);
     });
-    QObject::connect(readButton, &QPushButton::clicked, this, [this]() { readSelected(); });
-    QObject::connect(importButton, &QPushButton::clicked, this, [this]() {
-        const QString fileName = QFileDialog::getOpenFileName(
+    QObject::connect(readButton_, &QPushButton::clicked, this, [this]() { readSelected(); });
+    QObject::connect(importButton_, &QPushButton::clicked, this, [this]() {
+        const QStringList fileNames = QFileDialog::getOpenFileNames(
             this, QStringLiteral("导入区域文件"), QString(),
             QStringLiteral("区域数据 (*.bin *.txt);;二进制 (*.bin);;文本 (*.txt);;所有文件 (*)"));
-        if (fileName.isEmpty()) {
+        if (fileNames.isEmpty()) {
             return;
         }
-        const std::filesystem::path path = fileName.toStdString();
-        if (fileName.endsWith(QStringLiteral(".txt"), Qt::CaseInsensitive)) {
-            (void)importTxt(path);
-        } else {
-            (void)importBin(path);
+        std::vector<std::filesystem::path> paths;
+        paths.reserve(static_cast<std::size_t>(fileNames.size()));
+        for (const QString& fileName : fileNames) {
+            paths.emplace_back(fileName.toStdString());
         }
+        (void)importFiles(paths);
     });
-    QObject::connect(exportButton, &QPushButton::clicked, this, [this]() {
+    QObject::connect(exportButton_, &QPushButton::clicked, this, [this]() {
         const QString fileName = QFileDialog::getSaveFileName(
-            this, QStringLiteral("导出区域 BIN"), QString(), QStringLiteral("二进制 (*.bin)"));
+            this, QStringLiteral("导出区域数据"), QString(),
+            QStringLiteral("二进制 (*.bin);;文本 (*.txt)"));
         if (fileName.isEmpty()) {
             return;
         }
-        (void)exportBin(fileName.toStdString());
+        if (fileName.endsWith(QStringLiteral(".txt"), Qt::CaseInsensitive)) {
+            (void)exportTxt(fileName.toStdString());
+        } else {
+            (void)exportBin(fileName.toStdString());
+        }
     });
     QObject::connect(previewButton, &QPushButton::clicked, this, [this]() { previewSelected(); });
     QObject::connect(writeButton_, &QPushButton::clicked, this, [this]() { writeSelected(); });
-    QObject::connect(cancelButton, &QPushButton::clicked, this, [this]() { cancelTransfer(); });
+    QObject::connect(cancelButton_, &QPushButton::clicked, this, [this]() { cancelTransfer(); });
     if (regionBox_->count() > 0) {
         selectRegion(regionBox_->currentText());
     }
@@ -195,20 +285,132 @@ bool RegionWorkspace::selectField(const QString& path) {
 
 ernc::domain::Result<void> RegionWorkspace::readSelected() {
     const ernc::domain::RegionDefinition* region = selectedRegion();
-    if (region == nullptr || reader_ == nullptr) {
-        status_ = QStringLiteral("读取被拒绝");
+    if (region == nullptr) {
+        status_ = QStringLiteral("未选择读取范围");
         statusLabel_->setText(status_);
         return ernc::domain::Result<void>::failure(ernc::domain::ErrorCode::InvalidParameter);
     }
-    const ernc::domain::Result<void> started = reader_->start(*region);
+    if (!ernc::domain::realReadPermitted(region->evidence)) {
+        status_ = QStringLiteral("区域读取未授权");
+        statusLabel_->setText(status_);
+        return ernc::domain::Result<void>::failure(ernc::domain::ErrorCode::InvalidParameter);
+    }
+    ernc::domain::Result<void> started = ernc::domain::Result<void>::failure(ernc::domain::ErrorCode::InvalidParameter);
+    if (startRead_) {
+        started = startRead_(QString::fromStdString(region->path));
+    } else if (reader_ != nullptr) {
+        started = reader_->start(*region);
+    }
     if (!started.ok()) {
-        status_ = QStringLiteral("读取被拒绝");
+        status_ = started.tryError() != nullptr && *started.tryError() == ernc::domain::ErrorCode::DeviceDisconnected
+            ? QStringLiteral("未连接设备")
+            : QStringLiteral("读取被拒绝：当前有设备任务或布局未核验");
     } else {
-        status_ = QStringLiteral("读取已入队");
+        activeReadPath_ = QString::fromStdString(region->path);
+        status_ = QStringLiteral("正在读取 %1").arg(activeReadPath_);
+        setReadRunning(true);
+        noteReadProgress(activeReadPath_, 0, region->size);
     }
     statusLabel_->setText(status_);
     refreshProgress();
     return started;
+}
+
+ernc::domain::Result<void> RegionWorkspace::importFiles(const std::vector<std::filesystem::path>& sources) {
+    if (sources.empty()) {
+        return ernc::domain::Result<void>::failure(ErrorCode::InvalidParameter);
+    }
+    const std::vector<ernc::domain::RegionDefinition> definitions = importDefinitions(catalog_);
+    std::size_t importedCount = 0;
+    for (const std::filesystem::path& source : sources) {
+        struct Candidate {
+            ernc::domain::RegionDefinition region;
+            std::vector<std::uint8_t> bytes;
+        };
+        std::vector<Candidate> candidates;
+        const QString suffix = QFileInfo(QString::fromStdString(source.string())).suffix().toLower();
+        for (const ernc::domain::RegionDefinition& definition : definitions) {
+            if (suffix == QStringLiteral("bin")) {
+                const ernc::domain::Result<std::vector<std::uint8_t>> loaded =
+                    ernc::infrastructure::readRegionBin(definition, source);
+                if (loaded.ok() && loaded.tryValue() != nullptr) {
+                    candidates.push_back(Candidate{definition, loaded.value()});
+                }
+            } else if (suffix == QStringLiteral("txt")) {
+                const ernc::domain::Result<std::vector<float>> loaded =
+                    ernc::infrastructure::readRegionTxt(definition, source);
+                if (loaded.ok() && loaded.tryValue() != nullptr) {
+                    candidates.push_back(Candidate{definition, bytesFromFloats(loaded.value())});
+                }
+            }
+        }
+        if (candidates.empty()) {
+            status_ = QStringLiteral("无法识别文件：%1").arg(QString::fromStdString(source.filename().string()));
+            statusLabel_->setText(status_);
+            return ernc::domain::Result<void>::failure(ErrorCode::InvalidParameter);
+        }
+
+        std::size_t chosen = candidates.size();
+        const QString fileStem = QString::fromStdString(source.stem().string()).toLower();
+        for (std::size_t index = 0; index < candidates.size(); ++index) {
+            if (fileStem.contains(leafName(candidates[index].region.path).toLower())) {
+                if (chosen != candidates.size()) {
+                    chosen = candidates.size();
+                    break;
+                }
+                chosen = index;
+            }
+        }
+        if (chosen == candidates.size() && selected_) {
+            for (std::size_t index = 0; index < candidates.size(); ++index) {
+                if (candidates[index].region.path == selected_->path) {
+                    chosen = index;
+                    break;
+                }
+            }
+        }
+        if (chosen == candidates.size() && candidates.size() == 1U) {
+            chosen = 0;
+        }
+        if (chosen == candidates.size()) {
+            QStringList choices;
+            for (const Candidate& candidate : candidates) {
+                choices.push_back(QString::fromStdString(candidate.region.path));
+            }
+            bool accepted = false;
+            const QString choice = QInputDialog::getItem(
+                this, QStringLiteral("选择数据字段"),
+                QStringLiteral("%1 与多个字段长度相同，请选择其含义：")
+                    .arg(QString::fromStdString(source.filename().string())),
+                choices, 0, false, &accepted);
+            if (!accepted) {
+                return ernc::domain::Result<void>::failure(ErrorCode::OperationCancelled);
+            }
+            chosen = static_cast<std::size_t>(choices.indexOf(choice));
+        }
+
+        Candidate& loaded = candidates[chosen];
+        if (selected_ && selected_->path == loaded.region.path) {
+            imported_ = loaded.bytes;
+            preview_.reset();
+            previewBytes_.reset();
+            if (specPage_ != nullptr && specPage_->isVisible()) {
+                specPage_->loadReadBytes(*imported_);
+            }
+        }
+        if (bytesHandler_) {
+            bytesHandler_(loaded.region, loaded.bytes);
+        }
+        ++importedCount;
+        notifyUiAction(suffix == QStringLiteral("txt") ? "region.import.txt" : "region.import.bin",
+                       importDetailJson(loaded.region, source, loaded.bytes.size()), true, ErrorCode::Unknown);
+    }
+    status_ = QStringLiteral("已导入 %1 个文件并更新曲线").arg(importedCount);
+    statusLabel_->setText(status_);
+    progress_ = QStringLiteral("文件导入完成");
+    progressLabel_->setText(progress_);
+    writeButton_->setEnabled(false);
+    return ernc::domain::Result<void>::success();
 }
 
 ernc::domain::Result<void> RegionWorkspace::importBin(const std::filesystem::path& source) {
@@ -280,6 +482,107 @@ void RegionWorkspace::setUiActivityRecorder(
     uiRecorder_ = std::move(recorder);
 }
 
+void RegionWorkspace::setReadHandlers(
+    std::function<ernc::domain::Result<void>(const QString&)> start, std::function<void()> cancel) {
+    startRead_ = std::move(start);
+    cancelRead_ = std::move(cancel);
+}
+
+void RegionWorkspace::setWriteHandlers(std::function<ernc::domain::Result<void>(const QString&, const QByteArray&)> start,
+                                     std::function<void()> cancel) {
+    startWrite_ = std::move(start);
+    cancelWrite_ = std::move(cancel);
+}
+
+void RegionWorkspace::noteReadProgress(const QString& path, const quint64 filledBytes, const quint64 plannedBytes) {
+    if (!activeReadPath_.isEmpty() && path != activeReadPath_) {
+        return;
+    }
+    const quint64 filledSlots = filledBytes / 4U;
+    const quint64 plannedSlots = plannedBytes / 4U;
+    progressBar_->setRange(0, static_cast<int>(std::min<quint64>(plannedSlots, static_cast<quint64>(INT_MAX))));
+    progressBar_->setValue(static_cast<int>(std::min<quint64>(filledSlots, static_cast<quint64>(INT_MAX))));
+    progressBar_->setVisible(true);
+    progress_ = QStringLiteral("正在读取 · %1 / %2 slots").arg(filledSlots).arg(plannedSlots);
+    progressLabel_->setText(progress_);
+}
+
+void RegionWorkspace::noteReadFinished(const bool success, const QString& path, const QByteArray& bytes,
+                                       const int errorCode) {
+    if (!activeReadPath_.isEmpty() && path != activeReadPath_) {
+        return;
+    }
+    const std::optional<ernc::domain::RegionDefinition> definition = definitionForPath(catalog_, path.toStdString());
+    if (success && definition && bytes.size() == static_cast<qsizetype>(definition->size)) {
+        imported_ = std::vector<std::uint8_t>(reinterpret_cast<const std::uint8_t*>(bytes.constData()),
+                                              reinterpret_cast<const std::uint8_t*>(bytes.constData()) + bytes.size());
+        selected_ = *definition;
+        regionPath_ = path.section('.', 0, 0) == QStringLiteral("check_data")
+            ? QStringLiteral("check_data")
+            : (path == QStringLiteral("ERNC_TF.SpecRadius") ? QStringLiteral("ERNC_TF.SpecRadius")
+                                                             : QStringLiteral("ERNC_TF"));
+        fieldPath_ = catalog_.find(path.toStdString()) != nullptr ? QString() : path;
+        preview_.reset();
+        previewBytes_.reset();
+        status_ = QStringLiteral("读取完成，可导出 BIN/TXT");
+        progress_ = QStringLiteral("读取完成 · %1 slots").arg(definition->slotCount);
+        progressBar_->setRange(0, static_cast<int>(definition->slotCount));
+        progressBar_->setValue(static_cast<int>(definition->slotCount));
+        if (specPage_ != nullptr && specPage_->isVisible() && selected_->path == "ERNC_TF.SpecRadius") {
+            specPage_->loadReadBytes(*imported_);
+        }
+        emitBytesAvailable();
+        notifyUiAction("region.read.finish", importDetailJson(*definition, {}, bytes.size()), true, ErrorCode::Unknown);
+    } else {
+        const ErrorCode error = static_cast<ErrorCode>(errorCode);
+        status_ = error == ErrorCode::OperationCancelled ? QStringLiteral("读取已取消，未发布不完整数据")
+                                                         : QStringLiteral("读取失败，未发布不完整数据");
+        progress_ = QStringLiteral("传输未完成");
+        notifyUiAction("region.read.finish", std::string{"{\"region\":\""} + escapeJson(path.toStdString()) + "\"}",
+                       false, error);
+    }
+    statusLabel_->setText(status_);
+    progressLabel_->setText(progress_);
+    setReadRunning(false);
+    activeReadPath_.clear();
+}
+
+void RegionWorkspace::noteWriteProgress(const QString& path, const quint64 verifiedBytes, const quint64 plannedBytes) {
+    if (!activeWritePath_.isEmpty() && path != activeWritePath_) {
+        return;
+    }
+    const quint64 verifiedSlots = verifiedBytes / 4U;
+    const quint64 plannedSlots = plannedBytes / 4U;
+    progressBar_->setRange(0, static_cast<int>(std::min<quint64>(plannedSlots, static_cast<quint64>(INT_MAX))));
+    progressBar_->setValue(static_cast<int>(std::min<quint64>(verifiedSlots, static_cast<quint64>(INT_MAX))));
+    progressBar_->setVisible(true);
+    progress_ = QStringLiteral("正在写入 · %1 / %2 slots").arg(verifiedSlots).arg(plannedSlots);
+    progressLabel_->setText(progress_);
+}
+
+void RegionWorkspace::noteWriteFinished(const bool success, const QString& path, const int errorCode) {
+    if (!activeWritePath_.isEmpty() && path != activeWritePath_) {
+        return;
+    }
+    if (success) {
+        status_ = QStringLiteral("写入完成（读回已验证）");
+        progress_ = QStringLiteral("写入完成");
+        notifyUiAction("region.write.finish", std::string{"{\"region\":\""} + escapeJson(path.toStdString()) + "\"}", true,
+                       ErrorCode::Unknown);
+    } else {
+        const ErrorCode error = static_cast<ErrorCode>(errorCode);
+        status_ = error == ErrorCode::OperationCancelled ? QStringLiteral("写入已取消")
+                                                         : QStringLiteral("写入失败或未完全验证");
+        progress_ = QStringLiteral("传输未完成");
+        notifyUiAction("region.write.finish", std::string{"{\"region\":\""} + escapeJson(path.toStdString()) + "\"}", false,
+                       error);
+    }
+    statusLabel_->setText(status_);
+    progressLabel_->setText(progress_);
+    setWriteRunning(false);
+    activeWritePath_.clear();
+}
+
 void RegionWorkspace::notifyUiAction(std::string_view action, std::string_view detail, bool success,
                                      ernc::domain::ErrorCode error) {
     if (uiRecorder_) {
@@ -302,13 +605,14 @@ void RegionWorkspace::emitBytesAvailable() {
 ernc::domain::Result<ernc::application::RegionWritePreview> RegionWorkspace::previewSelected() {
     const ernc::domain::RegionDefinition* region = selectedRegion();
     const std::optional<std::vector<std::uint8_t>> bytes = currentBytes();
-    if (region == nullptr || writer_ == nullptr || !bytes) {
+    if (region == nullptr || !bytes) {
         status_ = QStringLiteral("预览失败");
         statusLabel_->setText(status_);
         writeButton_->setEnabled(false);
         return ernc::domain::Result<ernc::application::RegionWritePreview>::failure(ernc::domain::ErrorCode::InvalidParameter);
     }
-    ernc::domain::Result<ernc::application::RegionWritePreview> preview = writer_->preview(*region, *bytes);
+    ernc::domain::Result<ernc::application::RegionWritePreview> preview =
+        writer_ != nullptr ? writer_->preview(*region, *bytes) : ernc::application::previewRegionTransfer(*region, *bytes);
     if (!preview.ok() || preview.tryValue() == nullptr) {
         preview_.reset();
         previewBytes_.reset();
@@ -328,13 +632,26 @@ ernc::domain::Result<ernc::application::RegionWritePreview> RegionWorkspace::pre
 ernc::domain::Result<void> RegionWorkspace::writeSelected() {
     const ernc::domain::RegionDefinition* region = selectedRegion();
     const std::optional<std::vector<std::uint8_t>> bytes = currentBytes();
-    if (region == nullptr || writer_ == nullptr || !preview_ || !previewBytes_ || !bytes || *bytes != *previewBytes_) {
+    if (region == nullptr || !preview_ || !previewBytes_ || !bytes || *bytes != *previewBytes_ || !preview_->commitPermitted) {
         status_ = QStringLiteral("写入被拒绝");
         statusLabel_->setText(status_);
         return ernc::domain::Result<void>::failure(ernc::domain::ErrorCode::InvalidParameter);
     }
-    const ernc::domain::Result<void> started = writer_->start(*region, *previewBytes_);
-    status_ = started.ok() ? QStringLiteral("写入已入队") : QStringLiteral("写入被拒绝");
+    ernc::domain::Result<void> started = ernc::domain::Result<void>::failure(ernc::domain::ErrorCode::InvalidParameter);
+    const QByteArray payload(reinterpret_cast<const char*>(previewBytes_->data()),
+                             static_cast<qsizetype>(previewBytes_->size()));
+    if (startWrite_) {
+        started = startWrite_(QString::fromStdString(region->path), payload);
+    } else if (writer_ != nullptr) {
+        started = writer_->start(*region, *previewBytes_);
+    }
+    if (started.ok()) {
+        activeWritePath_ = QString::fromStdString(region->path);
+        setWriteRunning(true);
+        status_ = QStringLiteral("正在写入 %1").arg(activeWritePath_);
+    } else {
+        status_ = QStringLiteral("写入被拒绝");
+    }
     statusLabel_->setText(status_);
     refreshProgress();
     return started;
@@ -349,6 +666,23 @@ ernc::domain::Result<void> RegionWorkspace::exportBin(const std::filesystem::pat
     return ernc::infrastructure::writeRegionBin(*region, *bytes, destination);
 }
 
+ernc::domain::Result<void> RegionWorkspace::exportTxt(const std::filesystem::path& destination) {
+    const ernc::domain::RegionDefinition* region = selectedRegion();
+    const std::optional<std::vector<std::uint8_t>> bytes = currentBytes();
+    if (region == nullptr || !bytes || bytes->size() != region->size) {
+        return ernc::domain::Result<void>::failure(ErrorCode::InvalidParameter);
+    }
+    const std::optional<std::vector<float>> values = floatsFromBytes(*bytes);
+    if (!values) {
+        return ernc::domain::Result<void>::failure(ErrorCode::InvalidParameter);
+    }
+    const bool wholeRegion = region->path == "ERNC_TF" || region->path == "check_data";
+    return ernc::infrastructure::writeRegionTxt(
+        *region, *values, destination,
+        wholeRegion ? ernc::infrastructure::RegionTxtLayout::WholeRegion
+                    : ernc::infrastructure::RegionTxtLayout::Field);
+}
+
 ernc::domain::Result<void> RegionWorkspace::exportCancelled(const ernc::application::RegionTransferRecord& record,
                                                            const std::filesystem::path&) {
     if (!record.canSaveAsCompleteBin()) {
@@ -358,13 +692,17 @@ ernc::domain::Result<void> RegionWorkspace::exportCancelled(const ernc::applicat
 }
 
 void RegionWorkspace::cancelTransfer() {
-    if (reader_ != nullptr) {
+    if (cancelRead_) {
+        cancelRead_();
+    } else if (reader_ != nullptr) {
         reader_->cancel();
     }
-    if (writer_ != nullptr) {
+    if (cancelWrite_) {
+        cancelWrite_();
+    } else if (writer_ != nullptr) {
         writer_->cancel();
     }
-    status_ = QStringLiteral("已取消");
+    status_ = (readRunning_ || writeRunning_) ? QStringLiteral("正在取消，等待当前分包结束") : QStringLiteral("已取消");
     statusLabel_->setText(status_);
     refreshProgress();
 }
@@ -405,6 +743,7 @@ void RegionWorkspace::clearImported() {
     progress_ = QStringLiteral("空闲");
     statusLabel_->setText(status_);
     progressLabel_->setText(progress_);
+    progressBar_->setVisible(false);
 }
 
 void RegionWorkspace::refreshSelection() {
@@ -482,10 +821,33 @@ void RegionWorkspace::refreshProgress() {
         const ernc::application::RegionWriteProgress progress = writer_->progress();
         const std::uint32_t total = selected_ ? selected_->slotCount : 0U;
         progress_ = QStringLiteral("已验证 %1/%2 槽").arg(progress.verifiedSlots).arg(total);
-    } else {
+    } else if (!readRunning_ && !writeRunning_) {
         progress_ = QStringLiteral("空闲");
     }
     progressLabel_->setText(progress_);
+}
+
+void RegionWorkspace::setReadRunning(const bool running) {
+    readRunning_ = running;
+    setTransferRunning(running || writeRunning_);
+}
+
+void RegionWorkspace::setWriteRunning(const bool running) {
+    writeRunning_ = running;
+    setTransferRunning(running || readRunning_);
+}
+
+void RegionWorkspace::setTransferRunning(const bool running) {
+    regionBox_->setEnabled(!running);
+    fieldBox_->setEnabled(!running);
+    readButton_->setEnabled(!running);
+    importButton_->setEnabled(!running);
+    exportButton_->setEnabled(!running);
+    cancelButton_->setEnabled(running);
+    writeButton_->setEnabled(!running && preview_.has_value() && preview_->commitPermitted);
+    if (running) {
+        progressBar_->setVisible(true);
+    }
 }
 
 }  // namespace ernc::presentation

@@ -7,6 +7,7 @@
 #include "ernc/domain/catalog.hpp"
 #include "ernc/domain/firmware_layout.hpp"
 #include "ernc/domain/runtime_store.hpp"
+#include "ernc/domain/region_catalog.hpp"
 #include "ernc/domain/types.hpp"
 
 #include <QObject>
@@ -16,9 +17,14 @@
 #include <chrono>
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace ernc::infrastructure {
 class DiagnosticLog;
+}
+namespace ernc::application {
+class RegionReader;
+class RegionWriter;
 }
 
 namespace ernc::serial {
@@ -43,6 +49,14 @@ public:
         std::vector<ernc::application::BatchWriteItem> writeItems;
         std::optional<ernc::application::CommandId> writeInflight;
         std::optional<ernc::application::WritePhase> writePhase;
+        std::string regionPath;
+        std::size_t regionFilledBytes{0};
+        std::size_t regionPlannedBytes{0};
+        bool regionFinished{false};
+        bool regionIsWrite{false};
+        bool regionSuccess{false};
+        int regionErrorCode{static_cast<int>(ernc::domain::ErrorCode::Unknown)};
+        std::vector<std::uint8_t> regionBytes;
     };
 
     Q_INVOKABLE PumpReport doPump();
@@ -51,6 +65,8 @@ public:
     DeviceRuntimeWorker(const ernc::domain::ParameterCatalog& catalog, const ernc::domain::FirmwareLayout& layout,
                         ernc::domain::ParameterRuntimeStore& store, ernc::domain::ArrayRuntimeStore& arrayStore,
                         ernc::serial::SerialTransport* transport, QObject* parent = nullptr);
+
+    ~DeviceRuntimeWorker() override;
 
     void attachDiagnosticLog(ernc::infrastructure::DiagnosticLog* log) noexcept;
 
@@ -61,6 +77,10 @@ public slots:
     quint64 sessionIdRaw() const;
     bool startBatchRead(const QString& pageId);
     bool startArrayRead(const QString& parameterId);
+    int startRegionRead(const QString& path);
+    void cancelRegionRead();
+    int startRegionWrite(const QString& path, const QByteArray& bytes);
+    void cancelRegionWrite();
     int startBatchWrite(const QString& pageId);
 
 signals:
@@ -72,6 +92,8 @@ private:
     void pumpBatchRead();
     void pumpBatchWrite(PumpReport& report);
     void finishBatchReadIfIdle(PumpReport& report);
+    void pumpRegionRead(PumpReport& report);
+    void pumpRegionWrite(PumpReport& report);
     RuntimeTime now() const noexcept;
 
     const ernc::domain::ParameterCatalog& catalog_;
@@ -81,6 +103,11 @@ private:
     ernc::serial::SerialTransport* transport_;
 
     std::unique_ptr<SerialLinkedStack> stack_;
+    std::optional<ernc::domain::RegionCatalog> regionCatalog_;
+    std::unique_ptr<ernc::application::RegionReader> regionReader_;
+    std::unique_ptr<ernc::application::RegionWriter> regionWriter_;
+    bool activeRegionIsWrite_{false};
+    std::string activeRegionPath_;
     ernc::infrastructure::DiagnosticLog* diagnosticLog_{nullptr};
 
     std::optional<ernc::application::BatchReadTicket> activeRead_;

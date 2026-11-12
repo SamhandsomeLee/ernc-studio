@@ -61,6 +61,7 @@ public:
     /// @brief 借出区域工作区。
     RegionWorkspace* regionWorkspace() const noexcept;
 
+
     /// @brief 把 UI 会话记录器接到区域工作区。
     void setUiActivityRecorder(
         std::function<void(std::string_view action, std::string_view detail, bool success,

@@ -60,7 +60,7 @@ Presentation 只把参数 ID 和用户动作交给 Application。设备当前值
 
 P7 分析组件（`PlotWorkspace`、`ErncTfPlot`、`CheckDataPlot`、`SpecRadiusPlot`、`DatasetManager`）已通过 `ernc_ui_qwt` 接入 `ernc_app`。主窗口的「视图 → 曲线分析」会打开真实分析页，支持从本地 BIN/TXT 导入 Region 字节，并经 `AnalysisRegionBridge` 解码为 `AnalysisDataset` 后更新叠加曲线和专业图。
 
-P6 的 `RegionWorkspace`、`SpecRadiusPage` 已作为分析页左侧工作区接入。当前只开放离线导入与导出，`RegionReader` 和 `RegionWriter` 仍未绑定到桌面设备控制器，因此不会从这个页面发起真实设备读取或写入。
+P6 的 `RegionWorkspace`、`SpecRadiusPage` 已作为分析页左侧工作区接入。旧版无头 BIN、整区/单字段 TXT 均可导入曲线分析并再次导出。`RegionReader` / `RegionWriter` 通过 `DeviceController` 接入：模拟器由 UI 泵推进，串口由 Device Worker 推进，UI 只接收进度和完整副本；取消、失败或断线不发布不完整文件。正式 `check_data` / `ERNC_TF` 在 manifest 中为 `pack4-sequential`，与 `docs/baseline/param` 的 `ERNCUppInit_Para` 对齐；`realReadPermitted` / `realWritePermitted` 对该证据等级开放 FC03/FC16 区域传输（行为对齐旧版 CHNB 工作台，仍非真机 Golden 已冻结）。
 
 ## 工具链
 
@@ -68,9 +68,15 @@ P6 的 `RegionWorkspace`、`SpecRadiusPage` 已作为分析页左侧工作区接
 
 本机不存在设计草案中的 `C:/msys64`。锁定根目录是 `D:/msys64/mingw64`。换机器时修改 Preset 中的根目录并重新跑环境诊断，不从 PATH 上的其他 GCC 静默回退。
 
-## 保持阻断的事项
+## 区域传输与标量阻断
 
-在取得固件或黄金报文证据之前，实现必须失败关闭，不能补默认值：
+| 路径 | 证据 | 设备 FC03/FC16 |
+|---|---|---|
+| `ERNC_TF`、`check_data` 及子字段 | `pack4-sequential` + 基线 `param.c` | 允许（读回验证后才算区域写 Verified） |
+| 标量参数（含 `Can_Msg` 等） | manifest `writable` + 命令策略 | 按字段与 `commandPolicyEnforced`；批量写仍跳过整块区域 |
+| 独立 `verified` 字段 | manifest `verified` + `writable` | 标量/区域均须 `writable` 才写 |
+
+下列事项在取得独立固件或黄金报文证据之前，实现必须失败关闭，不能补默认值：
 
 - CAN 36 个名称与 `Can_Msg[72]` 的槽位映射
 - `RNC_refresh` 在车速映射确认前的真实写入。2026-11-11 起，ES-035 瞬时命令调度闸门和 ES-095 的 `1→0` 脉冲一并冻结。当前只走普通读和普通写，不新增 `Blocked` 执行器，也不自动重复脉冲。

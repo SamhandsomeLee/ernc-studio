@@ -3,13 +3,20 @@
 #include <QWidget>
 
 #ifdef slots
+#pragma push_macro("slots")
 #undef slots
+#define ERNC_RESTORE_QT_SLOTS_MACRO
 #endif
 
 #include "ernc/application/region_reader.hpp"
 #include "ernc/application/region_writer.hpp"
 #include "ernc/application/transfer_cancellation.hpp"
 #include "ernc/domain/region_catalog.hpp"
+
+#ifdef ERNC_RESTORE_QT_SLOTS_MACRO
+#pragma pop_macro("slots")
+#undef ERNC_RESTORE_QT_SLOTS_MACRO
+#endif
 
 #include <cstdint>
 #include <filesystem>
@@ -21,6 +28,7 @@
 class QComboBox;
 class QLabel;
 class QPushButton;
+class QProgressBar;
 class QStackedWidget;
 
 namespace ernc::presentation {
@@ -65,6 +73,11 @@ public:
     /// @return 个数符合当前区域时成功。float 会收成区域字节。失败时不改已有字节。
     ernc::domain::Result<void> importTxt(const std::filesystem::path& source);
 
+    /// @brief 按旧版规则识别并导入一组 BIN/TXT，可把 ERNC_TF 实部和虚部一次送入曲线分析。
+    /// @param sources 文件列表。整区按精确长度识别；同长度子字段优先用文件名和当前选择消歧。
+    /// @return 每个文件都识别并载入时成功。失败文件不会覆盖此前已经完整导入的数据。
+    ernc::domain::Result<void> importFiles(const std::vector<std::filesystem::path>& sources);
+
     /// @brief 对当前字节做写预览，不入队。
     /// @return 有完整字节时为预览。没有字节时为 InvalidParameter。
     ernc::domain::Result<ernc::application::RegionWritePreview> previewSelected();
@@ -78,6 +91,9 @@ public:
     /// @param destination 新的 .bin 路径。不修改导入来源。
     /// @return 字节长度等于区域 size 时成功。否则为 InvalidParameter，不创建文件。
     ernc::domain::Result<void> exportBin(const std::filesystem::path& destination);
+
+    /// @brief 把当前完整字节导出成旧版 TXT。整区带三行头，子字段只有 value, 行。
+    ernc::domain::Result<void> exportTxt(const std::filesystem::path& destination);
 
     /// @brief 拒绝把取消记录导出成 BIN。
     /// @param record 不完整传输记录。canSaveAsCompleteBin 为 false。
@@ -121,6 +137,26 @@ public:
         std::function<void(std::string_view action, std::string_view detail, bool success, ernc::domain::ErrorCode error)>
             recorder);
 
+    /// @brief 绑定设备读取入口。回调由桌面壳提供，工作区不依赖串口或 Worker 实现。
+    void setReadHandlers(std::function<ernc::domain::Result<void>(const QString&)> start,
+                         std::function<void()> cancel);
+
+    /// @brief 接收设备门面发来的大区域读取进度。
+    void noteReadProgress(const QString& path, quint64 filledBytes, quint64 plannedBytes);
+
+    /// @brief 接收设备门面发来的完整结果。失败或取消不会发布部分文件。
+    void noteReadFinished(bool success, const QString& path, const QByteArray& bytes, int errorCode);
+
+    /// @brief 绑定设备写入入口（preview 仍可在本地用 `previewRegionTransfer`）。
+    void setWriteHandlers(std::function<ernc::domain::Result<void>(const QString& path, const QByteArray& bytes)> start,
+                          std::function<void()> cancel);
+
+    /// @brief 接收设备门面发来的大区域写入进度。
+    void noteWriteProgress(const QString& path, quint64 verifiedBytes, quint64 plannedBytes);
+
+    /// @brief 接收设备门面发来的区域写结束。失败或取消不假装 Verified。
+    void noteWriteFinished(bool success, const QString& path, int errorCode);
+
 private:
     void notifyUiAction(std::string_view action, std::string_view detail, bool success, ernc::domain::ErrorCode error);
 
@@ -151,6 +187,11 @@ private:
     /// @brief 按读或写的进度刷新文字。
     void refreshProgress();
 
+    /// @brief 切换大区域传输期间的控件可用性。
+    void setReadRunning(bool running);
+    void setWriteRunning(bool running);
+    void setTransferRunning(bool running);
+
     /// 区域目录。本工作区不拥有。
     const ernc::domain::RegionCatalog& catalog_;
 
@@ -159,6 +200,20 @@ private:
 
     /// 区域写。本工作区不拥有。
     ernc::application::RegionWriter* writer_;
+
+    /// 设备读开始/取消回调。串口线程归属由调用方保证。
+    std::function<ernc::domain::Result<void>(const QString&)> startRead_;
+    std::function<void()> cancelRead_;
+
+    /// 设备写开始/取消回调。
+    std::function<ernc::domain::Result<void>(const QString&, const QByteArray&)> startWrite_;
+    std::function<void()> cancelWrite_;
+
+    /// 当前大区域写路径。
+    QString activeWritePath_;
+
+    /// 大区域写进行中。
+    bool writeRunning_{false};
 
     /// 当前区域路径。
     QString regionPath_;
@@ -196,6 +251,14 @@ private:
     /// 进度标签。
     QLabel* progressLabel_;
 
+    /// 西门子式确定进度条：以 4-byte slot 为单位显示已完成/总量。
+    QProgressBar* progressBar_;
+
+    QPushButton* readButton_;
+    QPushButton* importButton_;
+    QPushButton* exportButton_;
+    QPushButton* cancelButton_;
+
     /// 写入按钮。没有预览时不可用。
     QPushButton* writeButton_;
 
@@ -204,6 +267,12 @@ private:
 
     /// 谱半径页。由 Qt 父子关系拥有。不是谱半径时隐藏。
     SpecRadiusPage* specPage_;
+
+    /// 为 true 时锁住范围和文件动作，直到完成、失败或取消。
+    bool readRunning_{false};
+
+    /// 本次设备读取的完整路径，用于拒绝过期信号。
+    QString activeReadPath_;
 };
 
 }  // namespace ernc::presentation

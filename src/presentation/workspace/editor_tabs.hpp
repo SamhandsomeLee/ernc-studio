@@ -44,8 +44,8 @@ class ParameterTableModel;
 
 namespace ernc::presentation {
 
-/// Function View、Parameter View 和离线曲线分析页。参数页读取同一份参数 id。
-/// 切换页签不修改选择。曲线分析只导入本地 BIN/TXT，不连接 Region 设备读写端口。
+/// Function View、Parameter View 和曲线分析页。参数页读取同一份参数 id。
+/// 切换页签不修改选择。曲线分析可导入旧版 BIN/TXT，并通过设备门面读取已核验 Region。
 class EditorTabs final : public QTabWidget {
 public:
     /// @brief 创建参数工作页，并在区域目录可用时创建离线曲线分析页。初始没有选中的页面或参数。
@@ -54,7 +54,7 @@ public:
     /// @param layout 固件布局，只借用。空指针时 Set 列确认不会暂存。调用方保证它比本控件活得久。
     /// @param regionCatalog 区域目录，只借用。空指针时不创建曲线分析页。调用方保证它比本控件活得久。
     /// @param parent 父控件。非空时由 Qt 父子关系拥有本控件。必须在 UI 主线程创建。
-    /// @note 启动时停在 Function View。曲线分析页不绑定 RegionReader 或 RegionWriter。
+    /// @note 启动时停在 Function View。设备门面稍后由 setDeviceController 绑定；Region 写入仍保持阻断。
     /// 预置可以切换页签，窗口状态不单独保存这个页签。
     explicit EditorTabs(const ernc::domain::ParameterCatalog* catalog, ernc::domain::ParameterRuntimeStore* store,
                         const ernc::domain::FirmwareLayout* layout,

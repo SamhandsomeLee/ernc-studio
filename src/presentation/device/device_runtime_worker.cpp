@@ -3,6 +3,18 @@
 #include "batch_operation_tags.hpp"
 #include "write_verification.hpp"
 
+#ifdef slots
+#pragma push_macro("slots")
+#undef slots
+#define ERNC_RESTORE_QT_SLOTS_MACRO
+#endif
+#include "ernc/application/region_reader.hpp"
+#include "ernc/application/region_writer.hpp"
+#ifdef ERNC_RESTORE_QT_SLOTS_MACRO
+#pragma pop_macro("slots")
+#undef ERNC_RESTORE_QT_SLOTS_MACRO
+#endif
+
 #include <sstream>
 
 namespace ernc::presentation {
@@ -22,6 +34,37 @@ std::string jsonQuote(const std::string& text) {
     return out;
 }
 
+std::optional<ernc::domain::RegionDefinition> regionDefinitionFor(
+    const ernc::domain::RegionCatalog& catalog, const std::string_view path) {
+    if (const ernc::domain::RegionDefinition* region = catalog.find(path)) {
+        return *region;
+    }
+    for (const std::string_view root : {std::string_view{"ERNC_TF"}, std::string_view{"check_data"}}) {
+        const ernc::domain::RegionDefinition* parent = catalog.find(root);
+        if (parent == nullptr) {
+            continue;
+        }
+        for (const ernc::domain::SubRegion& child : parent->subregions) {
+            if (child.path != path) {
+                continue;
+            }
+            ernc::domain::RegionDefinition definition;
+            definition.path = child.path;
+            definition.slot = child.slot;
+            definition.slotCount = child.slotCount;
+            definition.size = child.size;
+            definition.offset = child.offset;
+            definition.typeName = child.typeName;
+            definition.scalarType = child.scalarType;
+            definition.shape = child.shape;
+            definition.evidence = child.evidence;
+            definition.writable = child.writable;
+            return definition;
+        }
+    }
+    return std::nullopt;
+}
+
 }  // namespace
 
 DeviceRuntimeWorker::DeviceRuntimeWorker(const ernc::domain::ParameterCatalog& catalog,
@@ -29,7 +72,14 @@ DeviceRuntimeWorker::DeviceRuntimeWorker(const ernc::domain::ParameterCatalog& c
                                          ernc::domain::ParameterRuntimeStore& store,
                                          ernc::domain::ArrayRuntimeStore& arrayStore,
                                          ernc::serial::SerialTransport* transport, QObject* parent)
-    : QObject(parent), catalog_{catalog}, layout_{layout}, store_{store}, arrayStore_{arrayStore}, transport_{transport} {}
+    : QObject(parent), catalog_{catalog}, layout_{layout}, store_{store}, arrayStore_{arrayStore}, transport_{transport} {
+    const ernc::domain::Result<ernc::domain::RegionCatalog> regions = ernc::domain::RegionCatalog::load(layout_);
+    if (regions.ok() && regions.tryValue() != nullptr) {
+        regionCatalog_ = regions.value();
+    }
+}
+
+DeviceRuntimeWorker::~DeviceRuntimeWorker() = default;
 
 void DeviceRuntimeWorker::attachDiagnosticLog(ernc::infrastructure::DiagnosticLog* log) noexcept {
     diagnosticLog_ = log;
@@ -49,15 +99,89 @@ bool DeviceRuntimeWorker::doConnect() {
         }
     }
     const ernc::domain::Result<ernc::domain::SessionId> connected = stack_->connectLink();
+    if (connected.ok() && connected.tryValue() != nullptr) {
+        regionReader_ = std::make_unique<ernc::application::RegionReader>(stack_->session(), stack_->scheduler());
+        regionWriter_ = std::make_unique<ernc::application::RegionWriter>(stack_->session(), stack_->scheduler());
+    }
     return connected.ok() && connected.tryValue() != nullptr;
 }
 
 void DeviceRuntimeWorker::doDisconnect() {
+    regionReader_.reset();
+    regionWriter_.reset();
+    activeRegionPath_.clear();
+    activeRegionIsWrite_ = false;
     if (stack_ != nullptr) {
         (void)stack_->disconnectLink();
     }
     activeRead_.reset();
     wasWriteBusy_ = false;
+}
+
+int DeviceRuntimeWorker::startRegionRead(const QString& path) {
+    using ernc::domain::ErrorCode;
+    if (stack_ == nullptr || !stack_->connected()) {
+        return static_cast<int>(ErrorCode::DeviceDisconnected);
+    }
+    if (regionReader_ == nullptr || !regionCatalog_ || !activeRegionPath_.empty() || activeRead_.has_value()
+        || stack_->batchReader().busy() || stack_->batchWriter().busy()) {
+        return static_cast<int>(ErrorCode::InvalidParameter);
+    }
+    const std::optional<ernc::domain::RegionDefinition> region =
+        regionDefinitionFor(*regionCatalog_, path.toStdString());
+    if (!region) {
+        return static_cast<int>(ErrorCode::InvalidParameter);
+    }
+    const ernc::domain::Result<void> started = regionReader_->start(*region);
+    if (!started.ok()) {
+        return static_cast<int>(started.tryError() != nullptr ? *started.tryError() : ErrorCode::Unknown);
+    }
+    activeRegionPath_ = region->path;
+    activeRegionIsWrite_ = false;
+    return 0;
+}
+
+void DeviceRuntimeWorker::cancelRegionRead() {
+    if (activeRegionIsWrite_) {
+        return;
+    }
+    if (regionReader_ != nullptr) {
+        regionReader_->cancel();
+    }
+}
+
+int DeviceRuntimeWorker::startRegionWrite(const QString& path, const QByteArray& bytes) {
+    using ernc::domain::ErrorCode;
+    if (stack_ == nullptr || !stack_->connected()) {
+        return static_cast<int>(ErrorCode::DeviceDisconnected);
+    }
+    if (regionWriter_ == nullptr || !regionCatalog_ || !activeRegionPath_.empty() || activeRead_.has_value()
+        || stack_->batchReader().busy() || stack_->batchWriter().busy()) {
+        return static_cast<int>(ErrorCode::InvalidParameter);
+    }
+    const std::optional<ernc::domain::RegionDefinition> region =
+        regionDefinitionFor(*regionCatalog_, path.toStdString());
+    if (!region || bytes.size() != static_cast<qsizetype>(region->size)) {
+        return static_cast<int>(ErrorCode::InvalidParameter);
+    }
+    const std::span<const std::uint8_t> payload(reinterpret_cast<const std::uint8_t*>(bytes.constData()),
+                                                static_cast<std::size_t>(bytes.size()));
+    const ernc::domain::Result<void> started = regionWriter_->start(*region, payload);
+    if (!started.ok()) {
+        return static_cast<int>(started.tryError() != nullptr ? *started.tryError() : ErrorCode::Unknown);
+    }
+    activeRegionPath_ = region->path;
+    activeRegionIsWrite_ = true;
+    return 0;
+}
+
+void DeviceRuntimeWorker::cancelRegionWrite() {
+    if (!activeRegionIsWrite_) {
+        return;
+    }
+    if (regionWriter_ != nullptr) {
+        regionWriter_->cancel();
+    }
 }
 
 bool DeviceRuntimeWorker::isConnected() const {
@@ -158,6 +282,8 @@ DeviceRuntimeWorker::PumpReport DeviceRuntimeWorker::doPump() {
     stack_->scheduler().pump();
     pumpBatchRead();
     pumpBatchWrite(report);
+    pumpRegionRead(report);
+    pumpRegionWrite(report);
     finishBatchReadIfIdle(report);
     report.writerBusy = stack_->batchWriter().busy();
     report.writeItems = stack_->batchWriter().items();
@@ -166,6 +292,73 @@ DeviceRuntimeWorker::PumpReport DeviceRuntimeWorker::doPump() {
         report.writePhase = stack_->scheduler().phaseOf(*report.writeInflight);
     }
     return report;
+}
+
+void DeviceRuntimeWorker::pumpRegionRead(PumpReport& report) {
+    if (activeRegionIsWrite_ || regionReader_ == nullptr || activeRegionPath_.empty() || stack_ == nullptr) {
+        return;
+    }
+    if (regionReader_->busy()) {
+        if (const std::optional<ernc::application::CommandId> command = regionReader_->inFlight()) {
+            if (std::optional<ernc::application::CommandOutcome> outcome = stack_->scheduler().takeResult(*command)) {
+                regionReader_->apply(*outcome);
+            }
+        }
+    }
+    const ernc::application::RegionReadProgress progress = regionReader_->progress();
+    report.regionPath = activeRegionPath_;
+    report.regionFilledBytes = progress.filledBytes;
+    report.regionPlannedBytes = progress.plannedBytes;
+    if (regionReader_->busy()) {
+        return;
+    }
+    report.regionFinished = true;
+    report.regionIsWrite = false;
+    const ernc::application::RegionSnapshot* snapshot = regionReader_->snapshot();
+    if (snapshot != nullptr && snapshot->complete) {
+        report.regionSuccess = true;
+        report.regionBytes = snapshot->bytes;
+    } else {
+        report.regionSuccess = false;
+        report.regionErrorCode = static_cast<int>(progress.error.value_or(ernc::domain::ErrorCode::Unknown));
+    }
+    activeRegionPath_.clear();
+}
+
+void DeviceRuntimeWorker::pumpRegionWrite(PumpReport& report) {
+    if (regionWriter_ == nullptr || activeRegionPath_.empty() || !activeRegionIsWrite_ || stack_ == nullptr) {
+        return;
+    }
+    if (regionWriter_->busy()) {
+        if (const std::optional<ernc::application::CommandId> command = regionWriter_->inFlight()) {
+            if (std::optional<ernc::application::CommandOutcome> outcome = stack_->scheduler().takeResult(*command)) {
+                regionWriter_->apply(*outcome);
+            }
+        }
+    }
+    const ernc::application::RegionWriteProgress progress = regionWriter_->progress();
+    report.regionPath = activeRegionPath_;
+    report.regionFilledBytes = progress.verifiedBytes;
+    if (regionCatalog_) {
+        if (const std::optional<ernc::domain::RegionDefinition> region =
+                regionDefinitionFor(*regionCatalog_, activeRegionPath_)) {
+            report.regionPlannedBytes = region->size;
+        }
+    }
+    report.regionIsWrite = true;
+    if (regionWriter_->busy()) {
+        return;
+    }
+    report.regionFinished = true;
+    const ernc::application::RegionWriteSnapshot* snapshot = regionWriter_->snapshot();
+  if (snapshot != nullptr && snapshot->verified) {
+        report.regionSuccess = true;
+    } else {
+        report.regionSuccess = false;
+        report.regionErrorCode = static_cast<int>(progress.error.value_or(ernc::domain::ErrorCode::Unknown));
+    }
+    activeRegionPath_.clear();
+    activeRegionIsWrite_ = false;
 }
 
 void DeviceRuntimeWorker::pumpBatchRead() {

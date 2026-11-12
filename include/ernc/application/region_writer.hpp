@@ -58,7 +58,7 @@ struct RegionWritePreview {
     /// 按发送顺序排列的包。
     std::vector<RegionWriteChunk> chunks;
 
-    /// 证据等级为 Verified 且 writable 为 true 时为 true。这不是已经发出的 FC16。
+    /// `realWritePermitted` 为 true 时为 true（Pack4Sequential 基线区域为 true）。这不是已经发出的 FC16。
     bool commitPermitted{false};
 };
 
@@ -97,6 +97,13 @@ struct RegionWriteSnapshot {
     /// 为 true 时每一包都读回对上。ACK 本身不会让它变成 true。
     bool verified{false};
 };
+
+/// @brief 按区域定义算写预览，不访问会话。供 UI 预览与 RegionWriter::preview 共用。
+/// @param region 区域几何，只借用。
+/// @param bytes 拟写入的完整字节，只借用。长度必须等于 region.size。
+/// @return 分包计划与 commitPermitted。不入队。
+ernc::domain::Result<RegionWritePreview> previewRegionTransfer(const ernc::domain::RegionDefinition& region,
+                                                                std::span<const std::uint8_t> bytes);
 
 /// @brief 按写计划把一块区域写入设备，并等每一包读回。
 ///

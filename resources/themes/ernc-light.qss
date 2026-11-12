@@ -42,6 +42,29 @@ QLabel#erncDeviceStatus[connected="true"] { color: #167A49; }
 QWidget#erncWorkArea, QWidget#erncParameterView, QWidget#erncFunctionView,
 QWidget#erncCurveAnalysis, QWidget#erncRegionWorkspace { background: #FFFFFF; }
 QWidget#erncCurveAnalysis QSplitter::handle { background: #CFD6DB; width: 1px; }
+QWidget#erncRegionWorkspace QGroupBox {
+    background: #F7F8F9;
+    border: 1px solid #CFD6DB;
+    border-radius: 2px;
+    margin-top: 9px;
+    padding-top: 7px;
+}
+QWidget#erncRegionWorkspace QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 8px;
+    padding: 0 4px;
+    color: #202B33;
+    font-weight: 600;
+}
+QProgressBar#erncRegionReadProgress {
+    background: #E7EBEE;
+    color: #202B33;
+    border: 1px solid #B9C3C9;
+    border-radius: 1px;
+    min-height: 18px;
+    text-align: center;
+}
+QProgressBar#erncRegionReadProgress::chunk { background: #007D88; }
 QLabel#erncEditorContext { background: #E7EBEE; color: #202B33; padding: 6px 10px; font-weight: 600; }
 QLabel#erncFunctionSection { background: #E7EBEE; color: #202B33; padding: 4px 8px; font-weight: 600; }
 QLabel#erncRncRead { background: #F2F4F5; padding: 2px 5px; }

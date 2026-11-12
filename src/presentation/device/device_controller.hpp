@@ -8,13 +8,20 @@
 #include "ernc/domain/catalog.hpp"
 #include "ernc/domain/firmware_layout.hpp"
 #include "ernc/domain/runtime_store.hpp"
+#include "ernc/domain/region_catalog.hpp"
 
 namespace ernc::domain {
 class ArrayRuntimeStore;
 }
+namespace ernc::application {
+class RegionReader;
+class RegionWriter;
+struct RegionWritePreview;
+}
 #include "ernc/domain/types.hpp"
 
 #include <QObject>
+#include <QByteArray>
 #include <QString>
 #include <QTimer>
 
@@ -110,6 +117,23 @@ public:
 
     bool writeBusy() const noexcept;
 
+    /// @brief 开始读取一块已核验的大区域。串口执行留在 Worker 线程，模拟器执行留在 UI 泵线程。
+    /// @param path ERNC_TF、check_data、SpecRadius 或它们的直接子字段。
+    /// @return 入队成功不代表读完；正式布局证据不足时返回 InvalidParameter，且不会发出 FC03。
+    ernc::domain::Result<void> startRegionRead(const QString& path);
+
+    /// @brief 请求取消当前区域读。已经到达的完整分包保留，但不会发布成完整快照。
+    void cancelRegionRead();
+
+    /// @brief 计算区域写预览，不访问设备。字节长度须等于区域 size。
+    ernc::domain::Result<ernc::application::RegionWritePreview> previewRegionWrite(const QString& path,
+                                                                                   const QByteArray& bytes);
+
+    /// @brief 在已有预览且 commitPermitted 时开始 FC16 分包写（读回验证）。
+    ernc::domain::Result<void> startRegionWrite(const QString& path, const QByteArray& bytes);
+
+    void cancelRegionWrite();
+
 signals:
     void connectionChanged(bool connected, ernc::domain::SessionId sessionId);
     void parametersUpdated(ernc::domain::SessionId sessionId, const QStringList& parameterIds);
@@ -119,6 +143,12 @@ signals:
     /// @param failed 失败条目数，不含计划排除项。
     void writeBatchFinished(int acked, int failed);
     void canMsgUpdated(bool success);
+    /// @brief 大区域读进度。字节数总是 4 的倍数，在 UI 线程发出。
+    void regionReadProgress(QString path, quint64 filledBytes, quint64 plannedBytes);
+    /// @brief 大区域读结束。success 为真时 bytes 是完整快照；失败或取消时 bytes 为空。
+    void regionReadFinished(bool success, QString path, QByteArray bytes, int errorCode);
+    void regionWriteProgress(QString path, quint64 verifiedBytes, quint64 plannedBytes);
+    void regionWriteFinished(bool success, QString path, int errorCode);
     void operationLogRefreshRequested();
 
 private:
@@ -143,6 +173,10 @@ private:
     void finishBatchReadIfIdleSimulator();
     void finishCanMsgReadIfIdleSimulator();
     void pumpArrayIoSimulator();
+    void pumpRegionReadSimulator();
+    void finishRegionReadSimulator();
+    void pumpRegionWriteSimulator();
+    void finishRegionWriteSimulator();
 
     void startCanMsgSimulationPulse();
     void stopCanMsgSimulationPulse();
@@ -157,6 +191,11 @@ private:
 
     LinkKind linkKind_{LinkKind::None};
     ernc::application::SimulatorDeviceStack stack_;
+    std::optional<ernc::domain::RegionCatalog> regionCatalog_;
+    std::unique_ptr<ernc::application::RegionReader> simulatorRegionReader_;
+    std::unique_ptr<ernc::application::RegionWriter> simulatorRegionWriter_;
+    std::string activeRegionPath_;
+    bool activeRegionIsWrite_{false};
     UiRecorder uiRecorder_;
     ernc::infrastructure::DiagnosticLog* diagnosticLog_{nullptr};
 

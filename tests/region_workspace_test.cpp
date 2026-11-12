@@ -184,11 +184,11 @@ bool importDoesNotWrite(const char* manifestPath) {
     return true;
 }
 
-/// @brief 预览之后才能写入，正式区域仍然不入队。
+/// @brief 预览之后才能写入，基线区域写入会入队。
 /// @param manifestPath 正式 manifest。
-/// @return 预览前写入被拒绝，预览后写入被拒绝且提交数仍为 0 时为 true。
-bool previewThenWriteDoesNotEnqueue(const char* manifestPath) {
-    constexpr const char* name = "preview_then_write_does_not_enqueue";
+/// @return 预览前写入被拒绝，预览后 start 成功且提交数大于 0 时为 true。
+bool previewThenWriteEnqueues(const char* manifestPath) {
+    constexpr const char* name = "preview_then_write_enqueues";
     const Result<RegionCatalog> catalog = openCatalog(manifestPath, name);
     if (!catalog.ok()) {
         return false;
@@ -222,9 +222,52 @@ bool previewThenWriteDoesNotEnqueue(const char* manifestPath) {
     }
     const auto preview = workspace.previewSelected();
     const Result<void> started = workspace.writeSelected();
-    if (!preview.ok() || preview.tryValue() == nullptr || preview.value().commitPermitted || !workspace.writeActionEnabled() || started.ok()
-        || started.tryError() == nullptr || *started.tryError() != ErrorCode::InvalidParameter || transport.submittedCount() != 0U
-        || workspace.progressText() != QStringLiteral("空闲")) {
+    if (!preview.ok() || preview.tryValue() == nullptr || !preview.value().commitPermitted || !workspace.writeActionEnabled() || !started.ok()
+        || transport.submittedCount() == 0U) {
+        return fail(name);
+    }
+    return true;
+}
+
+/// @brief 旧版实部/虚部 BIN 可多选，并按文件名消除同尺寸字段歧义。
+/// @param manifestPath 正式 manifest。
+/// @return 两个字段都按各自完整路径送到曲线回调时为 true。
+bool legacyTfPairImportsByFileName(const char* manifestPath) {
+    constexpr const char* name = "legacy_tf_pair_imports_by_file_name";
+    const Result<RegionCatalog> catalog = openCatalog(manifestPath, name);
+    if (!catalog.ok()) {
+        return false;
+    }
+    TempDir temp;
+    const std::filesystem::path real = temp.dir / "ERNC_TF_fSecPathTransR_20261112.bin";
+    const std::filesystem::path imag = temp.dir / "ERNC_TF_fSecPathTransI_20261112.bin";
+    {
+        std::ofstream realOut(real, std::ios::binary | std::ios::trunc);
+        std::ofstream imagOut(imag, std::ios::binary | std::ios::trunc);
+        const std::vector<char> bytes(17280, 0);
+        realOut.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
+        imagOut.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
+        if (!realOut || !imagOut) {
+            return fail(name);
+        }
+    }
+    SlaveImage image{std::vector<std::uint8_t>(4U, 0)};
+    RecordingTransport transport{image};
+    DeviceSession session{transport};
+    CommandScheduler scheduler{session, transport};
+    RegionReader reader{session, scheduler};
+    RegionWriter writer{session, scheduler};
+    RegionWorkspace workspace(catalog.value(), &reader, &writer);
+    std::vector<std::string> paths;
+    workspace.setBytesAvailableHandler(
+        [&paths](const ernc::domain::RegionDefinition& region, std::span<const std::uint8_t> bytes) {
+            if (bytes.size() == region.size) {
+                paths.push_back(region.path);
+            }
+        });
+    const Result<void> imported = workspace.importFiles({real, imag});
+    if (!imported.ok() || paths.size() != 2U || paths[0] != "ERNC_TF.fSecPathTransR"
+        || paths[1] != "ERNC_TF.fSecPathTransI" || transport.submittedCount() != 0U) {
         return fail(name);
     }
     return true;
@@ -273,8 +316,11 @@ bool runCase(std::string_view name, const char* manifestPath) {
     if (name == "import_does_not_write") {
         return importDoesNotWrite(manifestPath);
     }
-    if (name == "preview_then_write_does_not_enqueue") {
-        return previewThenWriteDoesNotEnqueue(manifestPath);
+    if (name == "preview_then_write_enqueues") {
+        return previewThenWriteEnqueues(manifestPath);
+    }
+    if (name == "legacy_tf_pair_imports_by_file_name") {
+        return legacyTfPairImportsByFileName(manifestPath);
     }
     if (name == "cancelled_record_is_not_exported") {
         return cancelledRecordIsNotExported();

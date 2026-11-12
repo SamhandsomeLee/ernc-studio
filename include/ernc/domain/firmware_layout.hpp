@@ -29,12 +29,12 @@ enum class LayoutError {
     InvalidDocument
 };
 
-/// 字段几何的证据等级。它不是写入许可。
+/// 字段几何的证据等级。它不是写入许可；区域读写在 `realReadPermitted` / `realWritePermitted` 中解释。
 enum class LayoutEvidence {
-    /// manifest 的 status 原文是 pack4-sequential。几何可以读取，不能当成已核验的真实写入许可。
+    /// manifest 的 status 原文是 pack4-sequential；与 `docs/baseline/param` 结构体布局对齐，授权旧版式区域 FC03/FC16。
     Pack4Sequential,
 
-    /// manifest 的 status 原文是 verified。
+    /// manifest 的 status 原文是 verified；独立复核后的几何。
     Verified
 };
 

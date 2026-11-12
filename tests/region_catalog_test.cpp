@@ -44,7 +44,7 @@ std::string manifest(unsigned totalSlots, std::string_view fields) {
     return text;
 }
 
-/// @brief 子字段的几何是否和 locate() 相同，并且当前不允许真实读写。
+/// @brief 子字段的几何是否和 locate() 相同，并且基线 pack4 允许区域读写。
 /// @param layout 正式布局。
 /// @param child 目录中的子字段，只在本次调用期间借用。
 /// @param name 用例名。
@@ -58,13 +58,13 @@ bool childMatchesLayout(const FirmwareLayout& layout, const SubRegion& child, co
     if (field.slot != child.slot || field.slotCount != child.slotCount || field.size != child.size || field.offset != child.offset
         || field.shape != child.shape || field.typeName != child.typeName || field.evidence != child.evidence
         || field.writable != child.writable || field.evidence != LayoutEvidence::Pack4Sequential || child.writable
-        || ernc::domain::realReadPermitted(child.evidence) || ernc::domain::realWritePermitted(child.evidence, child.writable)) {
+        || !ernc::domain::realReadPermitted(child.evidence) || !ernc::domain::realWritePermitted(child.evidence, child.writable)) {
         return fail(name);
     }
     return true;
 }
 
-/// @brief 正式布局里的三块区域与 locate() 一致，真实读写关闭。
+/// @brief 正式布局里的三块区域与 locate() 一致，基线几何允许区域读写。
 /// @param manifestPath 正式 manifest 路径，只在本次调用期间借用。
 /// @return 子字段数量、顺序、维度和覆盖关系都符合这份布局时为 true。
 bool manifestRegionsMatchLayout(const char* manifestPath) {
@@ -94,8 +94,8 @@ bool manifestRegionsMatchLayout(const char* manifestPath) {
     }
     const LayoutResolve parent = layout.locate(transfer->path);
     if (!parent.ok() || parent.field().slot != transfer->slot || parent.field().slotCount != transfer->slotCount
-        || parent.field().size != transfer->size || ernc::domain::realReadPermitted(transfer->evidence)
-        || ernc::domain::realWritePermitted(transfer->evidence, transfer->writable)) {
+        || parent.field().size != transfer->size || !ernc::domain::realReadPermitted(transfer->evidence)
+        || !ernc::domain::realWritePermitted(transfer->evidence, transfer->writable)) {
         return fail(name);
     }
     const SubRegion& first = transfer->subregions.front();
@@ -175,7 +175,7 @@ bool verifiedWriteFollowsWritable() {
         return fail(name);
     }
     if (!ernc::domain::realReadPermitted(transfer->evidence) || !ernc::domain::realWritePermitted(transfer->evidence, transfer->writable)
-        || !ernc::domain::realReadPermitted(check->evidence) || ernc::domain::realWritePermitted(check->evidence, check->writable)
+        || !ernc::domain::realReadPermitted(check->evidence) || !ernc::domain::realWritePermitted(check->evidence, check->writable)
         || !ernc::domain::realReadPermitted(radius->evidence) || !ernc::domain::realWritePermitted(radius->evidence, radius->writable)
         || check->subregions[0].shape != std::vector<std::uint32_t>{2}) {
         return fail(name);

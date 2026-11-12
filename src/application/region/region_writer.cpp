@@ -35,15 +35,49 @@ bool sizeMatches(const ernc::domain::RegionDefinition& region) noexcept {
     return region.size == region.slotCount * 4U;
 }
 
+struct WritePlanChunk {
+    std::uint16_t firstSlot{0};
+    std::uint16_t slotCount{0};
+};
+
+ernc::domain::Result<void> planRegionWriteChunks(const ernc::domain::RegionDefinition& region,
+                                                 std::span<const std::uint8_t> bytes, std::vector<WritePlanChunk>& chunks) {
+    chunks.clear();
+    if (!sizeMatches(region) || bytes.size() != region.size) {
+        return ernc::domain::Result<void>::failure(ernc::domain::ErrorCode::InvalidParameter);
+    }
+    const ernc::domain::Result<std::vector<ernc::domain::SlotChunk>> planned =
+        ernc::domain::planSlotChunks(region.slot, region.slotCount, ernc::domain::TransferDirection::Write);
+    if (!planned.ok()) {
+        return ernc::domain::Result<void>::failure(codeOf(planned));
+    }
+    const std::vector<ernc::domain::SlotChunk>* slots = planned.tryValue();
+    if (slots == nullptr) {
+        return ernc::domain::Result<void>::failure(ernc::domain::ErrorCode::Unknown);
+    }
+    for (const ernc::domain::SlotChunk& slot : *slots) {
+        if (slot.firstSlot < region.slot || slot.firstSlot > std::numeric_limits<std::uint16_t>::max() || slot.slotCount == 0
+            || slot.slotCount > ernc::domain::kMaxWriteChunkSlots) {
+            return ernc::domain::Result<void>::failure(ernc::domain::ErrorCode::InvalidParameter);
+        }
+        const std::uint32_t end = slot.firstSlot + slot.slotCount;
+        if (end < slot.firstSlot || end > region.slot + region.slotCount) {
+            return ernc::domain::Result<void>::failure(ernc::domain::ErrorCode::InvalidParameter);
+        }
+        chunks.push_back(WritePlanChunk{static_cast<std::uint16_t>(slot.firstSlot), slot.slotCount});
+    }
+    return ernc::domain::Result<void>::success();
+}
+
 }  // namespace
 
 RegionWriter::RegionWriter(DeviceSession& session, CommandScheduler& scheduler)
     : session_{session}, scheduler_{scheduler} {}
 
-ernc::domain::Result<RegionWritePreview> RegionWriter::preview(const ernc::domain::RegionDefinition& region,
-                                                               std::span<const std::uint8_t> bytes) const {
-    std::vector<PlannedChunk> chunks;
-    const ernc::domain::Result<void> planned = plan(region, bytes, chunks);
+ernc::domain::Result<RegionWritePreview> previewRegionTransfer(const ernc::domain::RegionDefinition& region,
+                                                               std::span<const std::uint8_t> bytes) {
+    std::vector<WritePlanChunk> chunks;
+    const ernc::domain::Result<void> planned = planRegionWriteChunks(region, bytes, chunks);
     if (!planned.ok()) {
         return ernc::domain::Result<RegionWritePreview>::failure(codeOf(planned));
     }
@@ -54,10 +88,15 @@ ernc::domain::Result<RegionWritePreview> RegionWriter::preview(const ernc::domai
     preview.size = region.size;
     preview.commitPermitted = ernc::domain::realWritePermitted(region.evidence, region.writable);
     preview.chunks.reserve(chunks.size());
-    for (const PlannedChunk& chunk : chunks) {
+    for (const WritePlanChunk& chunk : chunks) {
         preview.chunks.push_back(RegionWriteChunk{chunk.firstSlot, chunk.slotCount});
     }
     return ernc::domain::Result<RegionWritePreview>::success(std::move(preview));
+}
+
+ernc::domain::Result<RegionWritePreview> RegionWriter::preview(const ernc::domain::RegionDefinition& region,
+                                                               std::span<const std::uint8_t> bytes) const {
+    return previewRegionTransfer(region, bytes);
 }
 
 ernc::domain::Result<void> RegionWriter::start(const ernc::domain::RegionDefinition& region, std::span<const std::uint8_t> bytes) {
@@ -174,29 +213,15 @@ const RegionWriteSnapshot* RegionWriter::snapshot() const noexcept {
 
 ernc::domain::Result<void> RegionWriter::plan(const ernc::domain::RegionDefinition& region, std::span<const std::uint8_t> bytes,
                                               std::vector<PlannedChunk>& chunks) const {
+    std::vector<WritePlanChunk> planned;
+    const ernc::domain::Result<void> built = planRegionWriteChunks(region, bytes, planned);
+    if (!built.ok()) {
+        return built;
+    }
     chunks.clear();
-    if (!sizeMatches(region) || bytes.size() != region.size) {
-        return ernc::domain::Result<void>::failure(ernc::domain::ErrorCode::InvalidParameter);
-    }
-    const ernc::domain::Result<std::vector<ernc::domain::SlotChunk>> planned =
-        ernc::domain::planSlotChunks(region.slot, region.slotCount, ernc::domain::TransferDirection::Write);
-    if (!planned.ok()) {
-        return ernc::domain::Result<void>::failure(codeOf(planned));
-    }
-    const std::vector<ernc::domain::SlotChunk>* slots = planned.tryValue();
-    if (slots == nullptr) {
-        return ernc::domain::Result<void>::failure(ernc::domain::ErrorCode::Unknown);
-    }
-    for (const ernc::domain::SlotChunk& slot : *slots) {
-        if (slot.firstSlot < region.slot || slot.firstSlot > std::numeric_limits<std::uint16_t>::max() || slot.slotCount == 0
-            || slot.slotCount > ernc::domain::kMaxWriteChunkSlots) {
-            return ernc::domain::Result<void>::failure(ernc::domain::ErrorCode::InvalidParameter);
-        }
-        const std::uint32_t end = slot.firstSlot + slot.slotCount;
-        if (end < slot.firstSlot || end > region.slot + region.slotCount) {
-            return ernc::domain::Result<void>::failure(ernc::domain::ErrorCode::InvalidParameter);
-        }
-        chunks.push_back(PlannedChunk{static_cast<std::uint16_t>(slot.firstSlot), slot.slotCount, false, std::nullopt});
+    chunks.reserve(planned.size());
+    for (const WritePlanChunk& chunk : planned) {
+        chunks.push_back(PlannedChunk{chunk.firstSlot, chunk.slotCount, false, std::nullopt});
     }
     return ernc::domain::Result<void>::success();
 }

@@ -326,11 +326,11 @@ bool drive(RegionWriter& writer, CommandScheduler& scheduler, const char* name) 
     return true;
 }
 
-/// @brief 正式目录里的 ERNC_TF 可以预览，但不能开始写。
+/// @brief 正式目录里的 ERNC_TF 可以预览并开始基线写入。
 /// @param manifestPath 正式 manifest。
-/// @return commitPermitted 为 false 且没有请求时为 true。
-bool pack4PreviewDoesNotEnqueue(const char* manifestPath) {
-    constexpr const char* name = "pack4_preview_does_not_enqueue";
+/// @return commitPermitted 为 true 且 start 入队时为 true。
+bool pack4PreviewCommits(const char* manifestPath) {
+    constexpr const char* name = "pack4_preview_commits";
     const LayoutLoad loaded = FirmwareLayoutLoader::loadFile(manifestPath);
     if (!loaded.ok()) {
         return fail(name);
@@ -351,9 +351,8 @@ bool pack4PreviewDoesNotEnqueue(const char* manifestPath) {
     const std::vector<std::uint8_t> bytes(transfer->size, 0);
     const Result<RegionWritePreview> preview = writer.preview(*transfer, bytes);
     const Result<void> started = writer.start(*transfer, bytes);
-    if (!preview.ok() || preview.tryValue() == nullptr || preview.value().commitPermitted || preview.value().chunks.empty()
-        || started.ok() || started.tryError() == nullptr || *started.tryError() != ErrorCode::InvalidParameter || writer.busy()
-        || writer.snapshot() != nullptr || !bench.transport.submitted().empty()) {
+    if (!preview.ok() || preview.tryValue() == nullptr || !preview.value().commitPermitted || preview.value().chunks.empty()
+        || !started.ok() || !writer.busy() || bench.transport.submitted().empty()) {
         return fail(name);
     }
     return true;
@@ -504,8 +503,8 @@ bool mismatchStopsLaterChunks() {
 /// @param manifestPath 正式 manifest。合成区域的用例不读取它。
 /// @return 用例通过时为 true。
 bool runCase(std::string_view name, const char* manifestPath) {
-    if (name == "pack4_preview_does_not_enqueue") {
-        return pack4PreviewDoesNotEnqueue(manifestPath);
+    if (name == "pack4_preview_commits") {
+        return pack4PreviewCommits(manifestPath);
     }
     if (name == "ack_is_not_verified") {
         return ackIsNotVerified();

@@ -151,6 +151,34 @@ bool txtRoundTripMatchesFloats() {
     return true;
 }
 
+/// @brief 旧版单字段 TXT 不带元数据头，且读取时兼容有无尾逗号。
+/// @return 导出只有 value, 行，手工无逗号文件也能按相同 float 读回时为 true。
+bool fieldTxtMatchesLegacy() {
+    constexpr const char* name = "field_txt_matches_legacy";
+    TempDir temp;
+    const RegionDefinition region = regionOf("check_data.HornRefCheck_F", 2);
+    const std::filesystem::path exported = temp.dir / "HornRefCheck_F.txt";
+    const std::vector<float> values{1.0F, 0.5F};
+    if (!writeRegionTxt(region, values, exported, ernc::infrastructure::RegionTxtLayout::Field).ok()) {
+        return fail(name);
+    }
+    const std::vector<std::uint8_t> raw = readRaw(exported);
+    const std::string text(raw.begin(), raw.end());
+    if (text != "1,\n0.5,\n" || text.find('#') != std::string::npos) {
+        return fail(name);
+    }
+    const std::filesystem::path handwritten = temp.dir / "without_commas.txt";
+    const std::string oldText = "1\n0.5\n";
+    if (!writeRaw(handwritten, std::vector<std::uint8_t>(oldText.begin(), oldText.end()))) {
+        return fail(name);
+    }
+    const Result<std::vector<float>> loaded = readRegionTxt(region, handwritten);
+    if (!loaded.ok() || loaded.tryValue() == nullptr || loaded.value() != values) {
+        return fail(name);
+    }
+    return true;
+}
+
 /// @brief 短于区域长度的 BIN 被拒绝。
 /// @param manifestPath 正式 manifest。
 /// @return 4 字节文件不能当成 120 点谱半径时为 true。
@@ -269,6 +297,9 @@ bool runCase(std::string_view name, const char* manifestPath) {
     }
     if (name == "txt_round_trip_matches_floats") {
         return txtRoundTripMatchesFloats();
+    }
+    if (name == "field_txt_matches_legacy") {
+        return fieldTxtMatchesLegacy();
     }
     if (name == "short_bin_rejected") {
         return shortBinRejected(manifestPath);

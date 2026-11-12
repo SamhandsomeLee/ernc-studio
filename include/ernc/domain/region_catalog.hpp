@@ -11,18 +11,22 @@
 
 namespace ernc::domain {
 
-/// @brief 证据等级是否允许真实读取。
-/// @param evidence locate() 保留的证据等级。Pack4Sequential 不是已核验布局。
-/// @return 只有 Verified 为 true。这不是已经发出的 FC03。
+/// @brief 证据等级是否允许真实 FC03 区域读。
+/// @param evidence locate() 保留的证据等级。
+/// @return Pack4Sequential 表示与 CHNB `ERNCUppInit_Para` 及 `firmware/layout_manifest.json` 对齐的基线几何，允许像旧版一样整块读。
+/// Verified 表示独立复核后的几何。二者都不是已经发出的 FC03。
 constexpr bool realReadPermitted(LayoutEvidence evidence) noexcept {
-    return evidence == LayoutEvidence::Verified;
+    return evidence == LayoutEvidence::Verified || evidence == LayoutEvidence::Pack4Sequential;
 }
 
-/// @brief 证据等级和字段 writable 是否允许真实写入。
+/// @brief 证据等级是否允许真实 FC16 区域写。
 /// @param evidence locate() 保留的证据等级。
-/// @param writable 字段自己的 writable。false 不能授权真实写入。
-/// @return 已核验且 writable 为 true 时为 true。这不是已经发出的 FC16。
+/// @param writable manifest 标量 writable。标量批量写计划据此排除目录字段；区域工作台走独立 preview+读回验证，不依赖该位。
+/// @return Pack4Sequential 基线区域为 true。Verified 还需 writable 为 true。这不是已经发出的 FC16。
 constexpr bool realWritePermitted(LayoutEvidence evidence, bool writable) noexcept {
+    if (evidence == LayoutEvidence::Pack4Sequential) {
+        return true;
+    }
     return evidence == LayoutEvidence::Verified && writable;
 }
 

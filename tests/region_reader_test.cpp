@@ -186,11 +186,11 @@ bool drive(RegionReader& reader, CommandScheduler& scheduler, const char* name) 
     return true;
 }
 
-/// @brief 正式目录里的 ERNC_TF 证据不足，不入队。
+/// @brief 正式目录里的 ERNC_TF 基线几何允许入队 FC03 读。
 /// @param manifestPath 正式 manifest。
-/// @return 错误码为 InvalidParameter 且没有请求时为 true。
-bool pack4RegionDoesNotEnqueue(const char* manifestPath) {
-    constexpr const char* name = "pack4_region_does_not_enqueue";
+/// @return start 成功且至少提交一帧时为 true。
+bool pack4RegionEnqueues(const char* manifestPath) {
+    constexpr const char* name = "pack4_region_enqueues";
     const LayoutLoad loaded = FirmwareLayoutLoader::loadFile(manifestPath);
     if (!loaded.ok()) {
         return fail(name);
@@ -209,8 +209,7 @@ bool pack4RegionDoesNotEnqueue(const char* manifestPath) {
     }
     RegionReader reader{bench.session, bench.scheduler};
     const Result<void> started = reader.start(*transfer);
-    if (started.ok() || started.tryError() == nullptr || *started.tryError() != ErrorCode::InvalidParameter || reader.busy()
-        || reader.snapshot() != nullptr || !bench.transport.submitted().empty()) {
+    if (!started.ok() || !reader.busy() || bench.transport.submitted().empty()) {
         return fail(name);
     }
     return true;
@@ -377,8 +376,8 @@ bool otherCommandIsIgnored() {
 /// @param manifestPath 正式 manifest。合成区域的用例不读取它。
 /// @return 用例通过时为 true。
 bool runCase(std::string_view name, const char* manifestPath) {
-    if (name == "pack4_region_does_not_enqueue") {
-        return pack4RegionDoesNotEnqueue(manifestPath);
+    if (name == "pack4_region_enqueues") {
+        return pack4RegionEnqueues(manifestPath);
     }
     if (name == "empty_region_is_complete") {
         return emptyRegionIsComplete();

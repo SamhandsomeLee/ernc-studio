@@ -188,11 +188,11 @@ bool nanSetRejected(const char* manifestPath) {
     return true;
 }
 
-/// @brief 正式谱半径可以预览，但不能开始写。
+/// @brief 正式谱半径可以预览并允许基线写入。
 /// @param manifestPath 正式 manifest。
-/// @return 两包各 60 个 slot，commitPermitted 为 false，且没有请求时为 true。
-bool previewRealRegionDoesNotCommit(const char* manifestPath) {
-    constexpr const char* name = "preview_real_region_does_not_commit";
+/// @return 两包各 60 个 slot，commitPermitted 为 true，且没有请求时为 true。
+bool previewRealRegionCommits(const char* manifestPath) {
+    constexpr const char* name = "preview_real_region_commits";
     const Result<RegionCatalog> opened = openCatalog(manifestPath, name);
     if (!opened.ok()) {
         return false;
@@ -220,7 +220,7 @@ bool previewRealRegionDoesNotCommit(const char* manifestPath) {
     }
     RegionWriter writer{session, scheduler};
     const Result<RegionWritePreview> preview = page.previewWrite(writer);
-    if (!preview.ok() || preview.tryValue() == nullptr || preview.value().commitPermitted || preview.value().chunks.size() != 2U
+    if (!preview.ok() || preview.tryValue() == nullptr || !preview.value().commitPermitted || preview.value().chunks.size() != 2U
         || preview.value().chunks[0].slotCount != 60U || preview.value().chunks[1].slotCount != 60U || writer.busy()) {
         return fail(name);
     }
@@ -268,7 +268,7 @@ bool runCase(std::string_view name, const char* manifestPath) {
     if (name == "nan_set_rejected") {
         return nanSetRejected(manifestPath);
     }
-    if (name == "preview_real_region_does_not_commit") {
+    if (name == "preview_real_region_commits") {
         return previewRealRegionDoesNotCommit(manifestPath);
     }
     if (name == "wrong_shape_has_no_rows") {

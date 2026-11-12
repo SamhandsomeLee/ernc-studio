@@ -10,6 +10,12 @@
 
 namespace ernc::infrastructure {
 
+/// 旧版区域 TXT 的两种落盘形式。整区文件带三行元数据，单字段文件只有逐行数值。
+enum class RegionTxtLayout {
+    WholeRegion,
+    Field,
+};
+
 /// @brief 读取一块区域的旧版 BIN。
 ///
 /// 只读打开 source。BIN 没有文件头，内容是小端 float 的原始字节。
@@ -47,13 +53,16 @@ ernc::domain::Result<std::vector<float>> readRegionTxt(const ernc::domain::Regio
 
 /// @brief 把完整 float 序列写成旧版区域 TXT。
 ///
-/// 先写三行注释：# region=、# format=slot_floats、# slots=。然后每个 float 一行 value,。
+/// WholeRegion 先写三行注释：# region=、# format=slot_floats、# slots=；Field 不写注释。
+/// 两种形式随后都把每个 float 写成一行 value,，与旧版 CHNB 的整区/单字段导出一致。
 /// 顺序与 values 相同。个数必须等于 slotCount。先写临时文件，完成后才换成 destination。
 /// @param region 区域定义，只在本次调用期间借用。
 /// @param values 存储顺序的 float，只在本次调用期间借用。
 /// @param destination 新的 .txt 路径。它应当不是用户正在打开的源文件。
+/// @param layout 整区或单字段格式。默认保持现有整区格式。
 /// @return 文件写完时成功。个数或扩展名不符为 InvalidParameter。写入失败为 FileIoFailed。
 ernc::domain::Result<void> writeRegionTxt(const ernc::domain::RegionDefinition& region, std::span<const float> values,
-                                          const std::filesystem::path& destination);
+                                          const std::filesystem::path& destination,
+                                          RegionTxtLayout layout = RegionTxtLayout::WholeRegion);
 
 }  // namespace ernc::infrastructure

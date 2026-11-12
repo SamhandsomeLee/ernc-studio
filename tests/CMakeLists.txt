@@ -342,7 +342,7 @@ add_executable(ernc_legacy_region_codec_tests
 
 target_link_libraries(ernc_legacy_region_codec_tests PRIVATE ernc_filesystem ernc_application)
 
-foreach(ernc_legacy_region_case IN ITEMS bin_round_trip_matches_bytes txt_round_trip_matches_floats short_bin_rejected txt_bad_token_rejected txt_slots_header_mismatch_rejected cancellation_prefix_is_not_exported source_file_unchanged_after_rejected_export)
+foreach(ernc_legacy_region_case IN ITEMS bin_round_trip_matches_bytes txt_round_trip_matches_floats field_txt_matches_legacy short_bin_rejected txt_bad_token_rejected txt_slots_header_mismatch_rejected cancellation_prefix_is_not_exported source_file_unchanged_after_rejected_export)
     add_test(
         NAME "legacy_region.${ernc_legacy_region_case}"
         COMMAND ernc_legacy_region_codec_tests "${ernc_legacy_region_case}" "${ernc_layout_manifest}"
@@ -398,7 +398,7 @@ add_executable(ernc_region_reader_tests
 
 target_link_libraries(ernc_region_reader_tests PRIVATE ernc_application ernc_simulator)
 
-foreach(ernc_region_read_case IN ITEMS pack4_region_does_not_enqueue empty_region_is_complete tail_snapshot_is_complete missing_chunk_is_not_complete duplicate_result_does_not_advance other_command_is_ignored)
+foreach(ernc_region_read_case IN ITEMS pack4_region_enqueues empty_region_is_complete tail_snapshot_is_complete missing_chunk_is_not_complete duplicate_result_does_not_advance other_command_is_ignored)
     add_test(
         NAME "region_reader.${ernc_region_read_case}"
         COMMAND ernc_region_reader_tests "${ernc_region_read_case}" "${ernc_layout_manifest}"
@@ -411,7 +411,7 @@ add_executable(ernc_region_writer_tests
 
 target_link_libraries(ernc_region_writer_tests PRIVATE ernc_application ernc_simulator)
 
-foreach(ernc_region_write_case IN ITEMS pack4_preview_does_not_enqueue ack_is_not_verified tail_write_is_verified timeout_keeps_verified_prefix mismatch_stops_later_chunks)
+foreach(ernc_region_write_case IN ITEMS pack4_preview_commits ack_is_not_verified tail_write_is_verified timeout_keeps_verified_prefix mismatch_stops_later_chunks)
     add_test(
         NAME "region_writer.${ernc_region_write_case}"
         COMMAND ernc_region_writer_tests "${ernc_region_write_case}" "${ernc_layout_manifest}"
@@ -1603,7 +1603,7 @@ if(ERNC_BUILD_UI)
 
     target_link_libraries(ernc_spec_radius_page_tests PRIVATE Qt6::Widgets ernc_domain ernc_application ernc_simulator)
 
-    foreach(ernc_spec_radius_case IN ITEMS rows_only_set_editable load_read_keeps_set short_bytes_rejected nan_set_rejected preview_real_region_does_not_commit wrong_shape_has_no_rows)
+    foreach(ernc_spec_radius_case IN ITEMS rows_only_set_editable load_read_keeps_set short_bytes_rejected nan_set_rejected preview_real_region_commits wrong_shape_has_no_rows)
         add_test(
             NAME "spec_radius.${ernc_spec_radius_case}"
             COMMAND ernc_spec_radius_page_tests
@@ -1626,7 +1626,7 @@ if(ERNC_BUILD_UI)
     target_link_libraries(ernc_region_workspace_tests PRIVATE
         Qt6::Widgets ernc_domain ernc_application ernc_filesystem ernc_simulator)
 
-    foreach(ernc_region_workspace_case IN ITEMS spec_radius_shows_120_rows import_does_not_write preview_then_write_does_not_enqueue cancelled_record_is_not_exported)
+    foreach(ernc_region_workspace_case IN ITEMS spec_radius_shows_120_rows import_does_not_write preview_then_write_enqueues legacy_tf_pair_imports_by_file_name cancelled_record_is_not_exported)
         add_test(
             NAME "region_workspace.${ernc_region_workspace_case}"
             COMMAND ernc_region_workspace_tests
