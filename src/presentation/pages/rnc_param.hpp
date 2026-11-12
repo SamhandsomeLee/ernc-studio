@@ -14,7 +14,9 @@
 
 class QLabel;
 class QLineEdit;
+class QScrollArea;
 class QVBoxLayout;
+class QWidget;
 
 namespace ernc::presentation {
 
@@ -77,6 +79,12 @@ public:
     /// @note 不暂存，也不发送。只在 UI 主线程调用。
     void activate(const QString& parameterId);
 
+    /// @brief 滚动到参数行并高亮。不通知共用选择观察者。
+    void emphasizeParameter(const QString& parameterId);
+
+    /// @brief 该行是否处于高亮态。供测试读取。
+    bool isParameterEmphasized(const QString& parameterId) const;
+
     /// @brief 最近一次点中的目录 ID。
     /// @return 还没有点过时为空字符串。
     QString selectedParameterId() const;
@@ -95,6 +103,9 @@ private:
 
         /// 读写改在参数视图的提示。仅 SpecRadius 等入口行使用。
         QLabel* parameterViewHint = nullptr;
+
+        /// 整行容器。用于滚动与高亮。
+        QWidget* row = nullptr;
     };
 
     /// @brief 增加一个分区标题和它的参数行。
@@ -145,6 +156,12 @@ private:
 
     /// 暂存成功后的通知。空表示没有观察者。
     std::function<void(const ernc::domain::ParameterId&)> editObserver_;
+
+    /// 参数列表滚动区。由本页拥有。
+    QScrollArea* scroll_ = nullptr;
+
+    /// 当前高亮行。不拥有；失效前由 clear 去掉样式。
+    QWidget* emphasizedRow_ = nullptr;
 
     /// 点击一行后的通知。空表示没有观察者。
     std::function<void(const ernc::domain::ParameterId&)> selectionObserver_;

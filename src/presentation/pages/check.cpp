@@ -80,6 +80,7 @@ CheckPage::CheckPage(const ernc::domain::ParameterCatalog* catalog, ernc::domain
     root->setSpacing(kSpace4);
     scroll->setWidget(content);
     pageLayout->addWidget(scroll);
+    scroll_ = scroll;
 
     auto* modes = new QLabel(QStringLiteral("模式"), content);
     root->addWidget(modes);
@@ -122,6 +123,7 @@ void CheckPage::addRow(QWidget* parent, QVBoxLayout* layout, const QString& para
     Control control;
     control.id = parameterId;
     control.value = value;
+    control.row = row;
     connect(name, &QPushButton::clicked, this, [this, parameterId] { activate(parameterId); });
     if (oneSlot) {
         auto* editor = new QLineEdit(row);
@@ -226,9 +228,22 @@ void CheckPage::activate(const QString& parameterId) {
         return;
     }
     selectedId_ = QString::fromStdString(definition->id.text());
+    emphasizeParameter(parameterId);
     if (selectionObserver_) {
         selectionObserver_(definition->id);
     }
+}
+
+void CheckPage::emphasizeParameter(const QString& parameterId) {
+    const Control* control = findControl(parameterId);
+    if (control == nullptr || control->row == nullptr) {
+        return;
+    }
+    if (emphasizedRow_ != nullptr && emphasizedRow_ != control->row) {
+        function_view_layout::clearRowEmphasis(emphasizedRow_);
+    }
+    emphasizedRow_ = control->row;
+    function_view_layout::emphasizeParameterRow(control->row, scroll_);
 }
 
 void CheckPage::openCanCatalog() {

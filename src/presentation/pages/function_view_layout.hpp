@@ -1,7 +1,11 @@
 #pragma once
 
 #include <QString>
+#include <QAbstractButton>
 #include <QComboBox>
+#include <QScrollArea>
+
+#include "theme/theme_tokens.hpp"
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
@@ -64,6 +68,13 @@ inline void styleToggleCombo(QComboBox* combo) {
     combo->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 }
 
+/// Toggle 滑动开关列宽。与旧版算法关断面板接近。
+inline void styleToggleSwitch(::QAbstractButton* toggle) {
+    toggle->setMinimumWidth(kComboColumnWidth);
+    toggle->setMaximumWidth(kComboColumnWidth);
+    toggle->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+}
+
 inline void styleActionButton(QPushButton* button) {
     button->setMinimumWidth(kActionButtonWidth);
     button->setMaximumWidth(kActionButtonWidth);
@@ -78,6 +89,31 @@ inline void gapBetweenSecondAndThirdColumns(QHBoxLayout* line) {
 /// @brief 在行尾吸收多余宽度，避免控件被拉到窗口最右侧。
 inline void sealFormRow(QHBoxLayout* line) {
     line->addStretch(1);
+}
+
+/// 项目树或参数表选中时，高亮函数视图中的一行。对齐 theme `surface.selected`。
+inline QString rowEmphasisStyleSheet() {
+    return QStringLiteral("background-color: #D6E9EB; border-radius: 4px;");
+}
+
+/// @brief 去掉一行的高亮底色。
+inline void clearRowEmphasis(QWidget* row) {
+    if (row != nullptr) {
+        row->setStyleSheet(QString());
+    }
+}
+
+/// @brief 滚动到一行并高亮。不触发选择观察者。
+/// @param row 参数行容器。空指针时忽略。
+/// @param scroll 承载该页的滚动区。空指针时只上色。
+inline void emphasizeParameterRow(QWidget* row, QScrollArea* scroll) {
+    if (row == nullptr) {
+        return;
+    }
+    row->setStyleSheet(rowEmphasisStyleSheet());
+    if (scroll != nullptr) {
+        scroll->ensureWidgetVisible(row, kSpace24, kSpace24);
+    }
 }
 
 }  // namespace ernc::presentation::function_view_layout

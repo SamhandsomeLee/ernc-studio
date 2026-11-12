@@ -7,7 +7,8 @@
 #include "ernc/domain/runtime_store.hpp"
 
 #include <QApplication>
-#include <QComboBox>
+#include "controls/parameter_toggle_switch.hpp"
+
 #include <QWidget>
 
 #include <chrono>
@@ -107,13 +108,12 @@ bool ancOffOnStagesZero(const ParameterCatalog& catalog, const FirmwareLayout& l
     }
     QWidget parent;
     const QModelIndex setIndex = model.index(row, static_cast<int>(FakeParameterColumn::Set));
-    QWidget* editor = delegate.createEditor(&parent, QStyleOptionViewItem{}, setIndex);
-    auto* box = qobject_cast<QComboBox*>(editor);
-    if (box == nullptr || box->count() != 2 || box->itemText(0) != QStringLiteral("开") || box->itemText(1) != QStringLiteral("关")) {
+    if (delegate.createEditor(&parent, QStyleOptionViewItem{}, setIndex) != nullptr) {
         return fail("anc_off_on_stages_zero");
     }
-    box->setCurrentText(QStringLiteral("开"));
-    delegate.setModelData(box, &model, setIndex);
+    auto* toggle = new ernc::presentation::ParameterToggleSwitch(&parent);
+    toggle->applyCaption(QStringLiteral("开"));
+    delegate.setModelData(toggle, &model, setIndex);
     const ParameterId id = ParameterId::parse("ANC_OFF").value();
     const ernc::domain::ParameterRuntimeState* state = store.find(id);
     if (state == nullptr || !state->dirty || !state->stagedValue) {

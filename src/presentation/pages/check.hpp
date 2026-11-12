@@ -14,7 +14,9 @@
 
 class QLabel;
 class QLineEdit;
+class QScrollArea;
 class QVBoxLayout;
+class QWidget;
 
 namespace ernc::presentation {
 
@@ -81,6 +83,9 @@ public:
     /// @note 不暂存，也不发送。只在 UI 主线程调用。
     void activate(const QString& parameterId);
 
+    /// @brief 滚动到参数行并高亮。不通知共用选择观察者。
+    void emphasizeParameter(const QString& parameterId);
+
     /// @brief 打开 CAN 名称目录。
     /// @note 只调用已登记的打开者。没有打开者时什么都不做，也不读 Can_Msg。
     void openCanCatalog();
@@ -100,6 +105,8 @@ private:
 
         /// 模式输入。区域行为空。改字本身不暂存。
         QLineEdit* editor = nullptr;
+
+        QWidget* row = nullptr;
     };
 
     /// @brief 增加一行。目录里没有这个 ID 时跳过。
@@ -136,6 +143,9 @@ private:
 
     /// 已生成的行。
     std::vector<Control> controls_;
+
+    QScrollArea* scroll_ = nullptr;
+    QWidget* emphasizedRow_ = nullptr;
 
     /// 暂存成功后的通知。空表示没有观察者。
     std::function<void(const ernc::domain::ParameterId&)> editObserver_;

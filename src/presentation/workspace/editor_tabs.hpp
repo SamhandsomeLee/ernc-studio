@@ -131,6 +131,10 @@ private:
     /// @note 只在 UI 主线程由表格选择模型调用。不写设备，也不暂存 Set。
     void onParameterRowChanged(const QModelIndex& current, const QModelIndex& previous);
 
+    void emphasizeFunctionViewParameter(const QString& parameterId);
+
+    bool showingFunctionView() const;
+
     /// 两页共用的页面 id 和参数 id。页签切换不会改它。
     EditorSelection selection_;
 

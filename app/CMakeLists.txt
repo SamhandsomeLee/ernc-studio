@@ -23,6 +23,7 @@ qt_add_executable(ernc_app
     ../src/presentation/parameters/parameter_filter_proxy.cpp
     ../src/presentation/parameters/write_plan_dialog.cpp
     ../src/presentation/controls/parameter_delegates.cpp
+    ../src/presentation/controls/parameter_toggle_switch.cpp
     ../src/presentation/inspector/inspector_context.cpp
     ../src/presentation/inspector/inspector_panel.cpp
     ../src/presentation/task_cards/task_card_panel.cpp

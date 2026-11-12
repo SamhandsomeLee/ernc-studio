@@ -41,7 +41,7 @@ public:
     /// @param parent 编辑器的父控件。调用方拥有，Qt 在编辑结束时销毁编辑器。
     /// @param option 视图给出的样式。本函数不读取它来决定控件种类。
     /// @param index 单元格。代理索引会先映射回源模型。
-    /// @return toggle 返回只有开和关的下拉框，numeric 返回单行输入。其它情况为空，不创建控件。
+    /// @return Toggle 在表格内直接绘制滑动开关，不创建编辑器。numeric 返回单行输入。
     QWidget* createEditor(QWidget* parent, const QStyleOptionViewItem& option, const QModelIndex& index) const override;
 
     /// @brief 把当前 Set 文字放进编辑器。
@@ -56,14 +56,24 @@ public:
     /// @note 只调用 stage。不入队 FC16。Unknown 和非法数字不改 Store。
     void setModelData(QWidget* editor, QAbstractItemModel* model, const QModelIndex& index) const override;
 
+    void paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const override;
+
+    bool editorEvent(QEvent* event, QAbstractItemModel* model, const QStyleOptionViewItem& option,
+                     const QModelIndex& index) override;
+
 protected:
     /// @brief 把 Set 列的显示文字换成 setCaption 的结果，然后交给基类。
     /// @param option 视图样式。本函数改写它的 text。
     /// @param index 单元格。
-    /// @note 不写 Store，也不访问串口。
+    /// @note 不写 Store，也不访问串口。Toggle 格不写 text，只画滑动开关。
     void initStyleOption(QStyleOptionViewItem* option, const QModelIndex& index) const override;
 
 private:
+    bool isToggleSetCell(const QModelIndex& index) const;
+
+    bool stageToggleChoice(const ernc::domain::ParameterDefinition& definition, const QString& word,
+                           QAbstractItemModel* model, const QModelIndex& index) const;
+
     /// @brief 从单元格找到目录定义。
     /// @param index 源模型或代理模型的索引。
     /// @return 指向目录内部定义。没有时为空。指针不转移所有权。

@@ -121,6 +121,7 @@ RncParamPage::RncParamPage(const ernc::domain::ParameterCatalog* catalog, ernc::
     root->setSpacing(kSpace4);
     scroll->setWidget(content);
     pageLayout->addWidget(scroll);
+    scroll_ = scroll;
     if (catalog_ == nullptr) {
         return;
     }
@@ -177,6 +178,7 @@ void RncParamPage::addParameterViewOnlyRow(QWidget* parent, QVBoxLayout* layout,
     control.id = parameterId;
     control.value = value;
     control.parameterViewHint = hint;
+    control.row = row;
     connect(name, &QPushButton::clicked, this, [this, parameterId] { activate(parameterId); });
     controls_.push_back(control);
     layout->addWidget(row);
@@ -208,6 +210,7 @@ void RncParamPage::addRow(QWidget* parent, QVBoxLayout* layout, const QString& p
     Control control;
     control.id = parameterId;
     control.value = value;
+    control.row = row;
     connect(name, &QPushButton::clicked, this, [this, parameterId] { activate(parameterId); });
     if (editable) {
         auto* editor = new QLineEdit(row);
@@ -351,9 +354,28 @@ void RncParamPage::activate(const QString& parameterId) {
         return;
     }
     selectedId_ = QString::fromStdString(definition->id.text());
+    emphasizeParameter(parameterId);
     if (selectionObserver_) {
         selectionObserver_(definition->id);
     }
+}
+
+void RncParamPage::emphasizeParameter(const QString& parameterId) {
+    const Control* control = findControl(parameterId);
+    if (control == nullptr || control->row == nullptr) {
+        return;
+    }
+    if (emphasizedRow_ != nullptr && emphasizedRow_ != control->row) {
+        function_view_layout::clearRowEmphasis(emphasizedRow_);
+    }
+    emphasizedRow_ = control->row;
+    function_view_layout::emphasizeParameterRow(control->row, scroll_);
+}
+
+bool RncParamPage::isParameterEmphasized(const QString& parameterId) const {
+    const Control* control = findControl(parameterId);
+    return control != nullptr && control->row != nullptr && control->row == emphasizedRow_
+        && !control->row->styleSheet().isEmpty();
 }
 
 QString RncParamPage::selectedParameterId() const {

@@ -104,6 +104,7 @@ ThresholdPage::ThresholdPage(const ernc::domain::ParameterCatalog* catalog, ernc
     root->setSpacing(kSpace4);
     scroll->setWidget(content);
     pageLayout->addWidget(scroll);
+    scroll_ = scroll;
     if (catalog_ == nullptr) {
         return;
     }
@@ -142,6 +143,7 @@ ThresholdPage::ThresholdPage(const ernc::domain::ParameterCatalog* catalog, ernc
             control.id = parameterId;
             control.group = found->first;
             control.value = value;
+            control.row = row;
             connect(name, &QPushButton::clicked, this, [this, parameterId] { activate(parameterId); });
             if (oneSlot) {
                 auto* editor = new QLineEdit(row);
@@ -275,9 +277,22 @@ void ThresholdPage::activate(const QString& parameterId) {
         return;
     }
     selectedId_ = QString::fromStdString(definition->id.text());
+    emphasizeParameter(parameterId);
     if (selectionObserver_) {
         selectionObserver_(definition->id);
     }
+}
+
+void ThresholdPage::emphasizeParameter(const QString& parameterId) {
+    const Control* control = findControl(parameterId);
+    if (control == nullptr || control->row == nullptr) {
+        return;
+    }
+    if (emphasizedRow_ != nullptr && emphasizedRow_ != control->row) {
+        function_view_layout::clearRowEmphasis(emphasizedRow_);
+    }
+    emphasizedRow_ = control->row;
+    function_view_layout::emphasizeParameterRow(control->row, scroll_);
 }
 
 QString ThresholdPage::selectedParameterId() const {

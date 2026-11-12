@@ -14,7 +14,9 @@
 
 class QLabel;
 class QLineEdit;
+class QScrollArea;
 class QVBoxLayout;
+class QWidget;
 
 namespace ernc::presentation {
 
@@ -81,6 +83,9 @@ public:
     /// @note 不暂存，也不发送。只在 UI 主线程调用。
     void activate(const QString& parameterId);
 
+    /// @brief 滚动到参数行并高亮。不通知共用选择观察者。
+    void emphasizeParameter(const QString& parameterId);
+
     /// @brief 最近一次点中的目录 ID。
     /// @return 还没有点过时为空字符串。
     QString selectedParameterId() const;
@@ -96,6 +101,9 @@ private:
 
         /// 1 slot 输入。数组行为空。
         QLineEdit* editor = nullptr;
+
+        /// 整行容器。用于滚动与高亮。
+        QWidget* row = nullptr;
     };
 
     /// @brief 增加一行。目录里没有这个 ID 时跳过。
@@ -138,6 +146,9 @@ private:
 
     /// 暂存成功后的通知。空表示没有观察者。
     std::function<void(const ernc::domain::ParameterId&)> editObserver_;
+
+    QScrollArea* scroll_ = nullptr;
+    QWidget* emphasizedRow_ = nullptr;
 
     /// 点击一行后的通知。空表示没有观察者。
     std::function<void(const ernc::domain::ParameterId&)> selectionObserver_;

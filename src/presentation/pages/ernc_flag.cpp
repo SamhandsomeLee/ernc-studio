@@ -1,12 +1,12 @@
 #include "pages/ernc_flag.hpp"
 
+#include "controls/parameter_toggle_switch.hpp"
 #include "pages/function_view_layout.hpp"
 
 #include "ernc/application/stage_value.hpp"
 #include "ernc/domain/control_semantics.hpp"
 #include "theme/theme_tokens.hpp"
 
-#include <QComboBox>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
@@ -122,8 +122,10 @@ ErncFlagPage::ErncFlagPage(const ernc::domain::ParameterCatalog* catalog, ernc::
         auto* line = new QHBoxLayout(row);
         line->setContentsMargins(0, 0, 0, 0);
         line->setSpacing(kSpace8);
-        auto* name = new QLabel(QString::fromUtf8(idText), row);
-        function_view_layout::styleParameterIdLabel(name);
+        auto* name = new QPushButton(QString::fromUtf8(idText), row);
+        name->setFlat(true);
+        name->setStyleSheet(QStringLiteral("text-align: left; padding: 0 4px;"));
+        function_view_layout::styleParameterNameButton(name);
         auto* value = new QLabel(row);
         function_view_layout::styleValueLabel(value);
         line->addWidget(name);
@@ -132,29 +134,23 @@ ErncFlagPage::ErncFlagPage(const ernc::domain::ParameterCatalog* catalog, ernc::
         Control control;
         control.id = QString::fromUtf8(idText);
         control.value = value;
+        control.row = row;
+        const QString parameterId = control.id;
+        connect(name, &QPushButton::clicked, this, [this, parameterId] { activate(parameterId); });
 
         const bool toggle = definition != nullptr && definition->editor
             && *definition->editor == ernc::domain::EditorKind::Toggle;
         const bool command = definition != nullptr && definition->editor
             && *definition->editor == ernc::domain::EditorKind::MomentaryCommand;
         if (toggle) {
-            auto* choice = new QComboBox(row);
-            choice->addItem(QStringLiteral("开"));
-            choice->addItem(QStringLiteral("关"));
-            choice->setCurrentIndex(-1);
-            function_view_layout::styleToggleCombo(choice);
+            auto* choice = new ParameterToggleSwitch(row);
             line->addWidget(choice);
             control.toggle = choice;
-            const QString parameterId = control.id;
-            connect(choice, &QComboBox::currentIndexChanged, this, [this, parameterId](int index) {
-                if (reloading_ || index < 0) {
+            connect(choice, &ParameterToggleSwitch::userChose, this, [this, parameterId](const QString& word) {
+                if (reloading_) {
                     return;
                 }
-                const Control* rowControl = findControl(parameterId);
-                if (rowControl == nullptr || rowControl->toggle == nullptr) {
-                    return;
-                }
-                chooseToggle(parameterId, rowControl->toggle->itemText(index));
+                chooseToggle(parameterId, word);
             });
         } else if (command) {
             auto* blocked = new QLabel(QStringLiteral("车速映射未确认，不能执行"), row);
@@ -176,7 +172,6 @@ ErncFlagPage::ErncFlagPage(const ernc::domain::ParameterCatalog* catalog, ernc::
             function_view_layout::styleScalarEditor(editor);
             line->addWidget(editor);
             control.raw = editor;
-            const QString parameterId = control.id;
             connect(editor, &QLineEdit::editingFinished, this, [this, parameterId] {
                 if (reloading_) {
                     return;
@@ -200,6 +195,29 @@ void ErncFlagPage::setEditObserver(std::function<void(const ernc::domain::Parame
     editObserver_ = std::move(observer);
 }
 
+void ErncFlagPage::setSelectionObserver(std::function<void(const ernc::domain::ParameterId&)> observer) {
+    selectionObserver_ = std::move(observer);
+}
+
+void ErncFlagPage::activate(const QString& parameterId) {
+    if (catalog_ == nullptr || findControl(parameterId) == nullptr) {
+        return;
+    }
+    const ernc::domain::ParameterDefinition* definition = catalog_->find(parameterId.toStdString());
+    if (definition == nullptr) {
+        return;
+    }
+    selectedId_ = QString::fromStdString(definition->id.text());
+    emphasizeParameter(parameterId);
+    if (selectionObserver_) {
+        selectionObserver_(definition->id);
+    }
+}
+
+QString ErncFlagPage::selectedParameterId() const {
+    return selectedId_;
+}
+
 void ErncFlagPage::reload() {
     reloading_ = true;
     for (Control& control : controls_) {
@@ -213,15 +231,9 @@ void ErncFlagPage::reload() {
         if (control.toggle != nullptr && definition != nullptr) {
             const QString text = toggleText(*definition, value);
             control.value->setText(text);
-            control.toggle->blockSignals(true);
-            if (text == QStringLiteral("开")) {
-                control.toggle->setCurrentIndex(0);
-            } else if (text == QStringLiteral("关")) {
-                control.toggle->setCurrentIndex(1);
-            } else {
-                control.toggle->setCurrentIndex(-1);
-            }
-            control.toggle->blockSignals(false);
+            control.toggle->setSuppressSignals(true);
+            control.toggle->applyCaption(text);
+            control.toggle->setSuppressSignals(false);
         } else if (control.refresh != nullptr) {
             control.value->setText(rawIntText(value));
             control.refresh->setEnabled(false);
@@ -254,15 +266,15 @@ int ErncFlagPage::toggleCount(const QString& parameterId) const {
     if (control == nullptr || control->toggle == nullptr) {
         return 0;
     }
-    return control->toggle->count();
+    return control->toggle->semanticOptionCount();
 }
 
 QString ErncFlagPage::toggleItem(const QString& parameterId, int index) const {
     const Control* control = findControl(parameterId);
-    if (control == nullptr || control->toggle == nullptr || index < 0 || index >= control->toggle->count()) {
+    if (control == nullptr || control->toggle == nullptr) {
         return {};
     }
-    return control->toggle->itemText(index);
+    return control->toggle->semanticOptionLabel(index);
 }
 
 void ErncFlagPage::chooseToggle(const QString& parameterId, const QString& word) {
@@ -323,6 +335,22 @@ bool ErncFlagPage::refreshEnabled() const {
         }
     }
     return false;
+}
+
+bool ErncFlagPage::containsParameter(const QString& parameterId) const {
+    return findControl(parameterId) != nullptr;
+}
+
+void ErncFlagPage::emphasizeParameter(const QString& parameterId) {
+    const Control* control = findControl(parameterId);
+    if (control == nullptr || control->row == nullptr) {
+        return;
+    }
+    if (emphasizedRow_ != nullptr && emphasizedRow_ != control->row) {
+        function_view_layout::clearRowEmphasis(emphasizedRow_);
+    }
+    emphasizedRow_ = control->row;
+    function_view_layout::emphasizeParameterRow(control->row, nullptr);
 }
 
 void ErncFlagPage::pressRefresh() {}

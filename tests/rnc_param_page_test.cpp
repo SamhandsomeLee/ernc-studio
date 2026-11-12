@@ -174,6 +174,22 @@ bool excludedRowsAreAbsent(const ParameterCatalog& catalog, const FirmwareLayout
 /// @param catalog 正式目录。
 /// @param layout 正式布局。
 /// @return 初始隐藏，选中该页后显示，改到阶次页后重新隐藏时为 true。
+bool treeParameterEmphasizesFunctionRow(const ParameterCatalog& catalog, const FirmwareLayout& layout) {
+    ParameterRuntimeStore store;
+    EditorTabs tabs(&catalog, &store, &layout);
+    tabs.selectPage(QStringLiteral("RNC_Param"));
+    tabs.selectParameter(QStringLiteral("RNC_param.alpha1"));
+    QWidget* rncWidget = tabs.findChild<QWidget*>(QStringLiteral("erncRncParamPage"));
+    if (rncWidget == nullptr || rncWidget->isHidden()) {
+        return fail("tree_parameter_emphasizes_function_row");
+    }
+    const auto* rncPage = static_cast<const RncParamPage*>(rncWidget);
+    if (!rncPage->isParameterEmphasized(QStringLiteral("RNC_param.alpha1"))) {
+        return fail("tree_parameter_emphasizes_function_row");
+    }
+    return true;
+}
+
 bool rncPageFollowsTree(const ParameterCatalog& catalog, const FirmwareLayout& layout) {
     ParameterRuntimeStore store;
     EditorTabs tabs(&catalog, &store, &layout);
@@ -216,6 +232,9 @@ bool runCase(std::string_view name, const ParameterCatalog& catalog, const Firmw
     }
     if (name == "excluded_rows_are_absent") {
         return excludedRowsAreAbsent(catalog, layout);
+    }
+    if (name == "tree_parameter_emphasizes_function_row") {
+        return treeParameterEmphasizesFunctionRow(catalog, layout);
     }
     if (name == "rnc_page_follows_tree") {
         return rncPageFollowsTree(catalog, layout);

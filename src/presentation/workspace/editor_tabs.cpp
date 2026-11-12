@@ -135,6 +135,9 @@ EditorTabs::EditorTabs(const ernc::domain::ParameterCatalog* catalog, ernc::doma
             parameterModel_->noteLocalEdit(id);
         }
     });
+    flagPage_->setSelectionObserver([this](const ernc::domain::ParameterId& id) {
+        selectParameter(QString::fromStdString(id.text()));
+    });
     flagPage_->hide();
     inOutPage_ = new ErncInOutPage(catalog, store, layout, functionView);
     if (auto* functionLayout = qobject_cast<QVBoxLayout*>(functionView->layout())) {
@@ -253,8 +256,33 @@ void EditorTabs::selectParameter(const QString& parameterId) {
     }
     selection_.selectParameter(incoming);
     refresh();
+    if (showingFunctionView()) {
+        emphasizeFunctionViewParameter(parameterId);
+    }
     if (parameterObserver_) {
         parameterObserver_(selection_.parameterId());
+    }
+}
+
+bool EditorTabs::showingFunctionView() const {
+    const QWidget* page = currentWidget();
+    return page != nullptr && page->objectName() == QStringLiteral("erncFunctionView");
+}
+
+void EditorTabs::emphasizeFunctionViewParameter(const QString& parameterId) {
+    const auto tryEmphasize = [&](auto* page) -> bool {
+        if (page == nullptr || !page->isVisible()) {
+            return false;
+        }
+        if (!page->containsParameter(parameterId)) {
+            return false;
+        }
+        page->emphasizeParameter(parameterId);
+        return true;
+    };
+    if (tryEmphasize(flagPage_) || tryEmphasize(inOutPage_) || tryEmphasize(encPage_) || tryEmphasize(rncPage_)
+        || tryEmphasize(checkPage_) || tryEmphasize(thresholdPage_)) {
+        return;
     }
 }
 

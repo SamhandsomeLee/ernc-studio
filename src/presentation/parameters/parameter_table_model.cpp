@@ -2,6 +2,8 @@
 
 #include "parameters/fake_parameter_rows.hpp"
 
+#include "ernc/domain/control_semantics.hpp"
+
 #include <QDateTime>
 #include <QTimeZone>
 
@@ -191,7 +193,11 @@ void ParameterTableModel::refreshRow(int row) {
     text.parameter = QString::fromStdString(definition.id.text());
     text.path = definition.firmwarePath ? QString::fromStdString(*definition.firmwarePath) : kBlank.toString();
     text.read = state != nullptr && state->deviceValue ? formatScalar(*state->deviceValue) : kBlank.toString();
-    text.set = state != nullptr && state->stagedValue ? formatScalar(*state->stagedValue) : kBlank.toString();
+    if (definition.editor && *definition.editor == ernc::domain::EditorKind::Toggle) {
+        text.set.clear();
+    } else {
+        text.set = state != nullptr && state->stagedValue ? formatScalar(*state->stagedValue) : kBlank.toString();
+    }
     if (state != nullptr && state->readAt) {
         text.updatedAt = formatTime(*state->readAt);
     } else if (state != nullptr && state->stagedAt) {

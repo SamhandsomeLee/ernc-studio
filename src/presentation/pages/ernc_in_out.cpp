@@ -121,6 +121,7 @@ ErncInOutPage::ErncInOutPage(const ernc::domain::ParameterCatalog* catalog, ernc
     root->setSpacing(kSpace4);
     scroll->setWidget(content);
     pageLayout->addWidget(scroll);
+    scroll_ = scroll;
     if (catalog_ == nullptr) {
         return;
     }
@@ -151,6 +152,7 @@ ErncInOutPage::ErncInOutPage(const ernc::domain::ParameterCatalog* catalog, ernc
         control.id = QString::fromStdString(definition.id.text());
         control.detail = detail;
         control.value = value;
+        control.row = row;
         const QString parameterId = control.id;
         connect(name, &QPushButton::clicked, this, [this, parameterId] { activate(parameterId); });
         if (oneSlot) {
@@ -283,9 +285,22 @@ void ErncInOutPage::activate(const QString& parameterId) {
         return;
     }
     selectedId_ = QString::fromStdString(definition->id.text());
+    emphasizeParameter(parameterId);
     if (selectionObserver_) {
         selectionObserver_(definition->id);
     }
+}
+
+void ErncInOutPage::emphasizeParameter(const QString& parameterId) {
+    const Control* control = findControl(parameterId);
+    if (control == nullptr || control->row == nullptr) {
+        return;
+    }
+    if (emphasizedRow_ != nullptr && emphasizedRow_ != control->row) {
+        function_view_layout::clearRowEmphasis(emphasizedRow_);
+    }
+    emphasizedRow_ = control->row;
+    function_view_layout::emphasizeParameterRow(control->row, scroll_);
 }
 
 QString ErncInOutPage::selectedParameterId() const {

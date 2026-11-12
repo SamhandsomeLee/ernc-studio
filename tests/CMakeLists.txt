@@ -1144,6 +1144,7 @@ if(ERNC_BUILD_UI)
         parameter_delegate_test.cpp
         ../src/presentation/parameters/parameter_table_model.cpp
         ../src/presentation/controls/parameter_delegates.cpp
+        ../src/presentation/controls/parameter_toggle_switch.cpp
     )
 
     target_include_directories(ernc_parameter_delegate_tests PRIVATE
@@ -1215,6 +1216,7 @@ if(ERNC_BUILD_UI)
         ../src/presentation/parameters/parameter_filter_proxy.cpp
         ../src/presentation/parameters/write_plan_dialog.cpp
         ../src/presentation/controls/parameter_delegates.cpp
+        ../src/presentation/controls/parameter_toggle_switch.cpp
     )
 
     target_include_directories(ernc_flag_page_tests PRIVATE
@@ -1257,6 +1259,7 @@ if(ERNC_BUILD_UI)
         ../src/presentation/parameters/parameter_filter_proxy.cpp
         ../src/presentation/parameters/write_plan_dialog.cpp
         ../src/presentation/controls/parameter_delegates.cpp
+        ../src/presentation/controls/parameter_toggle_switch.cpp
     )
 
     target_include_directories(ernc_in_out_page_tests PRIVATE
@@ -1298,6 +1301,7 @@ if(ERNC_BUILD_UI)
         ../src/presentation/parameters/parameter_filter_proxy.cpp
         ../src/presentation/parameters/write_plan_dialog.cpp
         ../src/presentation/controls/parameter_delegates.cpp
+        ../src/presentation/controls/parameter_toggle_switch.cpp
     )
 
     target_include_directories(ernc_enc_param_page_tests PRIVATE
@@ -1338,6 +1342,7 @@ if(ERNC_BUILD_UI)
         ../src/presentation/parameters/parameter_filter_proxy.cpp
         ../src/presentation/parameters/write_plan_dialog.cpp
         ../src/presentation/controls/parameter_delegates.cpp
+        ../src/presentation/controls/parameter_toggle_switch.cpp
     )
 
     target_include_directories(ernc_rnc_param_page_tests PRIVATE
@@ -1352,6 +1357,7 @@ if(ERNC_BUILD_UI)
         alpha_stages_and_leaky_keeps_id
         spec_radius_shows_parameter_view_hint
         excluded_rows_are_absent
+        tree_parameter_emphasizes_function_row
         rnc_page_follows_tree
     )
 
@@ -1380,6 +1386,7 @@ if(ERNC_BUILD_UI)
         ../src/presentation/parameters/parameter_filter_proxy.cpp
         ../src/presentation/parameters/write_plan_dialog.cpp
         ../src/presentation/controls/parameter_delegates.cpp
+        ../src/presentation/controls/parameter_toggle_switch.cpp
     )
 
     target_include_directories(ernc_check_page_tests PRIVATE
@@ -1419,6 +1426,7 @@ if(ERNC_BUILD_UI)
         ../src/presentation/parameters/parameter_filter_proxy.cpp
         ../src/presentation/parameters/write_plan_dialog.cpp
         ../src/presentation/controls/parameter_delegates.cpp
+        ../src/presentation/controls/parameter_toggle_switch.cpp
     )
 
     target_include_directories(ernc_switch_state_page_tests PRIVATE
@@ -1452,6 +1460,7 @@ if(ERNC_BUILD_UI)
         ../src/presentation/parameters/parameter_filter_proxy.cpp
         ../src/presentation/parameters/write_plan_dialog.cpp
         ../src/presentation/controls/parameter_delegates.cpp
+        ../src/presentation/controls/parameter_toggle_switch.cpp
     )
 
     target_include_directories(ernc_can_names_page_tests PRIVATE
@@ -1486,6 +1495,7 @@ if(ERNC_BUILD_UI)
         ../src/presentation/parameters/parameter_filter_proxy.cpp
         ../src/presentation/parameters/write_plan_dialog.cpp
         ../src/presentation/controls/parameter_delegates.cpp
+        ../src/presentation/controls/parameter_toggle_switch.cpp
     )
 
     target_include_directories(ernc_threshold_page_tests PRIVATE

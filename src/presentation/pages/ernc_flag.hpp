@@ -13,9 +13,14 @@
 #include <vector>
 
 class QComboBox;
+
+namespace ernc::presentation {
+class ParameterToggleSwitch;
+}
 class QLabel;
 class QLineEdit;
 class QPushButton;
+class QWidget;
 
 namespace ernc::presentation {
 
@@ -40,6 +45,15 @@ public:
     /// @param observer 观察者。空函数表示不再通知。本页复制这份函数。参数标识只在这次调用期间有效。
     /// @note 通知发生在 stage 成功之后。不在通知里再改本页的控件。只在 UI 主线程调用。
     void setEditObserver(std::function<void(const ernc::domain::ParameterId&)> observer);
+
+    /// @brief 登记点击一行后的通知。
+    void setSelectionObserver(std::function<void(const ernc::domain::ParameterId&)> observer);
+
+    /// @brief 点中一行，选中它的目录 ID，并高亮该行。
+    void activate(const QString& parameterId);
+
+    /// @brief 最近一次点中的目录 ID。
+    QString selectedParameterId() const;
 
     /// @brief 读取一行当前显示的值。
     /// @param parameterId 目录主键。调用方拥有原件，本函数只比较它。
@@ -82,6 +96,12 @@ public:
     /// @note 不暂存，不写 1，不写 0，不读车速。控件不可用时调用也保持 Store 不变。
     void pressRefresh();
 
+    /// @brief 这一页是否有该目录 ID。
+    bool containsParameter(const QString& parameterId) const;
+
+    /// @brief 高亮参数行。本页无滚动区。
+    void emphasizeParameter(const QString& parameterId);
+
 private:
     /// 一行旗标控件。指针由本页通过 Qt 父子关系拥有。
     struct Control {
@@ -91,14 +111,16 @@ private:
         /// 当前值。开关显示开、关或 Unknown。数值显示十进制。
         QLabel* value = nullptr;
 
-        /// 开/关选择。数值行和 RNC_refresh 为空。
-        QComboBox* toggle = nullptr;
+        /// 开/关滑动开关。数值行和 RNC_refresh 为空。
+        ParameterToggleSwitch* toggle = nullptr;
 
         /// uint32 输入。开关和 RNC_refresh 为空。
         QLineEdit* raw = nullptr;
 
         /// RNC_refresh 的执行按钮。其它行为空。始终不可用。
         QPushButton* refresh = nullptr;
+
+        QWidget* row = nullptr;
     };
 
     /// @brief 按主键查找一行。
@@ -127,8 +149,16 @@ private:
     /// 六行控件，顺序与本页固定名单一致。
     std::vector<Control> controls_;
 
+    QWidget* emphasizedRow_ = nullptr;
+
     /// 暂存成功后的通知。空表示没有观察者。
     std::function<void(const ernc::domain::ParameterId&)> editObserver_;
+
+    /// 点击一行后的通知。空表示没有观察者。
+    std::function<void(const ernc::domain::ParameterId&)> selectionObserver_;
+
+    /// 最近一次点中的目录 ID。空表示还没有点过。
+    QString selectedId_;
 
     /// 为 true 时，重画选择框不会再次暂存。
     bool reloading_{false};

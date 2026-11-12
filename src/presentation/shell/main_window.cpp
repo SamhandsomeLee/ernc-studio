@@ -63,6 +63,10 @@ void applyTreeSelection(EditorTabs* tabs, const QModelIndex& current) {
     const QString kind = current.data(NavigatorModel::KindRole).toString();
     const QString id = current.data(Qt::DisplayRole).toString();
     if (kind == QStringLiteral("参数")) {
+        const QModelIndex parent = current.parent();
+        if (parent.isValid()) {
+            tabs->selectPage(parent.data(Qt::DisplayRole).toString());
+        }
         tabs->selectParameter(id);
         return;
     }

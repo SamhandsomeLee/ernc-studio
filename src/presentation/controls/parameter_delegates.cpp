@@ -1,11 +1,15 @@
 #include "controls/parameter_delegates.hpp"
 
+#include "controls/parameter_toggle_switch.hpp"
 #include "parameters/fake_parameter_rows.hpp"
 #include "parameters/parameter_table_model.hpp"
 
-#include <QComboBox>
+#include <QApplication>
 #include <QLineEdit>
+#include <QMouseEvent>
+#include <QPainter>
 #include <QSortFilterProxyModel>
+#include <QStyle>
 
 #include <chrono>
 #include <cmath>
@@ -87,10 +91,7 @@ QWidget* ParameterDelegate::createEditor(QWidget* parent, const QStyleOptionView
         return nullptr;
     }
     if (*definition->editor == ernc::domain::EditorKind::Toggle) {
-        auto* box = new QComboBox(parent);
-        box->addItem(QStringLiteral("开"));
-        box->addItem(QStringLiteral("关"));
-        return box;
+        return nullptr;
     }
     if (*definition->editor == ernc::domain::EditorKind::Numeric) {
         return new QLineEdit(parent);
@@ -105,9 +106,8 @@ void ParameterDelegate::setEditorData(QWidget* editor, const QModelIndex& index)
     }
     const ernc::domain::ParameterRuntimeState* state = store_ == nullptr ? nullptr : store_->find(definition->id);
     const QString caption = setCaption(*definition, state);
-    if (auto* box = qobject_cast<QComboBox*>(editor)) {
-        const int found = box->findText(caption);
-        box->setCurrentIndex(found);
+    if (auto* toggle = qobject_cast<ParameterToggleSwitch*>(editor)) {
+        toggle->applyCaption(caption);
         return;
     }
     if (auto* line = qobject_cast<QLineEdit*>(editor)) {
@@ -124,8 +124,8 @@ void ParameterDelegate::setModelData(QWidget* editor, QAbstractItemModel* model,
     const ernc::domain::RuntimeTime stagedAt = std::chrono::system_clock::now();
     ernc::domain::Result<ernc::domain::ScalarValue> value =
         ernc::domain::Result<ernc::domain::ScalarValue>::failure(ernc::domain::ErrorCode::InvalidParameter);
-    if (auto* box = qobject_cast<QComboBox*>(editor)) {
-        const QString text = box->currentText();
+    if (auto* toggle = qobject_cast<ParameterToggleSwitch*>(editor)) {
+        const QString text = toggle->currentWord();
         ernc::domain::TogglePosition position = ernc::domain::TogglePosition::Unknown;
         if (text == QStringLiteral("开")) {
             position = ernc::domain::TogglePosition::On;
@@ -176,8 +176,100 @@ void ParameterDelegate::initStyleOption(QStyleOptionViewItem* option, const QMod
     if (definition == nullptr) {
         return;
     }
+    if (definition->editor && *definition->editor == ernc::domain::EditorKind::Toggle) {
+        option->text.clear();
+        option->displayAlignment = Qt::AlignCenter;
+        return;
+    }
     const ernc::domain::ParameterRuntimeState* state = store_ == nullptr ? nullptr : store_->find(definition->id);
     option->text = setCaption(*definition, state);
+}
+
+void ParameterDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const {
+    if (painter == nullptr || !isToggleSetCell(index)) {
+        QStyledItemDelegate::paint(painter, option, index);
+        return;
+    }
+    QStyleOptionViewItem styled(option);
+    initStyleOption(&styled, index);
+    styled.text.clear();
+    QApplication::style()->drawControl(QStyle::CE_ItemViewItem, &styled, painter);
+    const ernc::domain::ParameterDefinition* definition = definitionFor(index);
+    if (definition == nullptr) {
+        return;
+    }
+    const ernc::domain::ParameterRuntimeState* state = store_ == nullptr ? nullptr : store_->find(definition->id);
+    const ParameterToggleSwitch::VisualState visual =
+        visualStateFromCaption(setCaption(*definition, state));
+    painter->save();
+    painter->setRenderHint(QPainter::Antialiasing, true);
+    paintParameterToggleSwitch(*painter, styled.rect, visual, styled.state.testFlag(QStyle::State_HasFocus));
+    painter->restore();
+}
+
+bool ParameterDelegate::editorEvent(QEvent* event, QAbstractItemModel* model, const QStyleOptionViewItem& option,
+                                    const QModelIndex& index) {
+    if (!isToggleSetCell(index) || event == nullptr || model == nullptr) {
+        return QStyledItemDelegate::editorEvent(event, model, option, index);
+    }
+    if (event->type() != QEvent::MouseButtonRelease) {
+        return QStyledItemDelegate::editorEvent(event, model, option, index);
+    }
+    auto* mouse = dynamic_cast<QMouseEvent*>(event);
+    if (mouse == nullptr || mouse->button() != Qt::LeftButton) {
+        return false;
+    }
+    const QRect track = toggleTrackRectInCell(option.rect);
+    if (!track.contains(mouse->pos())) {
+        return false;
+    }
+    const ernc::domain::ParameterDefinition* definition = definitionFor(index);
+    if (definition == nullptr) {
+        return false;
+    }
+    const bool chooseOn = toggleChoosesOnFromCellClick(option.rect, mouse->pos());
+    const QString word = chooseOn ? QStringLiteral("开") : QStringLiteral("关");
+    if (!stageToggleChoice(*definition, word, model, index)) {
+        return false;
+    }
+    model->dataChanged(index, index, {Qt::DisplayRole});
+    return true;
+}
+
+bool ParameterDelegate::isToggleSetCell(const QModelIndex& index) const {
+    if (index.column() != static_cast<int>(FakeParameterColumn::Set)) {
+        return false;
+    }
+    const ernc::domain::ParameterDefinition* definition = definitionFor(index);
+    return definition != nullptr && definition->editor && *definition->editor == ernc::domain::EditorKind::Toggle;
+}
+
+bool ParameterDelegate::stageToggleChoice(const ernc::domain::ParameterDefinition& definition, const QString& word,
+                                            QAbstractItemModel* model, const QModelIndex& index) const {
+    if (!stager_) {
+        return false;
+    }
+    ernc::domain::TogglePosition position = ernc::domain::TogglePosition::Unknown;
+    if (word == QStringLiteral("开")) {
+        position = ernc::domain::TogglePosition::On;
+    } else if (word == QStringLiteral("关")) {
+        position = ernc::domain::TogglePosition::Off;
+    } else {
+        return false;
+    }
+    const ernc::domain::Result<ernc::domain::ScalarValue> encoded = ernc::domain::encodeToggle(definition, position);
+    if (!encoded.ok() || encoded.tryValue() == nullptr) {
+        return false;
+    }
+    const ernc::domain::RuntimeTime stagedAt = std::chrono::system_clock::now();
+    if (!stager_->stage(definition.id, *encoded.tryValue(), stagedAt).ok()) {
+        return false;
+    }
+    if (ParameterTableModel* table = tableFor(index)) {
+        table->noteLocalEdit(definition.id);
+    }
+    (void)model;
+    return true;
 }
 
 const ernc::domain::ParameterDefinition* ParameterDelegate::definitionFor(const QModelIndex& index) const {

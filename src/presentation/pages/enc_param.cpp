@@ -119,6 +119,7 @@ EncParamPage::EncParamPage(const ernc::domain::ParameterCatalog* catalog, ernc::
     root->setSpacing(kSpace8);
     scroll->setWidget(content);
     pageLayout->addWidget(scroll);
+    scroll_ = scroll;
     if (catalog_ == nullptr) {
         return;
     }
@@ -167,6 +168,7 @@ void EncParamPage::addRow(QWidget* parent, QVBoxLayout* layout, const QString& p
     Control control;
     control.id = parameterId;
     control.value = value;
+    control.row = row;
     connect(name, &QPushButton::clicked, this, [this, parameterId] { activate(parameterId); });
     if (oneSlot) {
         auto* editor = new QLineEdit(row);
@@ -284,9 +286,22 @@ void EncParamPage::activate(const QString& parameterId) {
         return;
     }
     selectedId_ = QString::fromStdString(definition->id.text());
+    emphasizeParameter(parameterId);
     if (selectionObserver_) {
         selectionObserver_(definition->id);
     }
+}
+
+void EncParamPage::emphasizeParameter(const QString& parameterId) {
+    const Control* control = findControl(parameterId);
+    if (control == nullptr || control->row == nullptr) {
+        return;
+    }
+    if (emphasizedRow_ != nullptr && emphasizedRow_ != control->row) {
+        function_view_layout::clearRowEmphasis(emphasizedRow_);
+    }
+    emphasizedRow_ = control->row;
+    function_view_layout::emphasizeParameterRow(control->row, scroll_);
 }
 
 QString EncParamPage::selectedParameterId() const {
