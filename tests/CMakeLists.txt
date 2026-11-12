@@ -1883,3 +1883,36 @@ foreach(ernc_legacy_param_json_case IN LISTS ernc_legacy_param_json_cases)
             "${ernc_legacy_param_json_fixture}"
     )
 endforeach()
+
+# ES-088: legacy export template and .params (v1 scalars only).
+set(ernc_legacy_param_template_fixture "${CMAKE_SOURCE_DIR}/tests/fixtures/files/legacy_export_params_minimal.tpl")
+set(ernc_legacy_params_file_fixture "${CMAKE_SOURCE_DIR}/tests/fixtures/files/legacy_export_params_minimal.params")
+
+add_executable(ernc_legacy_param_template_tests
+    legacy_param_template_test.cpp
+)
+
+target_link_libraries(ernc_legacy_param_template_tests PRIVATE ernc_filesystem ernc_application ernc_project)
+
+set(ernc_legacy_param_template_cases
+    minimal_template_parses
+    unknown_template_line_fails
+    export_missing_value_writes_zero
+    export_staged_then_device
+    import_to_staged
+    import_does_not_write_device
+    params_row_count_mismatch_fails
+    import_to_snapshot_persists
+)
+
+foreach(ernc_legacy_param_template_case IN LISTS ernc_legacy_param_template_cases)
+    add_test(
+        NAME "legacy_param_template.${ernc_legacy_param_template_case}"
+        COMMAND ernc_legacy_param_template_tests
+            "${ernc_legacy_param_template_case}"
+            "${CMAKE_SOURCE_DIR}/catalog/parameter_catalog.json"
+            "${ernc_layout_manifest}"
+            "${ernc_legacy_param_template_fixture}"
+            "${ernc_legacy_params_file_fixture}"
+    )
+endforeach()

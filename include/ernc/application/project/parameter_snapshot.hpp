@@ -52,10 +52,11 @@ class ParameterSnapshotService {
   ernc::domain::Result<ernc::domain::SnapshotDiff> diffAgainstStore(
       std::int64_t snapshotId, const ernc::domain::ParameterRuntimeStore& store);
 
-  /// @brief 把旧版 JSON 标量写入快照表；`source` 为 `legacy_json_import`。
+  /// @brief 把旧版 JSON 标量写入快照表。
   ernc::domain::Result<std::int64_t> importLegacyDocument(
       const CaptureSnapshotRequest& request, const ernc::domain::ParameterCatalog& catalog,
-      const ernc::infrastructure::LegacyParamJsonDocument& document);
+      const ernc::infrastructure::LegacyParamJsonDocument& document,
+      std::string_view source = std::string_view{"legacy_json_import"});
 
  private:
   QSqlDatabase& database_;

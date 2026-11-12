@@ -4,6 +4,7 @@ add_library(ernc_project STATIC
     project_session.cpp
     parameter_snapshot.cpp
     legacy_param_json_bridge.cpp
+    legacy_param_template_bridge.cpp
     ../../infrastructure/filesystem/project_store.cpp
 )
 

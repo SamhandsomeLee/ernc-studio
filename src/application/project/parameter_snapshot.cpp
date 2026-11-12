@@ -198,7 +198,7 @@ Result<void> ParameterSnapshotService::hydrateStoreForView(std::int64_t snapshot
 
 Result<std::int64_t> ParameterSnapshotService::importLegacyDocument(
     const CaptureSnapshotRequest& request, const ParameterCatalog& catalog,
-    const ernc::infrastructure::LegacyParamJsonDocument& document) {
+    const ernc::infrastructure::LegacyParamJsonDocument& document, std::string_view source) {
   if (request.projectId <= 0 || request.firmwareVersion.empty() || request.catalogVersion.empty()) {
     return Result<std::int64_t>::failure(ErrorCode::InvalidParameter);
   }
@@ -210,7 +210,7 @@ Result<std::int64_t> ParameterSnapshotService::importLegacyDocument(
   }
   SnapshotRepository repository(database_);
   const Result<std::int64_t> snapshotId = repository.insertSnapshot(
-      request.projectId, isoUtcNow(), std::string_view{"legacy_json_import"}, request.firmwareVersion,
+      request.projectId, isoUtcNow(), source, request.firmwareVersion,
       request.catalogVersion,
       request.note);
   if (!snapshotId.ok()) {
