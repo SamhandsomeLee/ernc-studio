@@ -14,7 +14,9 @@
     "branch": "CHNB-NEW-6MIC",
     "revision": "fbecac9f54d378d212794fd937e950d9d2acd58d",
     "header_sha256": "9a81d349e048ac888a0b835f7ab7c6935f5068096fe822e41fe608439e6175cf",
-    "rule": "四字节对齐，从地址 0 按结构体声明顺序连续排列。"
+    "rule": "四字节对齐，从地址 0 按结构体声明顺序连续排列。",
+    "baseline_macros": "docs/baseline/param/proConfig.h",
+    "proj_config": "firmware/proj_config.json"
   },
   "landmarks": {
     "ANC_OFF": 0,

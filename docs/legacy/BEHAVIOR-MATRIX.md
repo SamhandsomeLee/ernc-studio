@@ -32,7 +32,7 @@ ES-005 的追溯表。后面的目录、黄金向量和 BIN/TXT 解码只引用�
 | Scalar | `br_ernc/algo_off_switch.py` | `UI_KIND_SWITCH_INV`；`ALGO_OFF_PATHS` | 路径 `ANC_OFF`、`ENC_OFF`、`RNC_OFF`。文件文档字符串写明线值 `0` 为算法运行、`1` 为算法停止。详情页上的开关面板是 `br_widget_algo_off_switches.py` 的 `BrAlgoOffSwitchPanel`。 |
 | Array | `param_data.py` | `ParamData.VAR_TYPE_ARR`；`ParamDataArr` | 类型值 `1`。设备读数在 `getval_list`，用户目标值在 `setval_list`。`ui_kind` 默认 `"array"`。 |
 | Array | `br_widget_arr_details.py` | `BrWidgetArrDetails` | 数组详情页。`main.py` 第 292、298 行放入同一个详情栈。 |
-| Array | `br_ernc/curve_array.py` | `CURVE_ARRAYS`；`CurveArraySpec` | 两条曲线路径：`rnc_dicergence.RNCSpkFAdapMax`、`rnc_dicergence.rnc_diverge_threshold`。顺序 `speaker_major`。通道数和点数来自 `layout_ctypes.py` 的 `SPEAKER_NUM = 6`、`TOTAL_FRE_NUM = 120`。 |
+| Array | `br_ernc/curve_array.py` | `CURVE_ARRAYS`；`CurveArraySpec` | 两条曲线路径：`rnc_dicergence.RNCSpkFAdapMax`、`rnc_dicergence.rnc_diverge_threshold`。顺序 `speaker_major`。通道数与频点：旧版 `layout_ctypes.py` 的 `SPEAKER_NUM = 6`、`TOTAL_FRE_NUM = 120`；本仓库宏与数组绑定见 `firmware/proj_config.json` 与 `docs/baseline/param/README.md`。 |
 | Region | `param_data.py` | `ParamData.VAR_TYPE_BLOB`；`ParamDataBlob` | 类型值 `2`。`dtype` 为 `"blob"`，`ui_kind` 为 `"blob"`，长度字段是 `byte_size`。 |
 | Region | `br_widget_blob_placeholder.py` | `BrWidgetRegionPanel` | 第 1181 行别名 `BrWidgetBlobPlaceholder`。读取范围、分块、进度、取消、BIN/TXT 和画图都从这里进入。 |
 | Region | `main.py` | `widget_page_blob` | 第 295–308 行接入 `signal_region_read`、`signal_region_write`、`signal_cancel_export`、`signal_plot_region`。 |

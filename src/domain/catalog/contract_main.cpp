@@ -148,6 +148,24 @@ bool checkCatalogFile(const char* path) {
     if (other == nullptr || !other->category || *other->category != kOtherPageCategory || other->editor) {
         return fail("other-page");
     }
+    const auto* spkThre = catalog.find("SpkOrderAmpThre");
+    const auto* spkState = catalog.find("SpkState");
+    const auto* micState = catalog.find("MicState");
+    if (spkThre == nullptr || !spkThre->shape || *spkThre->shape != ValueShape::Array
+        || !spkThre->editor || *spkThre->editor != EditorKind::ArrayEditor
+        || !spkThre->access || *spkThre->access != AccessMode::ReadWrite) {
+        return fail("spk-order-amp-thre");
+    }
+    if (spkState == nullptr || !spkState->shape || *spkState->shape != ValueShape::Array
+        || !spkState->editor || *spkState->editor != EditorKind::ArrayEditor
+        || !spkState->access || *spkState->access != AccessMode::ReadOnly) {
+        return fail("spk-state");
+    }
+    if (micState == nullptr || !micState->shape || *micState->shape != ValueShape::Array
+        || !micState->editor || *micState->editor != EditorKind::ArrayEditor
+        || !micState->access || *micState->access != AccessMode::ReadOnly) {
+        return fail("mic-state");
+    }
     if (catalog.find("") != nullptr || catalog.find("Refer_Num") != nullptr
         || catalog.find("check_date") != nullptr || catalog.find("CAN_Msg") != nullptr
         || catalog.find("OrderFour_Flag") != nullptr) {
@@ -157,7 +175,8 @@ bool checkCatalogFile(const char* path) {
         if (!entry.firmwarePath || entry.firmwarePath->empty()) {
             return fail("struct-path");
         }
-        if (entry.id.text() == "Step" || entry.id.text() == "RNC_refresh") {
+        if (entry.id.text() == "Step" || entry.id.text() == "RNC_refresh"
+            || entry.id.text() == "SpkState" || entry.id.text() == "MicState") {
             continue;
         }
         if (!entry.access || *entry.access != AccessMode::ReadWrite) {

@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "profile": "6mic",
+  "source_header": "docs/baseline/param/proConfig.h",
+  "source_struct": "docs/baseline/param/param.c",
+  "note": "宏值来自仓库内固件基线副本，供目录、布局与 UI 维度对齐；不等同于设备上运行的固件版本号。",
+  "macros": {
+    "BLOCK_SIZE": 32,
+    "A2B_SLOTS": 20,
+    "RX_SLOTS": 8,
+    "TX_SLOTS": 8,
+    "SAMPLES_PER_FFTUPDATE": 60,
+    "SAMPLES_FFT": 512,
+    "TAPS_FILTER_T": 256,
+    "REFERENCE_NUM": 12,
+    "SPEAKER_NUM": 6,
+    "ERROR_NUM": 6,
+    "AUDIO_NUM": 8,
+    "START_FRE_NUM": 7,
+    "STOP_FRE_NUM": 120,
+    "TOTAL_FRE_NUM": 120,
+    "FFT_BLOCK_NUM": 56,
+    "SAMPLES_PER_FFTUPDATE_TRANFUNC": 512,
+    "aenc_con_RES_MEM_SIZE": 400000,
+    "WINDOW_LEN": 7,
+    "aenc_con_TRANSFER_LEN": 200,
+    "aenc_con_ORDER_NUM": 3,
+    "AUDIO_DATA_SAMPLES": 8,
+    "USE_FLASH": 0,
+    "RX_DATA_SAMPLES": 20,
+    "TX_DATA_SAMPLES": 8
+  },
+  "param_field_bindings": [
+    {
+      "firmware_path": "SpkOrderAmpThre",
+      "c_decl": "float SpkOrderAmpThre[aenc_con_ORDER_NUM]",
+      "length_macro": "aenc_con_ORDER_NUM",
+      "layout_shape": [3],
+      "ui_notes_zh": "ENC 阶次幅度阈值；layout 与宏均为 3 元。"
+    },
+    {
+      "firmware_path": "SpkState",
+      "c_decl": "float SpkState[20]",
+      "length_literal": 20,
+      "layout_shape": [20],
+      "effective_channels_macro": "SPEAKER_NUM",
+      "ui_notes_zh": "固件数组长度 20；业务上常关注前 SPEAKER_NUM(6) 路扬声器自检。"
+    },
+    {
+      "firmware_path": "MicState",
+      "c_decl": "float MicState[20]",
+      "length_literal": 20,
+      "layout_shape": [20],
+      "effective_channels_macro": "ERROR_NUM",
+      "ui_notes_zh": "固件数组长度 20；业务上常关注前 ERROR_NUM(6) 路误差麦克风自检。"
+    },
+    {
+      "firmware_path": "ERNC_TF.fSecPathTransR",
+      "c_decl": "float fSecPathTransR[ERROR_NUM][SPEAKER_NUM][TOTAL_FRE_NUM]",
+      "layout_shape": [6, 6, 120],
+      "shape_macros": ["ERROR_NUM", "SPEAKER_NUM", "TOTAL_FRE_NUM"]
+    },
+    {
+      "firmware_path": "ERNC_TF.fSecPathTransI",
+      "c_decl": "float fSecPathTransI[ERROR_NUM][SPEAKER_NUM][TOTAL_FRE_NUM]",
+      "layout_shape": [6, 6, 120],
+      "shape_macros": ["ERROR_NUM", "SPEAKER_NUM", "TOTAL_FRE_NUM"]
+    },
+    {
+      "firmware_path": "ERNC_TF.SpecRadius",
+      "c_decl": "float SpecRadius[TOTAL_FRE_NUM]",
+      "layout_shape": [120],
+      "shape_macros": ["TOTAL_FRE_NUM"]
+    },
+    {
+      "firmware_path": "ERNC_TF.ENCTF",
+      "c_decl": "float ENCTF[SPEAKER_NUM][ERROR_NUM][aenc_con_TRANSFER_LEN]",
+      "layout_shape": [6, 6, 200],
+      "shape_macros": ["SPEAKER_NUM", "ERROR_NUM", "aenc_con_TRANSFER_LEN"]
+    }
+  ]
+}

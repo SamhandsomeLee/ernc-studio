@@ -1122,8 +1122,11 @@
       "id": "SpkOrderAmpThre",
       "firmware_path": "SpkOrderAmpThre",
       "category": "Threshold",
+      "description_zh": "阶次扬声器输出幅度阈值（aenc_con_ORDER_NUM=3）；单独2/4阶工况下设置，ENC发散检测需人工对照后再写",
       "data_type": "float32",
-      "access": "read_write"
+      "shape": "array",
+      "access": "read_write",
+      "editor": "array_editor"
     },
     {
       "id": "SpkandMicBreakControlFlag",
@@ -1357,17 +1360,21 @@
       "id": "SpkState",
       "firmware_path": "SpkState",
       "category": "other",
-      "description_zh": "扬声器状态(开机自检)",
+      "description_zh": "扬声器状态(开机自检)；固件 float[20]，展示优先前 SPEAKER_NUM(6) 路",
       "data_type": "float32",
-      "access": "read_write"
+      "shape": "array",
+      "access": "read_only",
+      "editor": "array_editor"
     },
     {
       "id": "MicState",
       "firmware_path": "MicState",
       "category": "other",
-      "description_zh": "麦克风状态(开机自检)",
+      "description_zh": "麦克风状态(开机自检)；固件 float[20]，展示优先前 ERROR_NUM(6) 路",
       "data_type": "float32",
-      "access": "read_write"
+      "shape": "array",
+      "access": "read_only",
+      "editor": "array_editor"
     },
     {
       "id": "Datarecordflag",
