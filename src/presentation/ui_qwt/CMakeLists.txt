@@ -5,6 +5,7 @@ ernc_require_qwt()
 set(ernc_ui_qwt_sources
     ../analysis/analysis_panel.cpp
     ../analysis/analysis_region_bridge.cpp
+    ../analysis/curve_color_palette.cpp
     ../analysis/check_data_plot.cpp
     ../analysis/dataset_manager.cpp
     ../analysis/ernc_tf_plot.cpp

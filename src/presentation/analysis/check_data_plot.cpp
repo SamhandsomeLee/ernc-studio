@@ -4,12 +4,14 @@
 
 #include "ernc/domain/analysis/series_mapper.hpp"
 
+#include <QApplication>
 #include <QComboBox>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QScrollArea>
 #include <QSignalBlocker>
 #include <QVBoxLayout>
+#include <QWheelEvent>
 
 #include <array>
 #include <string_view>
@@ -84,6 +86,35 @@ ernc::domain::Result<ernc::domain::AnalysisDataset> sliceSeries(const ernc::doma
     return ernc::domain::AnalysisDataset::fromDecoded(std::move(slice));
 }
 
+/// @brief 指针在图表上时，滚轮用于 Qwt 缩放，不驱动 QScrollArea 上下滚动。
+class PlotWheelScrollGuard final : public QObject {
+public:
+    explicit PlotWheelScrollGuard(QScrollArea* scroll) : QObject(scroll), scroll_(scroll) {
+        scroll_->viewport()->installEventFilter(this);
+    }
+
+    bool eventFilter(QObject* watched, QEvent* event) override {
+        if (watched != scroll_->viewport() || event->type() != QEvent::Wheel) {
+            return QObject::eventFilter(watched, event);
+        }
+        auto* wheel = static_cast<QWheelEvent*>(event);
+        QWidget* at = QApplication::widgetAt(wheel->globalPosition().toPoint());
+        for (QWidget* widget = at; widget != nullptr && widget != scroll_; widget = widget->parentWidget()) {
+            if (widget->objectName() != QStringLiteral("erncPlotWorkspace")) {
+                continue;
+            }
+            auto* workspace = static_cast<PlotWorkspace*>(widget);
+            (void)workspace->handleWheelZoom(wheel);
+            wheel->accept();
+            return true;
+        }
+        return false;
+    }
+
+private:
+    QScrollArea* scroll_;
+};
+
 }  // namespace
 
 CheckDataPlot::CheckDataPlot(QWidget* parent) : QWidget(parent) {
@@ -104,6 +135,7 @@ CheckDataPlot::CheckDataPlot(QWidget* parent) : QWidget(parent) {
     auto* scroll = new QScrollArea(this);
     scroll->setWidgetResizable(true);
     scroll->setWidget(host);
+    (void)new PlotWheelScrollGuard(scroll);
 
     auto* layout = new QVBoxLayout(this);
     layout->addLayout(controls);
@@ -280,7 +312,7 @@ ernc::domain::Result<void> CheckDataPlot::rebuild() {
             label->setText(QString::fromStdString(current->path()));
         }
         auto* plot = new PlotWorkspace(row);
-        const ernc::domain::Result<void> shown = plot->setDataset(views[index]);
+        const ernc::domain::Result<void> shown = plot->setDataset(views[index], index);
         if (!shown.ok()) {
             delete row;
             for (QWidget* created : rows) {

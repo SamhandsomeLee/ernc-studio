@@ -1,5 +1,6 @@
 #include "analysis/dataset_manager.hpp"
 
+#include "analysis/curve_color_palette.hpp"
 #include "analysis/plot_workspace.hpp"
 #include "ernc/domain/analysis/series_mapper.hpp"
 
@@ -11,23 +12,6 @@
 
 namespace ernc::presentation {
 namespace {
-
-/// 曲线色板。颜色是 ERNC Studio 自己的区分色，不是设备参数，也不是 Siemens 官方色。
-constexpr std::string_view kCurvePaletteHex[] = {
-    "#007D88", "#B42318", "#167A49", "#2563A5", "#A86609",
-    "#7A4EAB", "#C24D2C", "#3B6E8F", "#5E8F3B", "#8A5A44",
-};
-
-/// 色板大小。
-constexpr std::size_t kCurvePaletteSize = sizeof(kCurvePaletteHex) / sizeof(kCurvePaletteHex[0]);
-
-/// @brief 按加入顺序分配稳定颜色。
-/// @param index 数据集加入时的序号。
-/// @return 色板中的一种颜色。超过色板长度时循环复用。
-QColor colorForIndex(std::size_t index) {
-    const std::string_view hex = kCurvePaletteHex[index % kCurvePaletteSize];
-    return QColor(QString::fromLatin1(hex.data(), static_cast<int>(hex.size())));
-}
 
 /// @brief 抽稀步长。
 /// @param pointCount 一条曲线的原始点数。
@@ -63,7 +47,7 @@ ernc::domain::Result<void> DatasetManager::addDataset(const QString& name, const
     if (name.isEmpty() || find(name) != nullptr) {
         return ernc::domain::Result<void>::failure(ernc::domain::ErrorCode::InvalidParameter);
     }
-    entries_.push_back(Entry{name, dataset, colorForIndex(entries_.size()), true});
+    entries_.push_back(Entry{name, dataset, curveColorForIndex(entries_.size()), true});
     return rebuild();
 }
 
@@ -170,6 +154,7 @@ PlotWorkspace* DatasetManager::plotWorkspace() const noexcept {
 
 ernc::domain::Result<void> DatasetManager::rebuild() {
     std::vector<OverlayCurve> curves;
+    std::size_t visibleCurveIndex = 0;
     for (const Entry& entry : entries_) {
         if (!entry.visible) {
             continue;
@@ -185,8 +170,8 @@ ernc::domain::Result<void> DatasetManager::rebuild() {
         for (std::size_t series = 0; series < seriesCount; ++series) {
             OverlayCurve curve;
             curve.title = seriesCount == 1 ? entry.name
-                                           : QStringLiteral("%1 · %2").arg(entry.name).arg(static_cast<qlonglong>(series));
-            curve.color = entry.color;
+                                           : QStringLiteral("%1 · %2").arg(entry.name).arg(static_cast<qlonglong>(series + 1));
+            curve.color = curveColorForIndex(visibleCurveIndex++);
             for (std::size_t point = 0; point < pointCount; point += stride) {
                 const ernc::domain::Result<ernc::domain::SeriesPoint> sample = map.pointAt(entry.dataset, series, point);
                 if (!sample.ok()) {

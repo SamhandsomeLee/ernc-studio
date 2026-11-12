@@ -7,14 +7,20 @@
 #include <QString>
 #include <QWidget>
 
+class QEvent;
+class QShowEvent;
+class QWheelEvent;
+
 #include <cstddef>
 #include <optional>
 #include <vector>
 
 class QTabWidget;
+class QToolButton;
 class QwtLegend;
 class QwtPlot;
 class QwtPlotCurve;
+class QwtPlotMagnifier;
 class QwtPlotPanner;
 class QwtPlotPicker;
 class QwtPlotZoomer;
@@ -48,7 +54,8 @@ public:
     /// @param dataset 已构造成功的数据集，只在本次调用期间借用。成功时控件拷贝它。
     /// @return 成功时没有载荷。映射失败时为 InvalidParameter，原来的数据集和曲线都保持不变。
     /// 成功后仍只有一个页签，标题换成数据集路径。
-    ernc::domain::Result<void> setDataset(const ernc::domain::AnalysisDataset& dataset);
+    ernc::domain::Result<void> setDataset(const ernc::domain::AnalysisDataset& dataset,
+                                         std::size_t colorOffset = 0);
 
     /// @brief 用一组叠加曲线替换当前曲线区。
     ///
@@ -75,8 +82,11 @@ public:
     QwtPlotZoomer* zoomer() const noexcept;
 
     /// @brief 借出平移器。
-    /// @return 鼠标中键拖动使用的 QwtPlotPanner。不转移所有权，控件销毁后失效。
+    /// @return 右键拖动平移使用的 QwtPlotPanner。不转移所有权，控件销毁后失效。
     QwtPlotPanner* panner() const noexcept;
+
+    /// @return 滚轮缩放使用的 QwtPlotMagnifier。不转移所有权，控件销毁后失效。
+    QwtPlotMagnifier* magnifier() const noexcept;
 
     /// @brief 借出十字光标。
     /// @return 跟踪鼠标的 QwtPlotPicker。不转移所有权，控件销毁后失效。
@@ -105,7 +115,25 @@ public:
     /// NaN 和 Inf 原样返回。不读取 Qwt 曲线。
     ernc::domain::Result<float> rawValue(std::size_t storageIndex) const;
 
+    /// @brief 把滚轮事件交给 Qwt 缩放器。ScrollArea 内调用以避免滚轮变成页面滚动。
+    /// @return 事件已被缩放器消费时为 true。
+    bool handleWheelZoom(QWheelEvent* event);
+
+    /// @brief 轴自适应并清空缩放历史，恢复载入数据时的默认视窗。
+    /// 不改变曲线数据。须在 UI 主线程调用。
+    void resetView();
+
+protected:
+    void wheelEvent(QWheelEvent* event) override;
+    void resizeEvent(QResizeEvent* event) override;
+    void showEvent(QShowEvent* event) override;
+    bool eventFilter(QObject* watched, QEvent* event) override;
+
 private:
+    void configurePlotNavigation();
+    void resetPlotView();
+    void updateResetViewButtonGeometry();
+    void createResetViewButton();
     /// 唯一的图表页签。本控件拥有。
     QTabWidget* tabs_ = nullptr;
 
@@ -115,14 +143,20 @@ private:
     /// 左键矩形缩放。画布拥有。
     QwtPlotZoomer* zoomer_ = nullptr;
 
-    /// 中键平移。画布拥有。
+    /// 右键平移。画布拥有。
     QwtPlotPanner* panner_ = nullptr;
+
+    /// 滚轮缩放。画布拥有。
+    QwtPlotMagnifier* magnifier_ = nullptr;
 
     /// 十字光标。画布拥有。
     QwtPlotPicker* picker_ = nullptr;
 
     /// 右侧图例。图拥有。
     QwtLegend* legend_ = nullptr;
+
+    /// 画布右下角「复位视图」。父对象为 plot 画布。
+    QToolButton* resetViewButton_ = nullptr;
 
     /// 按曲线号排列的显示曲线。图拥有这些对象，本向量只保存指针。
     std::vector<QwtPlotCurve*> curves_;
