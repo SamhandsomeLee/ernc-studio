@@ -1,4 +1,7 @@
+#include "can_lamp.hpp"
 #include "can_mapping.hpp"
+
+#include <ernc/domain/firmware_layout.hpp>
 
 #include <chrono>
 #include <iostream>
@@ -13,9 +16,14 @@ using ernc::application::CanMappingStatus;
 using ernc::application::CanMappingTable;
 using ernc::application::CanSignalMapping;
 using ernc::application::VehicleSpeedSample;
+using ernc::application::CanLampColor;
+using ernc::application::applyConfirmedSlotMap;
 using ernc::application::canMsgSlotCount;
 using ernc::application::canUnitConfirmed;
+using ernc::application::evaluateCanLamp;
 using ernc::application::evaluateVehicleSpeedInterlock;
+using ernc::application::loadCanMsgSlotMapIntoTable;
+using ernc::domain::FirmwareLayoutLoader;
 using ernc::application::expectedCanNameCount;
 using ernc::application::findVehicleSpeedMapping;
 using ernc::application::loadCanMappingTableFromFile;
@@ -156,6 +164,62 @@ bool allowed_when_fully_confirmed() {
     return verdict == CanInterlockVerdict::AllowedForAutoRelease;
 }
 
+bool slot_map_resolves_pack4_slots(const char* canPath, const char* slotMapPath, const char* manifestPath) {
+    constexpr const char* name = "slot_map_resolves_pack4_slots";
+    const Result<CanMappingTable> loaded = loadCanMappingTableFromFile(canPath);
+    if (!loaded.ok()) {
+        return fail(name);
+    }
+    CanMappingTable table = loaded.value();
+    const Result<void> merged = loadCanMsgSlotMapIntoTable(table, slotMapPath);
+    if (!merged.ok() || !table.mappingTableConfirmed) {
+        return fail(name);
+    }
+    const auto layoutLoad = FirmwareLayoutLoader::loadFile(manifestPath);
+    if (!layoutLoad.ok()) {
+        return fail(name);
+    }
+    const Result<void> applied = applyConfirmedSlotMap(table, layoutLoad.layout());
+    if (!applied.ok()) {
+        return fail(name);
+    }
+    constexpr std::uint32_t kCanMsgBaseSlot = 14869U;
+    for (const CanSignalMapping& mapping : table.signals) {
+        if (mapping.mappingStatus != CanMappingStatus::Mapped || !mapping.arrayIndex.has_value()
+            || !mapping.firmwareSlotIndex.has_value()) {
+            return fail(name);
+        }
+        if (mapping.excelIndex < 1U || mapping.excelIndex > expectedCanNameCount()) {
+            return fail(name);
+        }
+        if (*mapping.arrayIndex != mapping.excelIndex - 1U) {
+            return fail(name);
+        }
+        if (*mapping.firmwareSlotIndex != kCanMsgBaseSlot + *mapping.arrayIndex) {
+            return fail(name);
+        }
+    }
+    const auto summary = summarizeCanMapping(table);
+    if (summary.mappedCount != expectedCanNameCount() || summary.unmappedCount != 0U || !summary.vehicleSpeedMapped) {
+        return fail(name);
+    }
+    const CanSignalMapping* speed = findVehicleSpeedMapping(table);
+    if (speed == nullptr || *speed->firmwareSlotIndex != kCanMsgBaseSlot) {
+        return fail(name);
+    }
+    return true;
+}
+
+bool lamp_colors_0_1_gray() {
+    constexpr const char* name = "lamp_colors_0_1_gray";
+    if (evaluateCanLamp(0.0f, false) != CanLampColor::Gray || evaluateCanLamp(0.0f, true) != CanLampColor::Red
+        || evaluateCanLamp(1.0f, true) != CanLampColor::Green
+        || evaluateCanLamp(2.0f, true) != CanLampColor::Gray) {
+        return fail(name);
+    }
+    return true;
+}
+
 bool raw_value_alone_does_not_bypass_mapping() {
     const Result<CanMappingTable> loaded = loadCanMappingTableFromRawJson(R"({
       "rows": [
@@ -165,10 +229,17 @@ bool raw_value_alone_does_not_bypass_mapping() {
     return !loaded.ok() || loaded.tryError() == nullptr || *loaded.tryError() != ErrorCode::InvalidParameter;
 }
 
-bool runCase(std::string_view name, const char* canPath, bool& recognized) {
+bool runCase(std::string_view name, const char* canPath, const char* slotMapPath, const char* manifestPath,
+             bool& recognized) {
     recognized = true;
     if (name == "catalog_loads_36_names") {
         return catalog_loads_36_names(canPath);
+    }
+    if (name == "slot_map_resolves_pack4_slots") {
+        return slot_map_resolves_pack4_slots(canPath, slotMapPath, manifestPath);
+    }
+    if (name == "lamp_colors_0_1_gray") {
+        return lamp_colors_0_1_gray();
     }
     if (name == "speed_blocked_when_mapping_unconfirmed") {
         return speed_blocked_when_mapping_unconfirmed(canPath);
@@ -195,12 +266,14 @@ bool runCase(std::string_view name, const char* canPath, bool& recognized) {
 }  // namespace
 
 int main(int argc, char** argv) {
-    if (argc != 3 || argv[1] == nullptr || argv[2] == nullptr) {
-        std::cerr << "usage: ernc_can_mapping_tests <case> <can_names.raw.json>\n";
+    if (argc < 3 || argv[1] == nullptr || argv[2] == nullptr) {
+        std::cerr << "usage: ernc_can_mapping_tests <case> <can_names.raw.json> [slot_map.json] [layout_manifest.json]\n";
         return 2;
     }
+    const char* slotMapPath = argc > 3 ? argv[3] : nullptr;
+    const char* manifestPath = argc > 4 ? argv[4] : nullptr;
     bool recognized = false;
-    if (!runCase(argv[1], argv[2], recognized)) {
+    if (!runCase(argv[1], argv[2], slotMapPath, manifestPath, recognized)) {
         if (!recognized) {
             std::cerr << "unknown case: " << argv[1] << '\n';
             return 2;

@@ -31,6 +31,7 @@ class RncParamPage;
 class ErncFlagPage;
 class ErncInOutPage;
 class AnalysisPanel;
+class CanInfoPanel;
 class ParameterFilterProxy;
 class ParameterTableModel;
 }
@@ -62,6 +63,9 @@ public:
     /// @brief 切到曲线分析页。无区域目录时仍停在当前页。
     void showCurveAnalysis();
 
+    /// @brief 切到 CAN 信息页。
+    void showCanInfoTab();
+
     /// @brief 把会话 UI 记录接到曲线分析页。
     void setUiActivityRecorder(
         std::function<void(std::string_view action, std::string_view detail, bool success,
@@ -92,6 +96,8 @@ public:
     /// @param path Excel 导出的 JSON。调用方拥有原件。空路径清空目录。
     /// @note 不把行号写成槽位。只在 UI 主线程调用。
     void setCanNamesPath(const QString& path);
+
+    void setCanSlotMapPath(const QString& path);
 
     /// @brief 更新当前页面，保留已经选中的参数 id。
     /// @param pageId 项目树页面 id。空文本不改变已有选择。调用方拥有原件，本函数只复制它。
@@ -177,6 +183,9 @@ private:
 
     /// 曲线分析页。有区域目录时创建。
     AnalysisPanel* curveAnalysis_ = nullptr;
+
+    /// CAN 信息页。独立页签，不放在函数视图内。
+    CanInfoPanel* canInfoPanel_ = nullptr;
 
     /// 为 true 时，Check 树页显示 CAN 名称而不是检测页。
     bool canShown_{false};

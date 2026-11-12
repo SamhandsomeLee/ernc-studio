@@ -40,6 +40,9 @@ NavigatorProjection projectNavigatorPages(const ernc::domain::ParameterCatalog& 
 
     for (const ernc::domain::ParameterDefinition& parameter : catalog.entries()) {
         const std::string& parameterId = parameter.id.text();
+        if (parameterId == "Can_Msg") {
+            continue;
+        }
         if (!parameter.category.has_value() || parameter.category->empty()) {
             return failedProjection("参数“" + parameterId + "”没有页面分类。");
         }

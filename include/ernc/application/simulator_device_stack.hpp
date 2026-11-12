@@ -2,6 +2,7 @@
 
 #include "ernc/application/batch_read.hpp"
 #include "ernc/application/batch_write.hpp"
+#include "ernc/application/read_parameter.hpp"
 #include "scheduler.hpp"
 #include "session.hpp"
 #include "ernc/domain/catalog.hpp"
@@ -57,6 +58,10 @@ public:
     ParameterBatchWriter& batchWriter();
     const ParameterBatchWriter& batchWriter() const;
 
+    /// 单参数数组读（如 Can_Msg）。与 batchReader 不要并发使用。
+    ParameterReader& parameterReader();
+  const ParameterReader& parameterReader() const;
+
     void attachDiagnosticLog(ernc::infrastructure::DiagnosticLog* log) noexcept;
 
 private:
@@ -72,6 +77,7 @@ private:
     std::unique_ptr<CommandScheduler> scheduler_;
     std::unique_ptr<ParameterBatchReader> batchReader_;
     std::unique_ptr<ParameterBatchWriter> batchWriter_;
+    std::unique_ptr<ParameterReader> parameterReader_;
 
     ernc::infrastructure::DiagnosticLog* diagnosticLog_{nullptr};
 };

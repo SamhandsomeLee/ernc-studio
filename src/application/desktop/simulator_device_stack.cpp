@@ -89,6 +89,8 @@ ernc::domain::Result<SessionId> SimulatorDeviceStack::connectSimulator() {
     }
     batchReader_ = std::make_unique<ParameterBatchReader>(catalog_, layout_, store_, *session_, *scheduler_);
     batchWriter_ = std::make_unique<ParameterBatchWriter>(catalog_, layout_, store_, *session_, *scheduler_);
+    parameterReader_ =
+        std::make_unique<ParameterReader>(catalog_, layout_, store_, *session_, *scheduler_);
     return session_->connect();
 }
 
@@ -130,6 +132,14 @@ const ParameterBatchWriter& SimulatorDeviceStack::batchWriter() const {
     return *batchWriter_;
 }
 
+ParameterReader& SimulatorDeviceStack::parameterReader() {
+    return *parameterReader_;
+}
+
+const ParameterReader& SimulatorDeviceStack::parameterReader() const {
+    return *parameterReader_;
+}
+
 void SimulatorDeviceStack::attachDiagnosticLog(ernc::infrastructure::DiagnosticLog* log) noexcept {
     diagnosticLog_ = log;
     if (session_ != nullptr) {
@@ -141,6 +151,7 @@ void SimulatorDeviceStack::attachDiagnosticLog(ernc::infrastructure::DiagnosticL
 }
 
 void SimulatorDeviceStack::reset() {
+    parameterReader_.reset();
     batchWriter_.reset();
     batchReader_.reset();
     scheduler_.reset();

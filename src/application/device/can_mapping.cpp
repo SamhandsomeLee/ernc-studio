@@ -2,12 +2,14 @@
 
 #include <fstream>
 #include <sstream>
+#include <unordered_set>
 
 namespace ernc::application {
 
 namespace {
 
 using ernc::domain::ErrorCode;
+using ernc::domain::FirmwareLayout;
 using ernc::domain::Result;
 using ernc::domain::RuntimeTime;
 
@@ -58,6 +60,70 @@ bool parseNameZh(std::string_view text, std::size_t& position, std::string& name
     return !nameOut.empty();
 }
 
+bool parseJsonUint32AfterKey(std::string_view text, std::size_t& position, std::string_view key, std::uint32_t& out) {
+    const std::size_t found = text.find(key, position);
+    if (found == std::string_view::npos) {
+        return false;
+    }
+    std::size_t at = found + key.size();
+    while (at < text.size() && (text[at] == ' ' || text[at] == '\t')) {
+        ++at;
+    }
+    if (at >= text.size() || text[at] != ':') {
+        return false;
+    }
+    ++at;
+    while (at < text.size() && (text[at] == ' ' || text[at] == '\t')) {
+        ++at;
+    }
+    std::uint32_t value = 0;
+    bool any = false;
+    while (at < text.size() && text[at] >= '0' && text[at] <= '9') {
+        any = true;
+        value = value * 10U + static_cast<std::uint32_t>(text[at] - '0');
+        ++at;
+    }
+    if (!any) {
+        return false;
+    }
+    position = at;
+    out = value;
+    return true;
+}
+
+bool parseMappingTableConfirmed(std::string_view text, bool& confirmedOut) {
+    constexpr std::string_view key = "\"mappingTableConfirmed\"";
+    const std::size_t found = text.find(key);
+    if (found == std::string_view::npos) {
+        return false;
+    }
+    const std::size_t trueToken = text.find("true", found + key.size());
+    const std::size_t falseToken = text.find("false", found + key.size());
+    if (trueToken == std::string_view::npos && falseToken == std::string_view::npos) {
+        return false;
+    }
+    if (trueToken != std::string_view::npos && (falseToken == std::string_view::npos || trueToken < falseToken)) {
+        confirmedOut = true;
+        return true;
+    }
+    confirmedOut = false;
+    return true;
+}
+
+bool parseSchemaVersion(std::string_view text, std::uint32_t& versionOut) {
+    std::size_t position = 0;
+    return parseJsonUint32AfterKey(text, position, "\"schema_version\"", versionOut);
+}
+
+CanSignalMapping* findByExcelIndex(CanMappingTable& table, std::uint32_t excelIndex) noexcept {
+    for (CanSignalMapping& mapping : table.signals) {
+        if (mapping.excelIndex == excelIndex) {
+            return &mapping;
+        }
+    }
+    return nullptr;
+}
+
 }  // namespace
 
 Result<CanMappingTable> loadCanMappingTableFromRawJson(std::string_view jsonText) {
@@ -83,6 +149,79 @@ Result<CanMappingTable> loadCanMappingTableFromRawJson(std::string_view jsonText
         return Result<CanMappingTable>::failure(ErrorCode::InvalidParameter);
     }
     return Result<CanMappingTable>::success(std::move(table));
+}
+
+Result<void> loadCanMsgSlotMapIntoTable(CanMappingTable& table, const char* path) {
+    if (path == nullptr || table.signals.size() != expectedCanNameCount()) {
+        return Result<void>::failure(ErrorCode::InvalidParameter);
+    }
+    std::ifstream stream(path, std::ios::binary);
+    if (!stream) {
+        return Result<void>::failure(ErrorCode::InvalidParameter);
+    }
+    std::ostringstream buffer;
+    buffer << stream.rdbuf();
+    const std::string_view jsonText = buffer.view();
+
+    std::uint32_t schemaVersion = 0;
+    if (!parseSchemaVersion(jsonText, schemaVersion) || schemaVersion != 1U) {
+        return Result<void>::failure(ErrorCode::InvalidParameter);
+    }
+    bool mappingConfirmed = false;
+    if (!parseMappingTableConfirmed(jsonText, mappingConfirmed)) {
+        return Result<void>::failure(ErrorCode::InvalidParameter);
+    }
+
+    std::size_t position = 0;
+    std::unordered_set<std::uint32_t> seenExcel;
+    std::unordered_set<std::uint32_t> seenArray;
+    std::size_t mappedCount = 0;
+    while (position < jsonText.size()) {
+        std::uint32_t excelIndex = 0;
+        if (!parseJsonUint32AfterKey(jsonText, position, "\"excelIndex\"", excelIndex)) {
+            break;
+        }
+        std::uint32_t arrayIndex = 0;
+        if (!parseJsonUint32AfterKey(jsonText, position, "\"arrayIndex\"", arrayIndex)) {
+            return Result<void>::failure(ErrorCode::InvalidParameter);
+        }
+        if (excelIndex < 1U || excelIndex > expectedCanNameCount() || arrayIndex >= expectedCanNameCount()) {
+            return Result<void>::failure(ErrorCode::InvalidParameter);
+        }
+        if (!seenExcel.insert(excelIndex).second || !seenArray.insert(arrayIndex).second) {
+            return Result<void>::failure(ErrorCode::InvalidParameter);
+        }
+        CanSignalMapping* mapping = findByExcelIndex(table, excelIndex);
+        if (mapping == nullptr) {
+            return Result<void>::failure(ErrorCode::InvalidParameter);
+        }
+        mapping->arrayIndex = arrayIndex;
+        ++mappedCount;
+    }
+    if (mappedCount != expectedCanNameCount()) {
+        return Result<void>::failure(ErrorCode::InvalidParameter);
+    }
+    table.mappingTableConfirmed = mappingConfirmed;
+    return Result<void>::success();
+}
+
+Result<void> applyConfirmedSlotMap(CanMappingTable& table, const FirmwareLayout& layout) {
+    if (!table.mappingTableConfirmed) {
+        return Result<void>::success();
+    }
+    const ernc::domain::LayoutResolve located = layout.locate("Can_Msg");
+    if (!located.ok()) {
+        return Result<void>::failure(ErrorCode::InvalidParameter);
+    }
+    const std::uint32_t baseSlot = located.field().slot;
+    for (CanSignalMapping& mapping : table.signals) {
+        if (!mapping.arrayIndex.has_value()) {
+            return Result<void>::failure(ErrorCode::InvalidParameter);
+        }
+        mapping.firmwareSlotIndex = baseSlot + *mapping.arrayIndex;
+        mapping.mappingStatus = CanMappingStatus::Mapped;
+    }
+    return Result<void>::success();
 }
 
 Result<CanMappingTable> loadCanMappingTableFromFile(const char* path) {

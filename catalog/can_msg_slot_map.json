@@ -1,0 +1,150 @@
+{
+  "schema_version": 1,
+  "mappingTableConfirmed": true,
+  "signals": [
+    {
+      "excelIndex": 1,
+      "arrayIndex": 0
+    },
+    {
+      "excelIndex": 2,
+      "arrayIndex": 1
+    },
+    {
+      "excelIndex": 3,
+      "arrayIndex": 2
+    },
+    {
+      "excelIndex": 4,
+      "arrayIndex": 3
+    },
+    {
+      "excelIndex": 5,
+      "arrayIndex": 4
+    },
+    {
+      "excelIndex": 6,
+      "arrayIndex": 5
+    },
+    {
+      "excelIndex": 7,
+      "arrayIndex": 6
+    },
+    {
+      "excelIndex": 8,
+      "arrayIndex": 7
+    },
+    {
+      "excelIndex": 9,
+      "arrayIndex": 8
+    },
+    {
+      "excelIndex": 10,
+      "arrayIndex": 9
+    },
+    {
+      "excelIndex": 11,
+      "arrayIndex": 10
+    },
+    {
+      "excelIndex": 12,
+      "arrayIndex": 11
+    },
+    {
+      "excelIndex": 13,
+      "arrayIndex": 12
+    },
+    {
+      "excelIndex": 14,
+      "arrayIndex": 13
+    },
+    {
+      "excelIndex": 15,
+      "arrayIndex": 14
+    },
+    {
+      "excelIndex": 16,
+      "arrayIndex": 15
+    },
+    {
+      "excelIndex": 17,
+      "arrayIndex": 16
+    },
+    {
+      "excelIndex": 18,
+      "arrayIndex": 17
+    },
+    {
+      "excelIndex": 19,
+      "arrayIndex": 18
+    },
+    {
+      "excelIndex": 20,
+      "arrayIndex": 19
+    },
+    {
+      "excelIndex": 21,
+      "arrayIndex": 20
+    },
+    {
+      "excelIndex": 22,
+      "arrayIndex": 21
+    },
+    {
+      "excelIndex": 23,
+      "arrayIndex": 22
+    },
+    {
+      "excelIndex": 24,
+      "arrayIndex": 23
+    },
+    {
+      "excelIndex": 25,
+      "arrayIndex": 24
+    },
+    {
+      "excelIndex": 26,
+      "arrayIndex": 25
+    },
+    {
+      "excelIndex": 27,
+      "arrayIndex": 26
+    },
+    {
+      "excelIndex": 28,
+      "arrayIndex": 27
+    },
+    {
+      "excelIndex": 29,
+      "arrayIndex": 28
+    },
+    {
+      "excelIndex": 30,
+      "arrayIndex": 29
+    },
+    {
+      "excelIndex": 31,
+      "arrayIndex": 30
+    },
+    {
+      "excelIndex": 32,
+      "arrayIndex": 31
+    },
+    {
+      "excelIndex": 33,
+      "arrayIndex": 32
+    },
+    {
+      "excelIndex": 34,
+      "arrayIndex": 33
+    },
+    {
+      "excelIndex": 35,
+      "arrayIndex": 34
+    },
+    {
+      "excelIndex": 36,
+      "arrayIndex": 35
+    }
+  ]
+}

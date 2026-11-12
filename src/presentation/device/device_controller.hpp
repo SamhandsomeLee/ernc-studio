@@ -2,6 +2,7 @@
 
 #include "ernc/application/batch_read.hpp"
 #include "ernc/application/batch_write.hpp"
+#include "ernc/application/read_parameter.hpp"
 #include "ernc/application/simulator_device_stack.hpp"
 #include "ernc/domain/catalog.hpp"
 #include "ernc/domain/firmware_layout.hpp"
@@ -68,6 +69,16 @@ public:
 
     void readCategory(const std::string& pageId);
 
+    /// @brief 读固件 Can_Msg float[72]。仅模拟器路径；与批量读不要并发。
+    void readCanMsg();
+
+    /// @brief 最近一次成功读回的 Can_Msg 元素；长度应为 72。
+    const std::vector<float>& canMsgSnapshot() const noexcept { return canMsgSnapshot_; }
+
+    [[nodiscard]] bool canMsgSnapshotValid() const noexcept { return canMsgSnapshotValid_; }
+
+    [[nodiscard]] bool canMsgReadBusy() const noexcept;
+
     void pumpTick();
 
     void setWritePlanDialog(WritePlanDialog* dialog) noexcept;
@@ -84,6 +95,7 @@ signals:
     void connectionChanged(bool connected, ernc::domain::SessionId sessionId);
     void parametersUpdated(ernc::domain::SessionId sessionId, const QStringList& parameterIds);
     void readPageFinished(bool success, QString detail);
+    void canMsgUpdated(bool success);
     void operationLogRefreshRequested();
 
 private:
@@ -100,7 +112,9 @@ private:
 
     void pumpBatchReadSimulator();
     void pumpBatchWriteSimulator();
+    void pumpParameterReadSimulator();
     void finishBatchReadIfIdleSimulator();
+    void finishCanMsgReadIfIdleSimulator();
 
     RuntimeTime now() const noexcept;
 
@@ -117,6 +131,9 @@ private:
     DeviceRuntimeWorker* serialWorker_{nullptr};
 
     std::optional<ernc::application::BatchReadTicket> activeRead_;
+    std::optional<ernc::application::ReadTicket> activeCanMsgRead_;
+    std::vector<float> canMsgSnapshot_;
+    bool canMsgSnapshotValid_{false};
     std::string lastReadCategory_;
     QStringList parametersTouchedThisRead_;
 

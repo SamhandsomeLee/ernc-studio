@@ -899,16 +899,40 @@ set(ernc_can_mapping_cases
     unit_unconfirmed_blocks_threshold
     allowed_when_fully_confirmed
     raw_value_alone_does_not_bypass_mapping
+    slot_map_resolves_pack4_slots
+    lamp_colors_0_1_gray
 )
 
 foreach(ernc_can_mapping_case IN LISTS ernc_can_mapping_cases)
-    add_test(
-        NAME "can_mapping.${ernc_can_mapping_case}"
-        COMMAND ernc_can_mapping_tests
-            "${ernc_can_mapping_case}"
-            "${CMAKE_SOURCE_DIR}/catalog/source/can_names.raw.json"
-    )
+    if(ernc_can_mapping_case STREQUAL "slot_map_resolves_pack4_slots")
+        add_test(
+            NAME "can_mapping.${ernc_can_mapping_case}"
+            COMMAND ernc_can_mapping_tests
+                "${ernc_can_mapping_case}"
+                "${CMAKE_SOURCE_DIR}/catalog/source/can_names.raw.json"
+                "${CMAKE_SOURCE_DIR}/catalog/can_msg_slot_map.json"
+                "${ernc_layout_manifest}"
+        )
+    else()
+        add_test(
+            NAME "can_mapping.${ernc_can_mapping_case}"
+            COMMAND ernc_can_mapping_tests
+                "${ernc_can_mapping_case}"
+                "${CMAKE_SOURCE_DIR}/catalog/source/can_names.raw.json"
+        )
+    endif()
 endforeach()
+
+add_executable(ernc_can_lamp_tests
+    can_lamp_test.cpp
+)
+
+target_link_libraries(ernc_can_lamp_tests PRIVATE ernc_device)
+
+add_test(
+    NAME "can_lamp.lamp_colors_0_1_gray"
+    COMMAND ernc_can_lamp_tests lamp_colors_0_1_gray
+)
 
 add_executable(ernc_scheduler_tests
     scheduler_test.cpp

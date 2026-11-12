@@ -43,6 +43,9 @@ bool ParameterFilterProxy::filterAcceptsRow(int sourceRow, const QModelIndex& so
         return false;
     }
     const ernc::domain::ParameterDefinition& definition = catalog_->entries()[static_cast<std::size_t>(sourceRow)];
+    if (definition.id.text() == "Can_Msg") {
+        return false;
+    }
     if (!page_.isEmpty() && page_ != QStringLiteral("ALL")) {
         if (!definition.category || QString::fromStdString(*definition.category) != page_) {
             return false;

@@ -97,6 +97,9 @@ OtherPage::OtherPage(const ernc::domain::ParameterCatalog* catalog, ernc::domain
             || *definition.category != std::string(ernc::domain::kOtherPageCategory)) {
             continue;
         }
+        if (definition.id.text() == "Can_Msg") {
+            continue;
+        }
         const bool oneSlot = definition.firmwarePath && isOneScalarSlot(layout_, *definition.firmwarePath);
         const QString parameterId = QString::fromStdString(definition.id.text());
         auto* row = new QWidget(content);

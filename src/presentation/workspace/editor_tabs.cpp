@@ -9,6 +9,7 @@
 #include "analysis/analysis_panel.hpp"
 #include "controls/parameter_delegates.hpp"
 #include "pages/can_names.hpp"
+#include "pages/can_info_panel.hpp"
 #include "pages/check.hpp"
 #include "pages/switch_state.hpp"
 #include "pages/other_page.hpp"
@@ -191,7 +192,7 @@ EditorTabs::EditorTabs(const ernc::domain::ParameterCatalog* catalog, ernc::doma
     checkPage_->setSelectionObserver([this](const ernc::domain::ParameterId& id) {
         selectParameter(QString::fromStdString(id.text()));
     });
-    checkPage_->setCanOpener([this] { showCanCatalog(); });
+    checkPage_->setCanOpener([this] { showCanInfoTab(); });
     checkPage_->hide();
     switchPage_ = new SwitchStatePage(functionView);
     if (auto* functionLayout = qobject_cast<QVBoxLayout*>(functionView->layout())) {
@@ -236,6 +237,8 @@ EditorTabs::EditorTabs(const ernc::domain::ParameterCatalog* catalog, ernc::doma
         curveAnalysis_ = new AnalysisPanel(*regionCatalog, nullptr, nullptr, this);
         addTab(curveAnalysis_, QStringLiteral("曲线分析"));
     }
+    canInfoPanel_ = new CanInfoPanel(layout, this);
+    addTab(canInfoPanel_, QStringLiteral("CAN信息"));
     auto* table = parameterView->findChild<QTableView*>(QStringLiteral("erncParameterTable"));
     if (auto* readCurrent = parameterView->findChild<QPushButton*>(QStringLiteral("erncReadCurrentPage"))) {
         connect(readCurrent, &QPushButton::clicked, this, &EditorTabs::readCurrentPage);
@@ -314,6 +317,27 @@ void EditorTabs::setCanNamesPath(const QString& path) {
     if (canPage_ != nullptr) {
         canPage_->loadFile(path);
     }
+    if (canInfoPanel_ != nullptr) {
+        canInfoPanel_->setNamesPath(path);
+    }
+}
+
+void EditorTabs::setCanSlotMapPath(const QString& path) {
+    if (canInfoPanel_ != nullptr) {
+        canInfoPanel_->setSlotMapPath(path);
+    }
+}
+
+void EditorTabs::showCanInfoTab() {
+    if (canInfoPanel_ == nullptr) {
+        return;
+    }
+    for (int index = 0; index < count(); ++index) {
+        if (widget(index) == canInfoPanel_) {
+            setCurrentIndex(index);
+            return;
+        }
+    }
 }
 
 void EditorTabs::selectPage(const QString& pageId) {
@@ -337,6 +361,9 @@ void EditorTabs::showNamedPage(const QString& objectName) {
 
 void EditorTabs::setDeviceController(DeviceController* controller) {
     deviceController_ = controller;
+    if (canInfoPanel_ != nullptr) {
+        canInfoPanel_->setDeviceController(controller);
+    }
 }
 
 void EditorTabs::readCurrentPage() {

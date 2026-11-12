@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ernc/domain/firmware_layout.hpp"
 #include "ernc/domain/runtime_store.hpp"
 #include "ernc/domain/types.hpp"
 
@@ -51,6 +52,9 @@ struct CanSignalMapping {
 
     /// 对应 Can_Msg 槽位；未映射时为空。加载器不得用 excelIndex 猜测。
     std::optional<std::uint32_t> firmwareSlotIndex;
+
+    /// Can_Msg[72] 中本名称的下标；slot map 未合并时为空。
+    std::optional<std::uint32_t> arrayIndex;
 
     /// 物理单位。空表示未确认。
     std::string unit;
@@ -108,6 +112,13 @@ ernc::domain::Result<CanMappingTable> loadCanMappingTableFromRawJson(std::string
 
 /// @brief 从文件路径加载。
 ernc::domain::Result<CanMappingTable> loadCanMappingTableFromFile(const char* path);
+
+/// @brief 将 catalog/can_msg_slot_map.json 合并进已有 36 项名称表。
+/// @param table 须先由 loadCanMappingTableFromFile 填满名称；就地写入 arrayIndex 与 mappingTableConfirmed。
+ernc::domain::Result<void> loadCanMsgSlotMapIntoTable(CanMappingTable& table, const char* path);
+
+/// @brief mappingTableConfirmed 为 true 时，用固件布局解析 Can_Msg 基址并写入 firmwareSlotIndex。
+ernc::domain::Result<void> applyConfirmedSlotMap(CanMappingTable& table, const ernc::domain::FirmwareLayout& layout);
 
 /// @param table 映射表，只借用。
 /// @return 首条「车速」项指针；未找到时为空。

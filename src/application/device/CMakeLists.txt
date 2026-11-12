@@ -5,6 +5,7 @@ add_library(ernc_device STATIC
     write_verification.cpp
     cancellation.cpp
     can_mapping.cpp
+    can_lamp.cpp
 )
 
 target_include_directories(ernc_device PUBLIC

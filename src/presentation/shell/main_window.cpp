@@ -142,6 +142,9 @@ MainWindow::MainWindow(ernc::domain::CatalogLoad catalog, QString catalogPath, Q
 #ifdef ERNC_CAN_NAMES_PATH
     editorTabs->setCanNamesPath(QString::fromUtf8(ERNC_CAN_NAMES_PATH));
 #endif
+#ifdef ERNC_CAN_SLOT_MAP_PATH
+    editorTabs->setCanSlotMapPath(QString::fromUtf8(ERNC_CAN_SLOT_MAP_PATH));
+#endif
     editorTabs_ = editorTabs;
     workLayout->addWidget(editorTabs);
     setCentralWidget(workArea);

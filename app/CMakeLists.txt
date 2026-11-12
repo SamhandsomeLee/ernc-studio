@@ -18,6 +18,7 @@ qt_add_executable(ernc_app
     ../src/presentation/pages/check.cpp
     ../src/presentation/pages/switch_state.cpp
     ../src/presentation/pages/can_names.cpp
+    ../src/presentation/pages/can_info_panel.cpp
     ../src/presentation/pages/threshold.cpp
     ../src/presentation/pages/other_page.cpp
     ../src/presentation/parameters/parameter_table_model.cpp
@@ -51,6 +52,7 @@ target_compile_definitions(ernc_app PRIVATE
     "ERNC_PARAMETER_CATALOG_PATH=\"${CMAKE_SOURCE_DIR}/catalog/parameter_catalog.json\""
     "ERNC_LAYOUT_MANIFEST_PATH=\"${CMAKE_SOURCE_DIR}/firmware/layout_manifest.json\""
     "ERNC_CAN_NAMES_PATH=\"${CMAKE_SOURCE_DIR}/catalog/source/can_names.raw.json\""
+    "ERNC_CAN_SLOT_MAP_PATH=\"${CMAKE_SOURCE_DIR}/catalog/can_msg_slot_map.json\""
     "ERNC_SHELL_KEYMAP_PATH=\"${CMAKE_SOURCE_DIR}/resources/keymap/shell.txt\""
 )
 

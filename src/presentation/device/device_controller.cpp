@@ -14,6 +14,8 @@
 namespace ernc::presentation {
 namespace {
 
+constexpr std::size_t kCanMsgElementCount = 72U;
+
 using ernc::application::BatchReadScope;
 using ernc::application::BatchReadScopeKind;
 using ernc::application::CommandId;
@@ -130,6 +132,9 @@ void DeviceController::tearDownAll() {
     }
     tearDownSerial();
     activeRead_.reset();
+    activeCanMsgRead_.reset();
+    canMsgSnapshot_.clear();
+    canMsgSnapshotValid_ = false;
     linkKind_ = LinkKind::None;
 }
 
@@ -243,7 +248,7 @@ void DeviceController::readCategory(const std::string& pageId) {
         recordUi("parameter.batch_read.start", detail.str(), true);
         return;
     }
-    if (stack_.batchReader().busy()) {
+    if (stack_.batchReader().busy() || activeCanMsgRead_.has_value() || stack_.parameterReader().busy()) {
         recordUi("parameter.batch_read.start", R"({"reason":"reader_busy"})", false, ErrorCode::InvalidParameter);
         return;
     }
@@ -290,11 +295,97 @@ void DeviceController::pumpSimulator() {
     }
     stack_.scheduler().pump();
     pumpBatchReadSimulator();
+    pumpParameterReadSimulator();
     pumpBatchWriteSimulator();
     if (WritePlanDialog* dialog = writePlanDialog_) {
         dialog->noteProgress();
     }
     finishBatchReadIfIdleSimulator();
+    finishCanMsgReadIfIdleSimulator();
+}
+
+void DeviceController::readCanMsg() {
+    if (!connected()) {
+        recordUi("parameter.can_msg_read.start", R"({"reason":"disconnected"})", false, ErrorCode::DeviceDisconnected);
+        emit canMsgUpdated(false);
+        return;
+    }
+    if (linkKind_ != LinkKind::Simulator) {
+        recordUi("parameter.can_msg_read.start", R"({"reason":"serial_unsupported"})", false, ErrorCode::InvalidParameter);
+        return;
+    }
+    if (activeRead_.has_value() || stack_.batchReader().busy()) {
+        return;
+    }
+    if (activeCanMsgRead_.has_value() || stack_.parameterReader().busy()) {
+        return;
+    }
+    const Result<ParameterId> parsed = ParameterId::parse("Can_Msg");
+    if (!parsed.ok() || parsed.tryValue() == nullptr) {
+        recordUi("parameter.can_msg_read.start", R"({"reason":"invalid_id"})", false, ErrorCode::InvalidParameter);
+        emit canMsgUpdated(false);
+        return;
+    }
+    const Result<ernc::application::ReadTicket> started = stack_.parameterReader().read(*parsed.tryValue());
+    if (!started.ok() || started.tryValue() == nullptr) {
+        const ErrorCode code = started.tryError() != nullptr ? *started.tryError() : ErrorCode::Unknown;
+        recordUi("parameter.can_msg_read.start", "{\"scope\":\"Can_Msg\"}", false, code);
+        emit canMsgUpdated(false);
+        return;
+    }
+    activeCanMsgRead_ = started.value();
+    recordUi("parameter.can_msg_read.start", R"({"scope":"Can_Msg","transport":"simulator"})", true);
+    pumpParameterReadSimulator();
+    finishCanMsgReadIfIdleSimulator();
+}
+
+bool DeviceController::canMsgReadBusy() const noexcept {
+    if (linkKind_ == LinkKind::Simulator && stack_.connected()) {
+        return activeCanMsgRead_.has_value() || stack_.parameterReader().busy();
+    }
+    return false;
+}
+
+void DeviceController::pumpParameterReadSimulator() {
+    if (!activeCanMsgRead_.has_value()) {
+        return;
+    }
+    for (const CommandId id : activeCanMsgRead_->commands()) {
+        if (std::optional<CommandOutcome> outcome = stack_.scheduler().takeResult(id)) {
+            stack_.parameterReader().apply(*outcome, now());
+        }
+    }
+}
+
+void DeviceController::finishCanMsgReadIfIdleSimulator() {
+    if (!activeCanMsgRead_.has_value() || stack_.parameterReader().busy()) {
+        return;
+    }
+    const ernc::application::ParameterReadImage* image = stack_.parameterReader().image();
+    bool success = false;
+    canMsgSnapshot_.clear();
+    canMsgSnapshotValid_ = false;
+    if (image != nullptr && image->elements.size() == kCanMsgElementCount) {
+        canMsgSnapshot_.reserve(image->elements.size());
+        for (const ernc::domain::ScalarValue& element : image->elements) {
+            const Result<float> number = element.asFloat();
+            if (!number.ok()) {
+                canMsgSnapshot_.clear();
+                break;
+            }
+            canMsgSnapshot_.push_back(number.value());
+        }
+        if (canMsgSnapshot_.size() == kCanMsgElementCount) {
+            canMsgSnapshotValid_ = true;
+            success = true;
+        }
+    }
+    std::ostringstream detail;
+    detail << R"({"scope":"Can_Msg","elements":)" << canMsgSnapshot_.size() << "}";
+    recordUi("parameter.can_msg_read.finish", detail.str(), success,
+             success ? ErrorCode::Unknown : ErrorCode::ResponseMismatch);
+    emit canMsgUpdated(success);
+    activeCanMsgRead_.reset();
 }
 
 void DeviceController::pumpSerial() {
