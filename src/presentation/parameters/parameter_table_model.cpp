@@ -1,5 +1,7 @@
 #include "parameters/parameter_table_model.hpp"
 
+#include "parameters/parameter_set_policy.hpp"
+
 #include "parameters/fake_parameter_rows.hpp"
 
 #include "ernc/domain/control_semantics.hpp"
@@ -173,9 +175,7 @@ Qt::ItemFlags ParameterTableModel::flags(const QModelIndex& index) const {
     if (catalog_ != nullptr && index.column() == static_cast<int>(FakeParameterColumn::Set)
         && index.row() >= 0 && static_cast<std::size_t>(index.row()) < catalog_->size()) {
         const ernc::domain::ParameterDefinition& definition = catalog_->entries()[static_cast<std::size_t>(index.row())];
-        if (definition.editor
-            && (*definition.editor == ernc::domain::EditorKind::Toggle
-                || *definition.editor == ernc::domain::EditorKind::Numeric)) {
+        if (parameterSetColumnEditable(definition)) {
             itemFlags |= Qt::ItemIsEditable;
         }
     }

@@ -1167,9 +1167,12 @@ if(ERNC_BUILD_UI)
     add_executable(ernc_parameter_delegate_tests
         parameter_delegate_test.cpp
         ../src/presentation/parameters/parameter_table_model.cpp
+        ../src/presentation/parameters/parameter_set_policy.cpp
         ../src/presentation/controls/parameter_delegates.cpp
         ../src/presentation/controls/parameter_toggle_switch.cpp
     )
+
+    set_target_properties(ernc_parameter_delegate_tests PROPERTIES AUTOMOC ON)
 
     target_include_directories(ernc_parameter_delegate_tests PRIVATE
         "${CMAKE_SOURCE_DIR}/src/presentation"
@@ -1181,6 +1184,7 @@ if(ERNC_BUILD_UI)
         anc_off_toggle_words
         anc_off_on_stages_zero
         step_has_no_editor
+        rnc_alpha1_set_editable
         running_time_keeps_firmware_value
     )
 

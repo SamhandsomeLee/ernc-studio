@@ -3,6 +3,7 @@
 #include "controls/parameter_toggle_switch.hpp"
 #include "parameters/fake_parameter_rows.hpp"
 #include "parameters/parameter_table_model.hpp"
+#include "parameters/parameter_set_policy.hpp"
 
 #include <QApplication>
 #include <QLineEdit>
@@ -87,13 +88,13 @@ QWidget* ParameterDelegate::createEditor(QWidget* parent, const QStyleOptionView
         return nullptr;
     }
     const ernc::domain::ParameterDefinition* definition = definitionFor(index);
-    if (definition == nullptr || !definition->editor) {
+    if (definition == nullptr) {
         return nullptr;
     }
-    if (*definition->editor == ernc::domain::EditorKind::Toggle) {
+    if (definition->editor && *definition->editor == ernc::domain::EditorKind::Toggle) {
         return nullptr;
     }
-    if (*definition->editor == ernc::domain::EditorKind::Numeric) {
+    if (parameterSetUsesNumericEditor(*definition)) {
         return new QLineEdit(parent);
     }
     return nullptr;

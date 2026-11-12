@@ -153,6 +153,25 @@ bool stepHasNoEditor(const ParameterCatalog& catalog, const FirmwareLayout& layo
 /// @param catalog 正式目录。
 /// @param layout 正式布局。
 /// @return 1100 仍显示为 1100，文字里没有「秒」时为 true。
+bool rncAlpha1SetEditable(const ParameterCatalog& catalog, const FirmwareLayout& layout) {
+    ParameterRuntimeStore store;
+    ParameterTableModel model{&catalog, &store};
+    ParameterDelegate delegate{&catalog, &layout, &store};
+    const int row = sourceRow(model, QStringLiteral("RNC_param.alpha1"));
+    if (row < 0) {
+        return fail("rnc_alpha1_set_editable");
+    }
+    const QModelIndex setIndex = model.index(row, static_cast<int>(FakeParameterColumn::Set));
+    if (!model.flags(setIndex).testFlag(Qt::ItemIsEditable)) {
+        return fail("rnc_alpha1_set_editable");
+    }
+    QWidget parent;
+    if (delegate.createEditor(&parent, QStyleOptionViewItem{}, setIndex) == nullptr) {
+        return fail("rnc_alpha1_set_editable");
+    }
+    return true;
+}
+
 bool runningTimeKeepsFirmwareValue(const ParameterCatalog& catalog, const FirmwareLayout& layout) {
     (void)layout;
     ParameterRuntimeStore store;
@@ -190,6 +209,9 @@ bool runCase(std::string_view name, const ParameterCatalog& catalog, const Firmw
     }
     if (name == "step_has_no_editor") {
         return stepHasNoEditor(catalog, layout);
+    }
+    if (name == "rnc_alpha1_set_editable") {
+        return rncAlpha1SetEditable(catalog, layout);
     }
     if (name == "running_time_keeps_firmware_value") {
         return runningTimeKeepsFirmwareValue(catalog, layout);
