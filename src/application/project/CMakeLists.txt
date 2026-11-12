@@ -2,6 +2,7 @@ find_package(Qt6 REQUIRED COMPONENTS Core Sql)
 
 add_library(ernc_project STATIC
     project_session.cpp
+    parameter_snapshot.cpp
     ../../infrastructure/filesystem/project_store.cpp
 )
 

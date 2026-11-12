@@ -3,6 +3,7 @@ find_package(Qt6 REQUIRED COMPONENTS Core Sql)
 add_library(ernc_storage STATIC
     migrator.cpp
     migrations/migrations.cpp
+    snapshot_repository.cpp
 )
 
 target_include_directories(ernc_storage PUBLIC

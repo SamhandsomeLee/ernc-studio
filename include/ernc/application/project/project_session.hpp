@@ -4,7 +4,10 @@
 #include "ernc/domain/types.hpp"
 #include "ernc/infrastructure/filesystem/project_store.hpp"
 
+#include <QSqlDatabase>
+
 #include <filesystem>
+#include <utility>
 #include <optional>
 #include <string_view>
 
@@ -39,6 +42,12 @@ public:
     /// @brief 只读视图；未打开时无值。
     const std::optional<OpenProject>& project() const noexcept {
         return store_.summary();
+    }
+
+    /// @brief 在工程已打开时对 `project.sqlite` 执行 fn；关闭后不可用。
+    template <typename Fn>
+    auto withDatabase(Fn&& fn) -> decltype(fn(std::declval<QSqlDatabase&>())) {
+        return store_.withDatabase(std::forward<Fn>(fn));
     }
 
 private:

@@ -50,6 +50,16 @@ public:
     /// @brief 当前打开的摘要；未打开时无值。
     const std::optional<ernc::domain::ProjectBundle>& summary() const noexcept { return summary_; }
 
+    /// @brief 工程已打开时把 SQLite 连接借给 fn；未打开时返回 DatabaseFailed。
+    template <typename Fn>
+    auto withDatabase(Fn&& fn) -> decltype(fn(std::declval<QSqlDatabase&>())) {
+        using Return = decltype(fn(std::declval<QSqlDatabase&>()));
+        if (!isOpen()) {
+            return Return::failure(ernc::domain::ErrorCode::DatabaseFailed);
+        }
+        return fn(database_);
+    }
+
 private:
     ernc::domain::Result<void> writeManifestAtomic(const std::filesystem::path& root, const QJsonObject& object);
     ernc::domain::Result<QJsonObject> readManifest(const std::filesystem::path& root) const;

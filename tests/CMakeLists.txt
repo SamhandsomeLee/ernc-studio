@@ -1818,3 +1818,23 @@ foreach(ernc_project_case IN ITEMS create_empty_project close_and_reopen schema_
         COMMAND ernc_project_tests "${ernc_project_case}"
     )
 endforeach()
+
+# ES-085: parameter snapshot capture/hydrate/diff against ParameterRuntimeStore.
+add_executable(ernc_parameter_snapshot_tests
+    parameter_snapshot_test.cpp
+)
+
+target_link_libraries(ernc_parameter_snapshot_tests PRIVATE ernc_project)
+
+foreach(ernc_snapshot_case IN ITEMS
+    capture_persists_scalar_values
+    diff_against_store_by_parameter_id
+    hydrate_store_does_not_mark_dirty
+    empty_store_capture_fails_or_zero_rows)
+    add_test(
+        NAME "snapshot.${ernc_snapshot_case}"
+        COMMAND ernc_parameter_snapshot_tests
+            "${ernc_snapshot_case}"
+            "${CMAKE_SOURCE_DIR}/catalog/parameter_catalog.json"
+    )
+endforeach()
