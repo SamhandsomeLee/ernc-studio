@@ -84,7 +84,7 @@ CheckPage::CheckPage(const ernc::domain::ParameterCatalog* catalog, ernc::domain
     for (const char* id : kModeIds) {
         addRow(content, root, QString::fromUtf8(id));
     }
-    auto* regions = new QLabel(QStringLiteral("Region"), content);
+    auto* regions = new QLabel(QStringLiteral("区域"), content);
     root->addWidget(regions);
     for (const char* id : kRegionIds) {
         addRow(content, root, QString::fromUtf8(id));

@@ -477,11 +477,11 @@ std::optional<std::vector<std::uint8_t>> RegionWorkspace::currentBytes() const {
 void RegionWorkspace::refreshProgress() {
     if (reader_ != nullptr && reader_->busy()) {
         const ernc::application::RegionReadProgress progress = reader_->progress();
-        progress_ = QStringLiteral("已接收 %1/%2 slots").arg(progress.filledBytes / 4U).arg(progress.plannedBytes / 4U);
+        progress_ = QStringLiteral("已接收 %1/%2 槽").arg(progress.filledBytes / 4U).arg(progress.plannedBytes / 4U);
     } else if (writer_ != nullptr && writer_->busy()) {
         const ernc::application::RegionWriteProgress progress = writer_->progress();
         const std::uint32_t total = selected_ ? selected_->slotCount : 0U;
-        progress_ = QStringLiteral("已验证 %1/%2 slots").arg(progress.verifiedSlots).arg(total);
+        progress_ = QStringLiteral("已验证 %1/%2 槽").arg(progress.verifiedSlots).arg(total);
     } else {
         progress_ = QStringLiteral("空闲");
     }

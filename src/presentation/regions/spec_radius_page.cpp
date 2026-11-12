@@ -131,11 +131,11 @@ QVariant SpecRadiusModel::headerData(int section, Qt::Orientation orientation, i
     case static_cast<int>(SpecRadiusColumn::Frequency):
         return QStringLiteral("频率");
     case static_cast<int>(SpecRadiusColumn::Read):
-        return QStringLiteral("Read");
+        return QStringLiteral("读");
     case static_cast<int>(SpecRadiusColumn::Set):
-        return QStringLiteral("Set");
+        return QStringLiteral("写");
     case static_cast<int>(SpecRadiusColumn::Dirty):
-        return QStringLiteral("Dirty");
+        return QStringLiteral("待写入");
     default:
         return {};
     }

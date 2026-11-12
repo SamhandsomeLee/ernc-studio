@@ -86,10 +86,10 @@ QVariant ArrayEditorModel::headerData(int section, Qt::Orientation orientation, 
         return {};
     }
     if (section == static_cast<int>(ArrayEditorColumn::Read)) {
-        return QStringLiteral("Read");
+        return QStringLiteral("读");
     }
     if (section == static_cast<int>(ArrayEditorColumn::Set)) {
-        return QStringLiteral("Set");
+        return QStringLiteral("写");
     }
     return {};
 }

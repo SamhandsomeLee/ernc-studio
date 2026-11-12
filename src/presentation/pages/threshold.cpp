@@ -65,19 +65,19 @@ QString formatScalar(const ernc::domain::ScalarValue* value) {
 
 QString groupFor(const QString& id) {
     if (id.startsWith(QStringLiteral("ENCEcho"))) {
-        return QStringLiteral("ENC Echo");
+        return QStringLiteral("ENC 回声");
     }
     if (id.startsWith(QStringLiteral("ENC_Divergence"))) {
-        return QStringLiteral("ENC Divergence");
+        return QStringLiteral("ENC 发散");
     }
     if (id.startsWith(QStringLiteral("horn_")) || id.startsWith(QStringLiteral("Horn"))) {
-        return QStringLiteral("Horn");
+        return QStringLiteral("喇叭");
     }
     if (id.startsWith(QStringLiteral("rnc_dicergence."))) {
-        return QStringLiteral("RNC Divergence");
+        return QStringLiteral("RNC 发散");
     }
     if (id == QStringLiteral("Input_threshold") || id == QStringLiteral("Output_Threshold")) {
-        return QStringLiteral("IO Threshold");
+        return QStringLiteral("IO 阈值");
     }
     return QStringLiteral("其他阈值");
 }

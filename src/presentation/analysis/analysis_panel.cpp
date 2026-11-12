@@ -52,8 +52,8 @@ AnalysisPanel::AnalysisPanel(const ernc::domain::RegionCatalog& catalog, ernc::a
     tfPlot_ = new ErncTfPlot(tabs_);
     specPlot_ = new SpecRadiusPlot(tabs_);
     tabs_->addTab(datasetManager_, QStringLiteral("叠加曲线"));
-    tabs_->addTab(checkPlot_, QStringLiteral("check_data"));
-    tabs_->addTab(tfPlot_, QStringLiteral("ERNC_TF"));
+    tabs_->addTab(checkPlot_, QStringLiteral("检测数据"));
+    tabs_->addTab(tfPlot_, QStringLiteral("传递函数"));
     tabs_->addTab(specPlot_, QStringLiteral("谱半径"));
     rightLayout->addWidget(tabs_, 1);
     status_ = new QLabel(QStringLiteral("从左侧导入 BIN 或 TXT，曲线会出现在右侧。"), right);

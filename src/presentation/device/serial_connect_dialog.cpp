@@ -3,6 +3,7 @@
 #include "serial_transport.hpp"
 
 #include <QComboBox>
+#include <QAbstractButton>
 #include <QDialogButtonBox>
 #include <QFormLayout>
 #include <QLabel>
@@ -42,6 +43,12 @@ SerialConnectDialog::SerialConnectDialog(QWidget* parent) : QDialog(parent) {
     QObject::connect(refresh, &QPushButton::clicked, this, [this] { refreshPorts(); });
 
     auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
+    if (QAbstractButton* ok = buttons->button(QDialogButtonBox::Ok)) {
+        ok->setText(QStringLiteral("确定"));
+    }
+    if (QAbstractButton* cancel = buttons->button(QDialogButtonBox::Cancel)) {
+        cancel->setText(QStringLiteral("取消"));
+    }
     QObject::connect(buttons, &QDialogButtonBox::accepted, this, &QDialog::accept);
     QObject::connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
     layout->addWidget(buttons);

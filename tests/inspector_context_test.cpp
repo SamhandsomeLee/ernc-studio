@@ -67,8 +67,8 @@ bool emptySelection() {
         "形状 —\n"
         "权限 —\n"
         "状态 —\n"
-        "Read —\n"
-        "Set —",
+        "读 —\n"
+        "写 —",
         "来源 —\n"
         "分类 —\n"
         "说明 —\n"
@@ -95,12 +95,12 @@ bool ancOff() {
         "参数 ANC_OFF\n"
         "说明 ERNC总开关，0开启，1关闭\n"
         "路径 ANC_OFF\n"
-        "类型 float32\n"
-        "形状 scalar\n"
-        "权限 read_write\n"
+        "类型 32 位浮点\n"
+        "形状 标量\n"
+        "权限 读写\n"
         "状态 未读取\n"
-        "Read —\n"
-        "Set —",
+        "读 —\n"
+        "写 —",
         "来源 固定假数据，不是设备当前值。\n"
         "分类 ERNC_Flag\n"
         "说明 ERNC总开关，0开启，1关闭\n"
@@ -127,12 +127,12 @@ bool alpha1Values() {
         "参数 RNC_param.alpha1\n"
         "说明 第一段步长(10分钟后)，步长越大系统收敛速度越快，但稳定性越差\n"
         "路径 RNC_param.alpha1\n"
-        "类型 float32\n"
+        "类型 32 位浮点\n"
         "形状 —\n"
-        "权限 read_write\n"
+        "权限 读写\n"
         "状态 待写入\n"
-        "Read 1\n"
-        "Set 2",
+        "读 1\n"
+        "写 2",
         "来源 固定假数据，不是设备当前值。\n"
         "分类 RNC_Param\n"
         "说明 第一段步长(10分钟后)，步长越大系统收敛速度越快，但稳定性越差\n"
@@ -158,12 +158,12 @@ bool stepReadOnly() {
         "参数 Step\n"
         "说明 实时步长显示\n"
         "路径 Step\n"
-        "类型 float32\n"
-        "形状 scalar\n"
-        "权限 read_only\n"
+        "类型 32 位浮点\n"
+        "形状 标量\n"
+        "权限 只读\n"
         "状态 数据已过期\n"
-        "Read 3\n"
-        "Set —",
+        "读 3\n"
+        "写 —",
         "来源 固定假数据，不是设备当前值。\n"
         "分类 RNC_Param\n"
         "说明 实时步长显示\n"
@@ -191,10 +191,10 @@ bool checkDataCatalogOnly() {
         "路径 check_data\n"
         "类型 —\n"
         "形状 —\n"
-        "权限 read_write\n"
+        "权限 读写\n"
         "状态 —\n"
-        "Read —\n"
-        "Set —",
+        "读 —\n"
+        "写 —",
         "来源 目录定义。假数据表没有这一行。\n"
         "分类 other\n"
         "说明 —\n"

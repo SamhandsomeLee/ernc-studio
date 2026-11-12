@@ -63,7 +63,7 @@ QString ParameterDelegate::setCaption(const ernc::domain::ParameterDefinition& d
     const ernc::domain::ScalarValue* value = shownValue(state);
     if (definition.editor && *definition.editor == ernc::domain::EditorKind::Toggle) {
         if (value == nullptr) {
-            return QStringLiteral("Unknown");
+            return QStringLiteral("未知");
         }
         switch (ernc::domain::decodeToggle(definition, *value)) {
         case ernc::domain::TogglePosition::On:
@@ -71,7 +71,7 @@ QString ParameterDelegate::setCaption(const ernc::domain::ParameterDefinition& d
         case ernc::domain::TogglePosition::Off:
             return QStringLiteral("关");
         case ernc::domain::TogglePosition::Unknown:
-            return QStringLiteral("Unknown");
+            return QStringLiteral("未知");
         }
     }
     return value == nullptr ? kBlank.toString() : formatScalar(*value);

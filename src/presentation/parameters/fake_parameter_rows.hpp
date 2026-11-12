@@ -121,9 +121,9 @@ inline std::string_view fakeParameterColumnName(int column) {
     case FakeParameterColumn::Path:
         return "路径";
     case FakeParameterColumn::Read:
-        return "Read";
+        return "读";
     case FakeParameterColumn::Set:
-        return "Set";
+        return "写";
     case FakeParameterColumn::UpdatedAt:
         return "更新时间";
     case FakeParameterColumn::Count:

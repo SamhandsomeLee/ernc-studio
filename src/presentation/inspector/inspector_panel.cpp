@@ -41,9 +41,9 @@ InspectorPanel::InspectorPanel(const ernc::domain::ParameterCatalog* catalog, QW
     tabs_ = new QTabWidget(this);
     tabs_->setObjectName(QStringLiteral("erncInspectorTabs"));
     tabs_->addTab(makePage(QStringLiteral("erncInspectorProperties"), tabs_, propertiesLabel_),
-        QStringLiteral("Properties"));
+        QStringLiteral("属性"));
     tabs_->addTab(makePage(QStringLiteral("erncInspectorInfo"), tabs_, infoLabel_),
-        QStringLiteral("Info"));
+        QStringLiteral("信息"));
     auto* diagnosticsPage = makePage(QStringLiteral("erncInspectorDiagnostics"), tabs_, diagnosticsLabel_);
     auto* openOperationCenter = new QPushButton(QStringLiteral("操作中心"), diagnosticsPage);
     openOperationCenter->setObjectName(QStringLiteral("erncOpenOperationCenter"));
@@ -55,7 +55,7 @@ InspectorPanel::InspectorPanel(const ernc::domain::ParameterCatalog* catalog, QW
             operationCenterOpener_();
         }
     });
-    tabs_->addTab(diagnosticsPage, QStringLiteral("Diagnostics"));
+    tabs_->addTab(diagnosticsPage, QStringLiteral("诊断"));
     layout->addWidget(tabs_);
     showParameter({});
 }

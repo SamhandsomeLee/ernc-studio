@@ -37,11 +37,11 @@ std::string_view textOrMissing(const std::optional<std::string>& value) {
 std::string_view dataTypeName(ernc::domain::DataType dataType) {
     switch (dataType) {
     case ernc::domain::DataType::Float32:
-        return "float32";
+        return "32 位浮点";
     case ernc::domain::DataType::Int32:
-        return "int32";
+        return "32 位有符号整数";
     case ernc::domain::DataType::UInt32:
-        return "uint32";
+        return "32 位无符号整数";
     }
     return kMissing;
 }
@@ -52,11 +52,11 @@ std::string_view dataTypeName(ernc::domain::DataType dataType) {
 std::string_view shapeName(ernc::domain::ValueShape shape) {
     switch (shape) {
     case ernc::domain::ValueShape::Scalar:
-        return "scalar";
+        return "标量";
     case ernc::domain::ValueShape::Array:
-        return "array";
+        return "数组";
     case ernc::domain::ValueShape::Region:
-        return "region";
+        return "区域";
     }
     return kMissing;
 }
@@ -67,13 +67,13 @@ std::string_view shapeName(ernc::domain::ValueShape shape) {
 std::string_view accessName(ernc::domain::AccessMode access) {
     switch (access) {
     case ernc::domain::AccessMode::ReadOnly:
-        return "read_only";
+        return "只读";
     case ernc::domain::AccessMode::ReadWrite:
-        return "read_write";
+        return "读写";
     case ernc::domain::AccessMode::WriteOnly:
-        return "write_only";
+        return "只写";
     case ernc::domain::AccessMode::Command:
-        return "command";
+        return "命令";
     }
     return kMissing;
 }
@@ -128,8 +128,8 @@ InspectorText describeInspector(
     appendLine(text.properties, "形状", shape);
     appendLine(text.properties, "权限", access);
     appendLine(text.properties, "状态", status);
-    appendLine(text.properties, "Read", read);
-    appendLine(text.properties, "Set", set);
+    appendLine(text.properties, "读", read);
+    appendLine(text.properties, "写", set);
 
     appendLine(text.info, "来源", source);
     appendLine(text.info, "分类", category);

@@ -72,7 +72,7 @@ QWidget* makeParameterView(QWidget* parent, const ernc::domain::ParameterCatalog
     viewLayout->setContentsMargins(kSpace16, kSpace16, kSpace16, kSpace16);
     viewLayout->setSpacing(kSpace8);
 
-    auto* caption = new QLabel(QStringLiteral("参数表显示目录和运行状态。没有读数时 Read 为 —。"), view);
+    auto* caption = new QLabel(QStringLiteral("参数表显示目录和运行状态。没有读数时「读」列为 —。"), view);
     caption->setWordWrap(true);
     viewLayout->addWidget(caption);
 
@@ -212,9 +212,9 @@ EditorTabs::EditorTabs(const ernc::domain::ParameterCatalog* catalog, ernc::doma
         selectParameter(QString::fromStdString(id.text()));
     });
     thresholdPage_->hide();
-    addTab(functionView, QStringLiteral("Function View"));
+    addTab(functionView, QStringLiteral("函数视图"));
     auto* parameterView = makeParameterView(this, catalog, store, layout, parameterSearch_, parameterProxy_, parameterModel_);
-    addTab(parameterView, QStringLiteral("Parameter View"));
+    addTab(parameterView, QStringLiteral("参数视图"));
     if (regionCatalog != nullptr) {
         curveAnalysis_ = new AnalysisPanel(*regionCatalog, nullptr, nullptr, this);
         addTab(curveAnalysis_, QStringLiteral("曲线分析"));

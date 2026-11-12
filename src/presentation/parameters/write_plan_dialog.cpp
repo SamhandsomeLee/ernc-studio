@@ -60,7 +60,7 @@ QString formatValue(const ernc::domain::ParameterDefinition* definition, const e
         case ernc::domain::TogglePosition::Off:
             return QStringLiteral("关");
         case ernc::domain::TogglePosition::Unknown:
-            return QStringLiteral("Unknown");
+            return QStringLiteral("未知");
         }
     }
     return formatScalar(value);
@@ -133,43 +133,43 @@ QString exclusionText(ernc::domain::WriteExclusion reason) {
 QString errorName(ernc::domain::ErrorCode code) {
     switch (code) {
     case ernc::domain::ErrorCode::DeviceDisconnected:
-        return QStringLiteral("DeviceDisconnected");
+        return QStringLiteral("设备未连接");
     case ernc::domain::ErrorCode::SerialOpenFailed:
-        return QStringLiteral("SerialOpenFailed");
+        return QStringLiteral("串口打开失败");
     case ernc::domain::ErrorCode::SerialIoFailed:
-        return QStringLiteral("SerialIoFailed");
+        return QStringLiteral("串口读写失败");
     case ernc::domain::ErrorCode::FrameLengthInvalid:
-        return QStringLiteral("FrameLengthInvalid");
+        return QStringLiteral("帧长度无效");
     case ernc::domain::ErrorCode::CrcMismatch:
-        return QStringLiteral("CrcMismatch");
+        return QStringLiteral("CRC 校验失败");
     case ernc::domain::ErrorCode::ModbusException:
-        return QStringLiteral("ModbusException");
+        return QStringLiteral("Modbus 异常");
     case ernc::domain::ErrorCode::ResponseTimeout:
-        return QStringLiteral("ResponseTimeout");
+        return QStringLiteral("响应超时");
     case ernc::domain::ErrorCode::ResponseMismatch:
-        return QStringLiteral("ResponseMismatch");
+        return QStringLiteral("响应不匹配");
     case ernc::domain::ErrorCode::RetryExhausted:
-        return QStringLiteral("RetryExhausted");
+        return QStringLiteral("重试次数用尽");
     case ernc::domain::ErrorCode::InvalidParameter:
-        return QStringLiteral("InvalidParameter");
+        return QStringLiteral("参数无效");
     case ernc::domain::ErrorCode::ReadOnlyViolation:
-        return QStringLiteral("ReadOnlyViolation");
+        return QStringLiteral("只读参数");
     case ernc::domain::ErrorCode::PayloadSizeMismatch:
-        return QStringLiteral("PayloadSizeMismatch");
+        return QStringLiteral("载荷长度不匹配");
     case ernc::domain::ErrorCode::RegionDecodeFailed:
-        return QStringLiteral("RegionDecodeFailed");
+        return QStringLiteral("区域解码失败");
     case ernc::domain::ErrorCode::FileIoFailed:
-        return QStringLiteral("FileIoFailed");
+        return QStringLiteral("文件读写失败");
     case ernc::domain::ErrorCode::DatabaseFailed:
-        return QStringLiteral("DatabaseFailed");
+        return QStringLiteral("数据库错误");
     case ernc::domain::ErrorCode::OperationCancelled:
-        return QStringLiteral("OperationCancelled");
+        return QStringLiteral("操作已取消");
     case ernc::domain::ErrorCode::ReadBackMismatch:
-        return QStringLiteral("ReadBackMismatch");
+        return QStringLiteral("读回不一致");
     case ernc::domain::ErrorCode::Unknown:
-        return QStringLiteral("Unknown");
+        return QStringLiteral("未知错误");
     }
-    return QStringLiteral("Unknown");
+    return QStringLiteral("未知错误");
 }
 
 /// @brief 在批量写结果里查找一个参数。
@@ -210,7 +210,7 @@ WritePlanDialog::WritePlanDialog(Sources sources, QWidget* parent)
     auto* root = new QVBoxLayout(this);
     scopeLabel_ = new QLabel(this);
     scopeLabel_->setObjectName(QStringLiteral("erncWritePlanScope"));
-    auto* hint = new QLabel(QStringLiteral("确认前不会向设备发送。未连接时确认只报告 DeviceDisconnected。"), this);
+    auto* hint = new QLabel(QStringLiteral("确认前不会向设备发送。未连接时确认只报告「设备未连接」。"), this);
     hint->setWordWrap(true);
     diagnosticLabel_ = new QLabel(this);
     diagnosticLabel_->setObjectName(QStringLiteral("erncWritePlanDiagnostic"));
@@ -219,7 +219,7 @@ WritePlanDialog::WritePlanDialog(Sources sources, QWidget* parent)
     table_->setObjectName(QStringLiteral("erncWritePlanTable"));
     table_->setColumnCount(6);
     table_->setHorizontalHeaderLabels(
-        {QStringLiteral("参数"), QStringLiteral("路径"), QStringLiteral("Read"), QStringLiteral("Set"), QStringLiteral("状态"),
+        {QStringLiteral("参数"), QStringLiteral("路径"), QStringLiteral("读"), QStringLiteral("写"), QStringLiteral("状态"),
             QStringLiteral("诊断")});
     table_->verticalHeader()->setVisible(false);
     table_->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -339,7 +339,7 @@ void WritePlanDialog::confirmWrite() {
         return;
     }
     if (writer_ == nullptr || scheduler_ == nullptr) {
-        diagnosticLabel_->setText(QStringLiteral("DeviceDisconnected"));
+        diagnosticLabel_->setText(QStringLiteral("设备未连接"));
         confirmButton_->setEnabled(false);
         return;
     }

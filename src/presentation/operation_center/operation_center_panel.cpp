@@ -60,7 +60,7 @@ void OperationCenterPanel::refreshFromSession() {
         return;
     }
     const QString directory = QString::fromStdWString(sessionLog_->sessionDirectory().wstring());
-    diagnosisLabel_->setText(QStringLiteral("会话日志目录：%1\noperations.jsonl 追加写入；退出时再导出快照。").arg(directory));
+    diagnosisLabel_->setText(QStringLiteral("会话日志目录：%1\n运行期追加写入；退出时再导出快照。").arg(directory));
     log_ = OperationLog{};
     DiagnosticLogPresenter::refreshOperationLog(sessionLog_->diagnosticLog(), log_, 48);
     logView_->setPlainText(QString::fromStdString(log_.text()));

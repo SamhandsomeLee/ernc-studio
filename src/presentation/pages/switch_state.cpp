@@ -11,9 +11,9 @@ namespace ernc::presentation {
 SwitchStatePage::SwitchStatePage(QWidget* parent)
     : QWidget(parent) {
     setObjectName(QStringLiteral("erncSwitchStatePage"));
-    labels_[0] = QStringLiteral("State0");
-    labels_[1] = QStringLiteral("State1");
-    labels_[2] = QStringLiteral("State2");
+    labels_[0] = QStringLiteral("状态 0");
+    labels_[1] = QStringLiteral("状态 1");
+    labels_[2] = QStringLiteral("状态 2");
     auto* root = new QVBoxLayout(this);
     root->setContentsMargins(0, 0, 0, 0);
     root->setSpacing(kSpace4);

@@ -46,7 +46,7 @@ const ernc::domain::ScalarValue* shownValue(const ernc::domain::ParameterRuntime
 /// @return 线值 0 为开，线值 1 为关。其它值和空值都是 Unknown，不是关。
 QString toggleText(const ernc::domain::ParameterDefinition& definition, const ernc::domain::ScalarValue* value) {
     if (value == nullptr) {
-        return QStringLiteral("Unknown");
+        return QStringLiteral("未知");
     }
     switch (ernc::domain::decodeToggle(definition, *value)) {
     case ernc::domain::TogglePosition::On:
@@ -54,9 +54,9 @@ QString toggleText(const ernc::domain::ParameterDefinition& definition, const er
     case ernc::domain::TogglePosition::Off:
         return QStringLiteral("关");
     case ernc::domain::TogglePosition::Unknown:
-        return QStringLiteral("Unknown");
+        return QStringLiteral("未知");
     }
-    return QStringLiteral("Unknown");
+    return QStringLiteral("未知");
 }
 
 /// @brief 把 uint32 显示成十进制。

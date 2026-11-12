@@ -126,7 +126,7 @@ RncParamPage::RncParamPage(const ernc::domain::ParameterCatalog* catalog, ernc::
     addSection(content, root, QStringLiteral("步长"), kStepIds, static_cast<int>(std::size(kStepIds)));
     addSection(content, root, QStringLiteral("alpha"), kAlphaIds, static_cast<int>(std::size(kAlphaIds)));
     addSection(content, root, QStringLiteral("频率"), kFrequencyIds, static_cast<int>(std::size(kFrequencyIds)));
-    addSection(content, root, QStringLiteral("Leaky"), kLeakyIds, static_cast<int>(std::size(kLeakyIds)));
+    addSection(content, root, QStringLiteral("泄漏"), kLeakyIds, static_cast<int>(std::size(kLeakyIds)));
     addSection(content, root, QStringLiteral("时间"), kTimeIds, static_cast<int>(std::size(kTimeIds)));
     root->addStretch(1);
     reload();
