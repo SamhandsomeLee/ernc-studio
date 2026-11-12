@@ -129,6 +129,11 @@ RncParamPage::RncParamPage(const ernc::domain::ParameterCatalog* catalog, ernc::
     addSection(content, root, QStringLiteral("alpha"), kAlphaIds, static_cast<int>(std::size(kAlphaIds)));
     addSection(content, root, QStringLiteral("频率"), kFrequencyIds, static_cast<int>(std::size(kFrequencyIds)));
     addSection(content, root, QStringLiteral("泄漏"), kLeakyIds, static_cast<int>(std::size(kLeakyIds)));
+    {
+        auto* heading = new QLabel(QStringLiteral("谱半径"), content);
+        root->addWidget(heading);
+        addParameterViewOnlyRow(content, root, QStringLiteral("ERNC_TF.SpecRadius"));
+    }
     addSection(content, root, QStringLiteral("时间"), kTimeIds, static_cast<int>(std::size(kTimeIds)));
     root->addStretch(1);
     reload();
@@ -143,6 +148,38 @@ void RncParamPage::addSection(QWidget* parent, QVBoxLayout* layout, const QStrin
     for (int index = 0; index < count; ++index) {
         addRow(parent, layout, QString::fromUtf8(ids[index]));
     }
+}
+
+void RncParamPage::addParameterViewOnlyRow(QWidget* parent, QVBoxLayout* layout, const QString& parameterId) {
+    if (catalog_ == nullptr || layout_ == nullptr || layout == nullptr
+        || catalog_->find(parameterId.toStdString()) == nullptr) {
+        return;
+    }
+    auto* row = new QWidget(parent);
+    auto* line = new QHBoxLayout(row);
+    line->setContentsMargins(0, 0, 0, 0);
+    line->setSpacing(kSpace8);
+    auto* name = new QPushButton(parameterId, row);
+    name->setFlat(true);
+    name->setStyleSheet(QStringLiteral("text-align: left; padding: 0 4px;"));
+    function_view_layout::styleParameterNameButton(name);
+    auto* value = new QLabel(kArrayMark.toString(), row);
+    function_view_layout::styleValueLabel(value);
+    auto* hint = new QLabel(function_view_layout::parameterViewHintText(), row);
+    hint->setWordWrap(true);
+    hint->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+    line->addWidget(name);
+    line->addWidget(value);
+    function_view_layout::gapBetweenSecondAndThirdColumns(line);
+    line->addWidget(hint);
+    function_view_layout::sealFormRow(line);
+    Control control;
+    control.id = parameterId;
+    control.value = value;
+    control.parameterViewHint = hint;
+    connect(name, &QPushButton::clicked, this, [this, parameterId] { activate(parameterId); });
+    controls_.push_back(control);
+    layout->addWidget(row);
 }
 
 void RncParamPage::addRow(QWidget* parent, QVBoxLayout* layout, const QString& parameterId) {
@@ -188,10 +225,11 @@ void RncParamPage::addRow(QWidget* parent, QVBoxLayout* layout, const QString& p
             commitValue(parameterId, rowControl->editor->text());
         });
     } else if (!oneSlot) {
-        auto* shortcut = new QPushButton(QStringLiteral("定位"), row);
-        function_view_layout::styleActionButton(shortcut);
-        line->addWidget(shortcut);
-        connect(shortcut, &QPushButton::clicked, this, [this, parameterId] { activate(parameterId); });
+        auto* hint = new QLabel(function_view_layout::parameterViewHintText(), row);
+        hint->setWordWrap(true);
+        hint->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+        line->addWidget(hint);
+        control.parameterViewHint = hint;
     }
     function_view_layout::sealFormRow(line);
     controls_.push_back(control);
@@ -236,6 +274,14 @@ QString RncParamPage::valueText(const QString& parameterId) const {
         return {};
     }
     return control->value->text();
+}
+
+QString RncParamPage::parameterViewHintText(const QString& parameterId) const {
+    const Control* control = findControl(parameterId);
+    if (control == nullptr || control->parameterViewHint == nullptr) {
+        return {};
+    }
+    return control->parameterViewHint->text();
 }
 
 QString RncParamPage::detailText(const QString& parameterId) const {

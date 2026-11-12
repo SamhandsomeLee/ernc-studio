@@ -18,8 +18,8 @@ class QVBoxLayout;
 
 namespace ernc::presentation {
 
-/// RNC 参数页。Step 只显示，时间和 alpha 只暂存固件原值，Leaky 数组只作为入口。
-/// 不计算参考秒数，也不连接设备。必须在 UI 主线程创建和调用。
+/// RNC 参数页。Step 只显示，时间和 alpha 只暂存固件原值，Leaky 与 SpecRadius 只作入口。
+/// SpecRadius 读写注明在参数视图。不计算参考秒数，也不连接设备。必须在 UI 主线程创建和调用。
 class RncParamPage final : public QWidget {
 public:
     /// @brief 按本页固定名单生成步长、alpha、频率、Leaky 和时间。
@@ -27,7 +27,7 @@ public:
     /// @param store 运行状态，只借用。空指针时不显示数值，确认也不暂存。调用方保证它比本页活得久。
     /// @param layout 固件布局，只借用。空指针时没有数字框。调用方保证它比本页活得久。
     /// @param parent 父控件。非空时由 Qt 父子关系拥有本页。必须在 UI 主线程创建。
-    /// @note 构造不创建会话，也不发送 FC16。不生成 SpecRadius 或通道数量行。
+    /// @note 构造不创建会话，也不发送 FC16。不生成通道数量行。
     explicit RncParamPage(const ernc::domain::ParameterCatalog* catalog, ernc::domain::ParameterRuntimeStore* store,
                           const ernc::domain::FirmwareLayout* layout, QWidget* parent = nullptr);
 
@@ -55,11 +55,11 @@ public:
     /// @return 标量行是十进制原值，没有值时为「—」。数组行固定为「数组」。未知 id 为空字符串。
     QString valueText(const QString& parameterId) const;
 
-    /// @brief 读取目录说明，不含参数 ID。
-    /// @param parameterId 目录主键。调用方拥有原件，本函数只比较它。
-    /// @return 说明原文。没有说明时为空。未知 id 为空字符串。
     /// @brief 目录说明原文。供测试读取；界面说明在检查器属性中。
     QString detailText(const QString& parameterId) const;
+
+    /// @brief 参数视图读写提示。无提示行时为空。
+    QString parameterViewHintText(const QString& parameterId) const;
 
     /// @brief 这一行是否有数字框。
     /// @param parameterId 目录主键。调用方拥有原件，本函数只比较它。
@@ -92,6 +92,9 @@ private:
 
         /// 可写 1 slot 的输入。Step 和数组行为空。
         QLineEdit* editor = nullptr;
+
+        /// 读写改在参数视图的提示。仅 SpecRadius 等入口行使用。
+        QLabel* parameterViewHint = nullptr;
     };
 
     /// @brief 增加一个分区标题和它的参数行。
@@ -107,6 +110,9 @@ private:
     /// @param layout 行要加入的纵向布局。只在本次调用期间借用。
     /// @param parameterId 目录主键。调用方拥有原件，本函数复制它。
     void addRow(QWidget* parent, QVBoxLayout* layout, const QString& parameterId);
+
+    /// @brief 仅展示入口；标「数组」并提示读写在参数视图。
+    void addParameterViewOnlyRow(QWidget* parent, QVBoxLayout* layout, const QString& parameterId);
 
     /// @brief 按主键查找一行。
     /// @param parameterId 目录主键。调用方拥有原件，本函数只比较它。

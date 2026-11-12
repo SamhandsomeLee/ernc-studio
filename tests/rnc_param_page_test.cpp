@@ -147,14 +147,23 @@ bool alphaStagesAndLeakyKeepsId(const ParameterCatalog& catalog, const FirmwareL
     return true;
 }
 
-/// @brief 谱半径和通道数量不在本页。
-/// @param catalog 正式目录。
-/// @param layout 正式布局。
-/// @return 这两个 ID 都查找不到时为 true。
+/// @brief 谱半径在函数视图显示为数组入口，并提示读写在参数视图。
+bool specRadiusShowsParameterViewHint(const ParameterCatalog& catalog, const FirmwareLayout& layout) {
+    ParameterRuntimeStore store;
+    RncParamPage page(&catalog, &store, &layout);
+    const QString id = QStringLiteral("ERNC_TF.SpecRadius");
+    if (!page.containsParameter(id) || page.valueText(id) != QStringLiteral("数组") || page.hasEditor(id)
+        || page.parameterViewHintText(id) != QStringLiteral("读写在参数视图")) {
+        return fail("spec_radius_shows_parameter_view_hint");
+    }
+    return true;
+}
+
+/// @brief 通道数量等仍不在本页。
 bool excludedRowsAreAbsent(const ParameterCatalog& catalog, const FirmwareLayout& layout) {
     ParameterRuntimeStore store;
     RncParamPage page(&catalog, &store, &layout);
-    if (page.containsParameter(QStringLiteral("ERNC_TF.SpecRadius")) || page.containsParameter(QStringLiteral("RNC_param.refernum"))
+    if (page.containsParameter(QStringLiteral("RNC_param.refernum"))
         || page.containsParameter(QStringLiteral("RNC_param.eta"))) {
         return fail("excluded_rows_are_absent");
     }
@@ -201,6 +210,9 @@ bool runCase(std::string_view name, const ParameterCatalog& catalog, const Firmw
     }
     if (name == "alpha_stages_and_leaky_keeps_id") {
         return alphaStagesAndLeakyKeepsId(catalog, layout);
+    }
+    if (name == "spec_radius_shows_parameter_view_hint") {
+        return specRadiusShowsParameterViewHint(catalog, layout);
     }
     if (name == "excluded_rows_are_absent") {
         return excludedRowsAreAbsent(catalog, layout);

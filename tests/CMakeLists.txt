@@ -1350,6 +1350,7 @@ if(ERNC_BUILD_UI)
         step_has_no_writer
         running_time_keeps_firmware_value
         alpha_stages_and_leaky_keeps_id
+        spec_radius_shows_parameter_view_hint
         excluded_rows_are_absent
         rnc_page_follows_tree
     )

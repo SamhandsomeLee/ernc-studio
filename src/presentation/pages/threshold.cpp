@@ -158,10 +158,10 @@ ThresholdPage::ThresholdPage(const ernc::domain::ParameterCatalog* catalog, ernc
                     }
                 });
             } else {
-                auto* shortcut = new QPushButton(QStringLiteral("定位"), row);
-                function_view_layout::styleActionButton(shortcut);
-                line->addWidget(shortcut);
-                connect(shortcut, &QPushButton::clicked, this, [this, parameterId] { activate(parameterId); });
+                auto* hint = new QLabel(function_view_layout::parameterViewHintText(), row);
+                hint->setWordWrap(true);
+                hint->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+                line->addWidget(hint);
             }
             function_view_layout::sealFormRow(line);
             controls_.push_back(control);
