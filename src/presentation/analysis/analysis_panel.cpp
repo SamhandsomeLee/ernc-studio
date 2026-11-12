@@ -13,6 +13,7 @@
 
 #include "regions/region_workspace.hpp"
 
+#include <sstream>
 #include <string_view>
 
 namespace ernc::presentation {
@@ -67,6 +68,12 @@ AnalysisPanel::AnalysisPanel(const ernc::domain::RegionCatalog& catalog, ernc::a
         const Result<void> loaded = loadRegionBytes(region, bytes);
         if (!loaded.ok()) {
             status_->setText(QStringLiteral("解码失败，请核对区域与文件长度。"));
+            if (uiActivityRecorder_) {
+                std::ostringstream detail;
+                detail << "{\"region\":\"" << region.path << "\",\"expected_bytes\":" << bytes.size()
+                       << ",\"stage\":\"analysis.decode\"}";
+                uiActivityRecorder_("region.decode", detail.str(), false, loaded.error());
+            }
             return;
         }
         status_->setText(QStringLiteral("已载入 ") + QString::fromStdString(region.path));
@@ -142,6 +149,14 @@ void AnalysisPanel::focusSpecializedTab(std::string_view regionPath) {
 
 RegionWorkspace* AnalysisPanel::regionWorkspace() const noexcept {
     return regionWorkspace_;
+}
+
+void AnalysisPanel::setUiActivityRecorder(
+    std::function<void(std::string_view, std::string_view, bool, ernc::domain::ErrorCode)> recorder) {
+    uiActivityRecorder_ = recorder;
+    if (regionWorkspace_ != nullptr) {
+        regionWorkspace_->setUiActivityRecorder(recorder);
+    }
 }
 
 }  // namespace ernc::presentation

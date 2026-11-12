@@ -1,5 +1,6 @@
 add_library(ernc_logging STATIC
     diagnostic_log.cpp
+    app_session_log.cpp
 )
 
 target_include_directories(ernc_logging PUBLIC

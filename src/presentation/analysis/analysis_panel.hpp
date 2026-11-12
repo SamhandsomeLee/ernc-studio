@@ -7,6 +7,7 @@
 #include <QWidget>
 
 #include <cstdint>
+#include <functional>
 #include <optional>
 #include <span>
 #include <string>
@@ -60,6 +61,12 @@ public:
     /// @brief 借出区域工作区。
     RegionWorkspace* regionWorkspace() const noexcept;
 
+    /// @brief 把 UI 会话记录器接到区域工作区。
+    void setUiActivityRecorder(
+        std::function<void(std::string_view action, std::string_view detail, bool success,
+                           ernc::domain::ErrorCode error)>
+            recorder);
+
 private:
     /// @brief 根据路径激活合适的专业图 Tab。
     /// @param regionPath 父区域路径。
@@ -104,6 +111,11 @@ private:
 
     /// 等待实部配对的虚部副本。空表示尚未载入虚部。
     std::optional<ernc::domain::AnalysisDataset> pendingImag_;
+
+    /// 区域与会话操作记录。空表示不记录。
+    std::function<void(std::string_view action, std::string_view detail, bool success,
+                       ernc::domain::ErrorCode error)>
+        uiActivityRecorder_;
 };
 
 }  // namespace ernc::presentation

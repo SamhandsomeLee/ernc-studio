@@ -32,6 +32,15 @@ std::string lineForEvent(const ernc::infrastructure::LogEvent& event) {
                  << event.slotCount << (event.success ? " 成功" : " 失败")
                  << " err=" << ernc::infrastructure::errorCodeToken(event.error);
             break;
+        case ernc::infrastructure::LogEventKind::UiAction:
+            line << (event.success ? "[OK] " : "[FAIL] ") << event.jobKind;
+            if (!event.detail.empty()) {
+                line << ' ' << event.detail;
+            }
+            if (!event.success) {
+                line << " err=" << ernc::infrastructure::errorCodeToken(event.error);
+            }
+            break;
     }
     return line.str();
 }

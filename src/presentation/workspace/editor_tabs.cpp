@@ -306,6 +306,13 @@ void EditorTabs::showCurveAnalysis() {
     }
 }
 
+void EditorTabs::setUiActivityRecorder(
+    std::function<void(std::string_view, std::string_view, bool, ernc::domain::ErrorCode)> recorder) {
+    if (curveAnalysis_ != nullptr) {
+        curveAnalysis_->setUiActivityRecorder(std::move(recorder));
+    }
+}
+
 void EditorTabs::focusParameterTable() {
     showParameterView();
     if (parameterSearch_ != nullptr) {

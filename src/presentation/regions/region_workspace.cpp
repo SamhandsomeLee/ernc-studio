@@ -12,9 +12,40 @@
 
 #include <bit>
 #include <cstdint>
+#include <sstream>
+#include <system_error>
 
 namespace ernc::presentation {
 namespace {
+
+using ernc::domain::ErrorCode;
+
+/// @brief 为 JSON 字符串转义引号和反斜杠。
+std::string escapeJson(std::string_view text) {
+    std::string out;
+    out.reserve(text.size() + 8);
+    for (char character : text) {
+        if (character == '"' || character == '\\') {
+            out.push_back('\\');
+        }
+        out.push_back(character);
+    }
+    return out;
+}
+
+/// @brief 构造区域导入的 detail JSON。
+std::string importDetailJson(const ernc::domain::RegionDefinition& region, const std::filesystem::path& source,
+                             std::optional<std::uintmax_t> fileBytes) {
+    std::ostringstream detail;
+    detail << "{\"region\":\"" << escapeJson(region.path) << "\",\"expected_bytes\":" << region.size
+           << ",\"expected_slots\":" << region.slotCount << ",\"source\":\"" << escapeJson(source.string()) << '"';
+    if (fileBytes) {
+        detail << ",\"file_bytes\":" << *fileBytes;
+    }
+    detail << '}';
+    return detail.str();
+}
+
 
 /// @brief 用子字段做成一块可读写的区域定义。
 /// @param child 目录中的子字段，只在本次调用期间借用。
@@ -185,11 +216,17 @@ ernc::domain::Result<void> RegionWorkspace::importBin(const std::filesystem::pat
     if (region == nullptr) {
         return ernc::domain::Result<void>::failure(ernc::domain::ErrorCode::InvalidParameter);
     }
+    std::error_code sizeError;
+    const std::uintmax_t fileBytes = std::filesystem::file_size(source, sizeError);
+    const std::optional<std::uintmax_t> bytesOnDisk =
+        sizeError ? std::optional<std::uintmax_t>{} : std::optional<std::uintmax_t>{fileBytes};
     const ernc::domain::Result<std::vector<std::uint8_t>> loaded = ernc::infrastructure::readRegionBin(*region, source);
     if (!loaded.ok() || loaded.tryValue() == nullptr) {
         status_ = QStringLiteral("导入失败");
         statusLabel_->setText(status_);
-        return ernc::domain::Result<void>::failure(loaded.ok() ? ernc::domain::ErrorCode::Unknown : loaded.error());
+        const ErrorCode error = loaded.ok() ? ErrorCode::Unknown : loaded.error();
+        notifyUiAction("region.import.bin", importDetailJson(*region, source, bytesOnDisk), false, error);
+        return ernc::domain::Result<void>::failure(error);
     }
     imported_ = loaded.value();
     preview_.reset();
@@ -201,6 +238,7 @@ ernc::domain::Result<void> RegionWorkspace::importBin(const std::filesystem::pat
     statusLabel_->setText(status_);
     writeButton_->setEnabled(false);
     refreshProgress();
+    notifyUiAction("region.import.bin", importDetailJson(*region, source, bytesOnDisk), true, ErrorCode::Unknown);
     emitBytesAvailable();
     return ernc::domain::Result<void>::success();
 }
@@ -210,11 +248,17 @@ ernc::domain::Result<void> RegionWorkspace::importTxt(const std::filesystem::pat
     if (region == nullptr) {
         return ernc::domain::Result<void>::failure(ernc::domain::ErrorCode::InvalidParameter);
     }
+    std::error_code sizeError;
+    const std::uintmax_t fileBytes = std::filesystem::file_size(source, sizeError);
+    const std::optional<std::uintmax_t> bytesOnDisk =
+        sizeError ? std::optional<std::uintmax_t>{} : std::optional<std::uintmax_t>{fileBytes};
     const ernc::domain::Result<std::vector<float>> loaded = ernc::infrastructure::readRegionTxt(*region, source);
     if (!loaded.ok() || loaded.tryValue() == nullptr) {
         status_ = QStringLiteral("导入失败");
         statusLabel_->setText(status_);
-        return ernc::domain::Result<void>::failure(loaded.ok() ? ernc::domain::ErrorCode::Unknown : loaded.error());
+        const ErrorCode error = loaded.ok() ? ErrorCode::Unknown : loaded.error();
+        notifyUiAction("region.import.txt", importDetailJson(*region, source, bytesOnDisk), false, error);
+        return ernc::domain::Result<void>::failure(error);
     }
     imported_ = bytesFromFloats(loaded.value());
     preview_.reset();
@@ -226,8 +270,21 @@ ernc::domain::Result<void> RegionWorkspace::importTxt(const std::filesystem::pat
     statusLabel_->setText(status_);
     writeButton_->setEnabled(false);
     refreshProgress();
+    notifyUiAction("region.import.txt", importDetailJson(*region, source, bytesOnDisk), true, ErrorCode::Unknown);
     emitBytesAvailable();
     return ernc::domain::Result<void>::success();
+}
+
+void RegionWorkspace::setUiActivityRecorder(
+    std::function<void(std::string_view, std::string_view, bool, ernc::domain::ErrorCode)> recorder) {
+    uiRecorder_ = std::move(recorder);
+}
+
+void RegionWorkspace::notifyUiAction(std::string_view action, std::string_view detail, bool success,
+                                     ernc::domain::ErrorCode error) {
+    if (uiRecorder_) {
+        uiRecorder_(action, detail, success, error);
+    }
 }
 
 void RegionWorkspace::setBytesAvailableHandler(

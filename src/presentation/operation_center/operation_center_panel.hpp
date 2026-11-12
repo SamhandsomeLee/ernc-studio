@@ -4,19 +4,36 @@
 
 #include <QWidget>
 
+#include <functional>
+
+class QLabel;
+class QPlainTextEdit;
+
+namespace ernc::infrastructure {
+class AppSessionLog;
+}
+
 namespace ernc::presentation {
 
-/// 无设备操作中心。显示固定的诊断、停在零的进度和有上限的示例日志。
-/// 本控件不连接串口，也不记录真实命令。
+/// 操作中心：诊断摘要、进度占位和会话操作日志。
 class OperationCenterPanel final : public QWidget {
 public:
-    /// @brief 创建诊断、进度和日志三块。日志先写入三行示例。
-    /// @param parent 父控件。非空时由 Qt 父子关系拥有本控件。必须在 UI 主线程创建。
     explicit OperationCenterPanel(QWidget* parent = nullptr);
 
+    /// @brief 绑定当前会话日志并刷新文本框。
+    /// @param log 会话日志。只借用，必须比本控件活得久。
+    /// @param onRefresh 刷新后通知。可为空。
+    void bindSessionLog(ernc::infrastructure::AppSessionLog* log, std::function<void()> onRefresh = {});
+
+    /// @brief 从结构化日志重画操作摘要。
+    void refreshFromSession();
+
 private:
-    /// 示例日志的行队列。构造时写入三行，之后不再追加。文本框只复制一次它的文本。
+    ernc::infrastructure::AppSessionLog* sessionLog_ = nullptr;
+    std::function<void()> onRefresh_;
     OperationLog log_;
+    QLabel* diagnosisLabel_ = nullptr;
+    QPlainTextEdit* logView_ = nullptr;
 };
 
 } // namespace ernc::presentation

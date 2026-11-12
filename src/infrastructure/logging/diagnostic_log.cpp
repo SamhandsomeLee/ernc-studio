@@ -39,6 +39,8 @@ std::string eventKindToken(LogEventKind kind) {
             return "command.enqueued";
         case LogEventKind::CommandFinished:
             return "command.finished";
+        case LogEventKind::UiAction:
+            return "ui.action";
     }
     return "unknown";
 }
@@ -54,6 +56,18 @@ void DiagnosticLog::appendEvent(LogEvent event) {
     }
     events_.push_back(std::move(event));
     trimEvents();
+}
+
+void DiagnosticLog::appendUiAction(std::uint64_t sessionId, std::string_view action, std::string_view detail, bool success,
+                                   ErrorCode error) {
+    LogEvent event;
+    event.kind = LogEventKind::UiAction;
+    event.sessionId = sessionId;
+    event.jobKind = std::string(action);
+    event.detail = std::string(detail);
+    event.success = success;
+    event.error = error;
+    appendEvent(std::move(event));
 }
 
 void DiagnosticLog::appendWire(WireTraceRecord record) {
@@ -130,7 +144,8 @@ DiagnosticExport DiagnosticLog::exportJsonl() const {
                    << event.firstSlot << ",\"slot_count\":" << event.slotCount << ",\"attempt\":"
                    << static_cast<unsigned>(event.attempt) << ",\"success\":" << (event.success ? "true" : "false")
                    << ",\"error\":\"" << jsonEscape(errorCodeToken(event.error)) << "\",\"duration_ms\":"
-                   << event.durationMs << ",\"job_kind\":\"" << jsonEscape(event.jobKind) << "\"}\n";
+                   << event.durationMs << ",\"job_kind\":\"" << jsonEscape(event.jobKind) << "\",\"detail\":"
+                   << (event.detail.empty() ? "{}" : event.detail) << "}\n";
     }
     std::ostringstream wire;
     for (const WireTraceRecord& record : wire_) {

@@ -982,6 +982,12 @@ foreach(ernc_diagnostic_log_case IN LISTS ernc_diagnostic_log_cases)
     )
 endforeach()
 
+add_executable(ernc_app_session_log_tests app_session_log_test.cpp)
+
+target_link_libraries(ernc_app_session_log_tests PRIVATE ernc_logging)
+
+add_test(NAME app_session_log.writes_operations_jsonl COMMAND ernc_app_session_log_tests)
+
 add_executable(ernc_theme_tokens_tests
     theme_tokens_test.cpp
 )

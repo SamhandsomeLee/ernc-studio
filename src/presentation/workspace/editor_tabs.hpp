@@ -11,6 +11,8 @@
 #include <QString>
 #include <QTabWidget>
 
+#include "ernc/domain/types.hpp"
+
 #include <functional>
 #include <string_view>
 
@@ -57,6 +59,12 @@ public:
 
     /// @brief 切到曲线分析页。无区域目录时仍停在当前页。
     void showCurveAnalysis();
+
+    /// @brief 把会话 UI 记录接到曲线分析页。
+    void setUiActivityRecorder(
+        std::function<void(std::string_view action, std::string_view detail, bool success,
+                           ernc::domain::ErrorCode error)>
+            recorder);
 
     /// @brief 切到 Parameter View，并把焦点送进搜索框。
     /// @note 不改搜索文字，不改状态栏。只在 UI 主线程调用。

@@ -22,6 +22,8 @@ enum class LogEventKind {
     JobFinished,
     CommandEnqueued,
     CommandFinished,
+    /// 桌面上的用户操作或离线导入。细节放在 detail，便于导出后复现。
+    UiAction,
 };
 
 struct LogEvent {
@@ -34,6 +36,8 @@ struct LogEvent {
     ernc::domain::ErrorCode error{ernc::domain::ErrorCode::Unknown};
     std::uint64_t durationMs{0};
     std::string jobKind;
+    /// JSON 或 key=value 载荷。UiAction 时记录路径、字节长度等复现字段。
+    std::string detail;
     std::uint8_t attempt{0};
     bool success{false};
 };
@@ -70,6 +74,10 @@ public:
 
     void appendEvent(LogEvent event);
     void appendWire(WireTraceRecord record);
+
+    /// @brief 记录一次 UI/离线操作并写入 detail。
+    void appendUiAction(std::uint64_t sessionId, std::string_view action, std::string_view detail, bool success,
+                        ernc::domain::ErrorCode error = ernc::domain::ErrorCode::Unknown);
 
     /// @return 新 Job 的 id。`jobKind` 描述用户操作，例如 `parameter.read`。
     std::uint64_t startJob(std::string_view jobKind, std::uint64_t sessionId);

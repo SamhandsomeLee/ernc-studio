@@ -9,15 +9,21 @@
 #include <QMainWindow>
 #include <QString>
 
+#include <memory>
 #include <optional>
 
 class QCloseEvent;
 class QDockWidget;
 
+namespace ernc::infrastructure {
+class AppSessionLog;
+}
+
 namespace ernc::presentation {
 
 class EditorTabs;
 class InspectorPanel;
+class OperationCenterPanel;
 
 /// 无设备主窗口。左侧项目树显示目录页面，中间工作区用两个页签显示同一份选择。
 /// 底部检查器跟随这份参数 id。右侧任务卡和操作中心是无设备原型。本类不保存参数值，也不持有串口。
@@ -29,6 +35,8 @@ public:
     /// @param parent 父控件。空时由调用方负责销毁。必须在 UI 主线程创建。
     /// @note Dock 的对象名保持稳定，供布局恢复使用。`--exit-after-show` 不读写布局设置。
     explicit MainWindow(ernc::domain::CatalogLoad catalog, QString catalogPath, QWidget* parent = nullptr);
+
+    ~MainWindow() override;
 
 protected:
     /// @brief 窗口关闭时保存几何和停靠状态。
@@ -76,6 +84,10 @@ private:
     /// @note `close-overlay` 在没有浮层时什么都不做。不取消写入。
     void runBoundAction(std::string_view action);
 
+    /// @brief 写一条 UI 操作到会话日志并刷新操作中心。
+    void recordUiAction(std::string_view action, std::string_view detail, bool success,
+                        ernc::domain::ErrorCode error = ernc::domain::ErrorCode::Unknown);
+
     /// 参数运行状态。本窗口拥有。参数表只借用它，不保存第二份数值。
     ernc::domain::ParameterRuntimeStore parameterStore_;
 
@@ -102,6 +114,12 @@ private:
 
     /// 右侧操作中心 Dock。由本窗口通过 Qt 父子关系拥有。
     QDockWidget* operationCenter_ = nullptr;
+
+    /// 操作中心内容。由 Dock 拥有指针副本，用于刷新日志视图。
+    OperationCenterPanel* operationPanel_ = nullptr;
+
+    /// 本次桌面运行的会话日志。失败创建目录时为空。
+    std::unique_ptr<ernc::infrastructure::AppSessionLog> sessionLog_;
 };
 
 } // namespace ernc::presentation

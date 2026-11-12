@@ -8,7 +8,9 @@
 #include "theme/theme_tokens.hpp"
 #include "workspace/editor_tabs.hpp"
 
+#include "diagnostics/session_log_paths.hpp"
 #include "ernc/domain/region_catalog.hpp"
+#include "ernc/infrastructure/logging/app_session_log.hpp"
 
 #include <QAbstractItemView>
 #include <QAction>
@@ -28,6 +30,7 @@
 #include <QVBoxLayout>
 
 #include <filesystem>
+#include <sstream>
 #include <string>
 #include <string_view>
 
@@ -158,14 +161,39 @@ MainWindow::MainWindow(ernc::domain::CatalogLoad catalog, QString catalogPath, Q
     taskCards_->setWidget(taskCardPanel);
     delete previousTasks;
 
-    auto* operationPanel = new OperationCenterPanel(operationCenter_);
+    operationPanel_ = new OperationCenterPanel(operationCenter_);
     QWidget* previousOperation = operationCenter_->widget();
-    operationCenter_->setWidget(operationPanel);
+    operationCenter_->setWidget(operationPanel_);
     delete previousOperation;
+
+    const std::filesystem::path sessionDirectory = createSessionLogDirectory();
+    if (!sessionDirectory.empty()) {
+        sessionLog_ = std::make_unique<ernc::infrastructure::AppSessionLog>(sessionDirectory, 1U);
+        std::ostringstream meta;
+        meta << "{\"phase\":\"desktop\"}";
+#ifdef ERNC_PARAMETER_CATALOG_PATH
+        meta << ",\"catalog\":\"" << ERNC_PARAMETER_CATALOG_PATH << '"';
+#endif
+#ifdef ERNC_LAYOUT_MANIFEST_PATH
+        meta << ",\"layout_manifest\":\"" << ERNC_LAYOUT_MANIFEST_PATH << '"';
+#endif
+        meta << '}';
+        recordUiAction("app.session.start", meta.str(), true);
+        operationPanel_->bindSessionLog(sessionLog_.get());
+        editorTabs_->setUiActivityRecorder([this](std::string_view action, std::string_view detail, bool success,
+                                                  ernc::domain::ErrorCode error) {
+            recordUiAction(action, detail, success, error);
+        });
+    }
 
     QStatusBar* bar = statusBar();
     bar->setObjectName(QStringLiteral("erncStatusBar"));
-    bar->showMessage(QStringLiteral("未连接"));
+    if (sessionLog_ != nullptr) {
+        bar->showMessage(QStringLiteral("会话日志：%1")
+            .arg(QString::fromStdWString(sessionLog_->sessionDirectory().wstring())));
+    } else {
+        bar->showMessage(QStringLiteral("未连接（会话日志目录创建失败）"));
+    }
 
     QMenu* viewMenu = menuBar()->addMenu(QStringLiteral("视图"));
     viewMenu->addAction(projectTree_->toggleViewAction());
@@ -193,6 +221,8 @@ MainWindow::MainWindow(ernc::domain::CatalogLoad catalog, QString catalogPath, Q
         applyDefaultShellLayout();
     }
 }
+
+MainWindow::~MainWindow() = default;
 
 QDockWidget* MainWindow::addPlaceholderDock(
     const QString& objectName,
@@ -224,6 +254,18 @@ void MainWindow::showNavigatorError(QDockWidget* dock, const QString& message) {
     delete previous;
 }
 
+void MainWindow::recordUiAction(std::string_view action, std::string_view detail, bool success,
+                                ernc::domain::ErrorCode error) {
+    if (sessionLog_ == nullptr) {
+        return;
+    }
+    sessionLog_->recordUiAction(action, detail, success, error);
+    sessionLog_->appendReadableLine(std::string(action) + (success ? " ok " : " fail ") + std::string(detail));
+    if (operationPanel_ != nullptr) {
+        operationPanel_->refreshFromSession();
+    }
+}
+
 void MainWindow::applyWorkspace(const WorkspaceLayout& layout) {
     projectTree_->setVisible(layout.docks.projectTree);
     taskCards_->setVisible(layout.docks.taskCards);
@@ -245,6 +287,12 @@ void MainWindow::applyWorkspace(const WorkspaceLayout& layout) {
         inspectorPanel_->showPropertiesPage();
     } else if (layout.inspectorPage == ShellInspectorPage::Diagnostics) {
         inspectorPanel_->showDiagnosticsPage();
+    }
+    if (sessionLog_ != nullptr) {
+        std::ostringstream detail;
+        detail << "{\"editor_page\":" << static_cast<int>(layout.editorPage)
+               << ",\"project_tree\":" << (layout.docks.projectTree ? "true" : "false") << '}';
+        recordUiAction("workspace.apply", detail.str(), true);
     }
 }
 
@@ -343,6 +391,10 @@ void MainWindow::runBoundAction(std::string_view action) {
 }
 
 void MainWindow::closeEvent(QCloseEvent* event) {
+    if (sessionLog_ != nullptr) {
+        recordUiAction("app.session.end", "{}", true);
+        (void)sessionLog_->exportSnapshot();
+    }
     if (!shellSettingsPaused()) {
         QSettings settings;
         settings.setValue(QStringLiteral("shell/geometry"), saveGeometry());

@@ -115,12 +115,24 @@ public:
     void setBytesAvailableHandler(
         std::function<void(const ernc::domain::RegionDefinition&, std::span<const std::uint8_t>)> handler);
 
+    /// @brief 记录 UI 操作用于会话日志复现。
+    /// @param recorder 收到 action、detail JSON、成败和错误码。空表示不记录。
+    void setUiActivityRecorder(
+        std::function<void(std::string_view action, std::string_view detail, bool success, ernc::domain::ErrorCode error)>
+            recorder);
+
 private:
-    /// @brief 导入成功后把字节交给已注册的处理器。
-    void emitBytesAvailable();
+    void notifyUiAction(std::string_view action, std::string_view detail, bool success, ernc::domain::ErrorCode error);
 
     /// 导入完成后的通知。空表示不通知。
     std::function<void(const ernc::domain::RegionDefinition&, std::span<const std::uint8_t>)> bytesHandler_;
+
+    /// 会话 UI 记录。空表示不记录。
+    std::function<void(std::string_view action, std::string_view detail, bool success, ernc::domain::ErrorCode error)>
+        uiRecorder_;
+
+    /// @brief 导入成功后把字节交给已注册的处理器。
+    void emitBytesAvailable();
 
     /// @brief 按当前区域和子字段确定要操作的定义。
     /// @return 有选择时指向内部副本。没有时为空。

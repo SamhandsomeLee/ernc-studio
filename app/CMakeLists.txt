@@ -1,4 +1,4 @@
-find_package(Qt6 REQUIRED COMPONENTS Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Widgets Core)
 
 qt_standard_project_setup()
 
@@ -28,6 +28,7 @@ qt_add_executable(ernc_app
     ../src/presentation/task_cards/task_card_panel.cpp
     ../src/presentation/operation_center/operation_center_panel.cpp
     ../src/presentation/diagnostics/diagnostic_log_presenter.cpp
+    ../src/presentation/diagnostics/session_log_paths.cpp
 )
 
 qt_add_resources(ernc_app "ernc_themes"
