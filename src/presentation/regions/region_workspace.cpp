@@ -291,7 +291,7 @@ ernc::domain::Result<void> RegionWorkspace::readSelected() {
         return ernc::domain::Result<void>::failure(ernc::domain::ErrorCode::InvalidParameter);
     }
     if (!ernc::domain::realReadPermitted(region->evidence)) {
-        status_ = QStringLiteral("区域读取未授权");
+        status_ = QStringLiteral("区域读取未授权（证据等级不支持 FC03）");
         statusLabel_->setText(status_);
         return ernc::domain::Result<void>::failure(ernc::domain::ErrorCode::InvalidParameter);
     }
@@ -300,11 +300,20 @@ ernc::domain::Result<void> RegionWorkspace::readSelected() {
         started = startRead_(QString::fromStdString(region->path));
     } else if (reader_ != nullptr) {
         started = reader_->start(*region);
+    } else {
+        status_ = QStringLiteral("未绑定设备：请先在「设备」菜单连接虚拟从站或串口");
+        statusLabel_->setText(status_);
+        return ernc::domain::Result<void>::failure(ernc::domain::ErrorCode::DeviceDisconnected);
     }
     if (!started.ok()) {
-        status_ = started.tryError() != nullptr && *started.tryError() == ernc::domain::ErrorCode::DeviceDisconnected
-            ? QStringLiteral("未连接设备")
-            : QStringLiteral("读取被拒绝：当前有设备任务或布局未核验");
+        const ErrorCode error = started.tryError() != nullptr ? *started.tryError() : ErrorCode::Unknown;
+        if (error == ErrorCode::DeviceDisconnected) {
+            status_ = QStringLiteral("未连接设备");
+        } else if (error == ErrorCode::InvalidParameter) {
+            status_ = QStringLiteral("读取被拒绝：设备忙、已有区域任务或区域目录未加载");
+        } else {
+            status_ = QStringLiteral("读取入队失败");
+        }
     } else {
         activeReadPath_ = QString::fromStdString(region->path);
         status_ = QStringLiteral("正在读取 %1").arg(activeReadPath_);
