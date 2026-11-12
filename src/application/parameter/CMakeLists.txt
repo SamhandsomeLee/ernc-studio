@@ -10,6 +10,7 @@ add_library(ernc_application STATIC
     ../region/transfer_cancellation.cpp
     ../workflows/workflow_runner.cpp
     ../workflows/enc_echo.cpp
+    ../workflows/enc_divergence.cpp
 )
 
 target_include_directories(ernc_application PUBLIC
