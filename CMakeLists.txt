@@ -35,6 +35,7 @@ add_subdirectory(src/infrastructure/persistence)
 add_subdirectory(src/application/device)
 add_subdirectory(src/application/parameter)
 add_subdirectory(src/application/project)
+add_subdirectory(src/application/experiment)
 add_subdirectory(simulator)
 
 if(ERNC_BUILD_UI)

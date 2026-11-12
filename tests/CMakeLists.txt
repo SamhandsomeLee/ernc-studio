@@ -1838,3 +1838,17 @@ foreach(ernc_snapshot_case IN ITEMS
             "${CMAKE_SOURCE_DIR}/catalog/parameter_catalog.json"
     )
 endforeach()
+
+# ES-086: experiment metadata and region BIN assets with SHA-256.
+add_executable(ernc_experiment_tests
+    experiment_asset_test.cpp
+)
+
+target_link_libraries(ernc_experiment_tests PRIVATE ernc_experiment ernc_project)
+
+foreach(ernc_experiment_case IN ITEMS create_and_attach reopen_verify_hash hash_mismatch_fails)
+    add_test(
+        NAME "experiment.${ernc_experiment_case}"
+        COMMAND ernc_experiment_tests "${ernc_experiment_case}"
+    )
+endforeach()
