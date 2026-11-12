@@ -1211,6 +1211,7 @@ if(ERNC_BUILD_UI)
         ../src/presentation/pages/switch_state.cpp
         ../src/presentation/pages/can_names.cpp
         ../src/presentation/pages/threshold.cpp
+        ../src/presentation/pages/other_page.cpp
         ../src/presentation/workspace/editor_tabs.cpp
         ../src/presentation/parameters/parameter_table_model.cpp
         ../src/presentation/parameters/parameter_filter_proxy.cpp
@@ -1254,6 +1255,7 @@ if(ERNC_BUILD_UI)
         ../src/presentation/pages/switch_state.cpp
         ../src/presentation/pages/can_names.cpp
         ../src/presentation/pages/threshold.cpp
+        ../src/presentation/pages/other_page.cpp
         ../src/presentation/workspace/editor_tabs.cpp
         ../src/presentation/parameters/parameter_table_model.cpp
         ../src/presentation/parameters/parameter_filter_proxy.cpp
@@ -1294,6 +1296,7 @@ if(ERNC_BUILD_UI)
         ../src/presentation/pages/switch_state.cpp
         ../src/presentation/pages/can_names.cpp
         ../src/presentation/pages/threshold.cpp
+        ../src/presentation/pages/other_page.cpp
         ../src/presentation/pages/ernc_flag.cpp
         ../src/presentation/pages/ernc_in_out.cpp
         ../src/presentation/workspace/editor_tabs.cpp
@@ -1334,6 +1337,7 @@ if(ERNC_BUILD_UI)
         ../src/presentation/pages/switch_state.cpp
         ../src/presentation/pages/can_names.cpp
         ../src/presentation/pages/threshold.cpp
+        ../src/presentation/pages/other_page.cpp
         ../src/presentation/pages/enc_param.cpp
         ../src/presentation/pages/ernc_flag.cpp
         ../src/presentation/pages/ernc_in_out.cpp
@@ -1377,6 +1381,7 @@ if(ERNC_BUILD_UI)
         ../src/presentation/pages/switch_state.cpp
         ../src/presentation/pages/can_names.cpp
         ../src/presentation/pages/threshold.cpp
+        ../src/presentation/pages/other_page.cpp
         ../src/presentation/pages/rnc_param.cpp
         ../src/presentation/pages/enc_param.cpp
         ../src/presentation/pages/ernc_flag.cpp
@@ -1416,6 +1421,7 @@ if(ERNC_BUILD_UI)
         ../src/presentation/pages/switch_state.cpp
         ../src/presentation/pages/can_names.cpp
         ../src/presentation/pages/threshold.cpp
+        ../src/presentation/pages/other_page.cpp
         ../src/presentation/pages/check.cpp
         ../src/presentation/pages/rnc_param.cpp
         ../src/presentation/pages/enc_param.cpp
@@ -1449,6 +1455,7 @@ if(ERNC_BUILD_UI)
         can_names_page_test.cpp
         ../src/presentation/pages/can_names.cpp
         ../src/presentation/pages/threshold.cpp
+        ../src/presentation/pages/other_page.cpp
         ../src/presentation/pages/switch_state.cpp
         ../src/presentation/pages/check.cpp
         ../src/presentation/pages/rnc_param.cpp
@@ -1483,6 +1490,7 @@ if(ERNC_BUILD_UI)
     add_executable(ernc_threshold_page_tests
         threshold_page_test.cpp
         ../src/presentation/pages/threshold.cpp
+        ../src/presentation/pages/other_page.cpp
         ../src/presentation/pages/can_names.cpp
         ../src/presentation/pages/switch_state.cpp
         ../src/presentation/pages/check.cpp

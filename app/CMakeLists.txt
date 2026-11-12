@@ -19,6 +19,7 @@ qt_add_executable(ernc_app
     ../src/presentation/pages/switch_state.cpp
     ../src/presentation/pages/can_names.cpp
     ../src/presentation/pages/threshold.cpp
+    ../src/presentation/pages/other_page.cpp
     ../src/presentation/parameters/parameter_table_model.cpp
     ../src/presentation/parameters/parameter_filter_proxy.cpp
     ../src/presentation/parameters/write_plan_dialog.cpp

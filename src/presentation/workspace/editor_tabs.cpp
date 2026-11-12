@@ -11,6 +11,7 @@
 #include "pages/can_names.hpp"
 #include "pages/check.hpp"
 #include "pages/switch_state.hpp"
+#include "pages/other_page.hpp"
 #include "pages/threshold.hpp"
 #include "pages/enc_param.hpp"
 #include "pages/rnc_param.hpp"
@@ -215,6 +216,19 @@ EditorTabs::EditorTabs(const ernc::domain::ParameterCatalog* catalog, ernc::doma
         selectParameter(QString::fromStdString(id.text()));
     });
     thresholdPage_->hide();
+    otherPage_ = new OtherPage(catalog, store, layout, functionView);
+    if (auto* functionLayout = qobject_cast<QVBoxLayout*>(functionView->layout())) {
+        functionLayout->insertWidget(9, otherPage_, 1);
+    }
+    otherPage_->setEditObserver([this](const ernc::domain::ParameterId& id) {
+        if (parameterModel_ != nullptr) {
+            parameterModel_->noteLocalEdit(id);
+        }
+    });
+    otherPage_->setSelectionObserver([this](const ernc::domain::ParameterId& id) {
+        selectParameter(QString::fromStdString(id.text()));
+    });
+    otherPage_->hide();
     addTab(functionView, QStringLiteral("函数视图"));
     auto* parameterView = makeParameterView(this, catalog, store, layout, parameterSearch_, parameterProxy_, parameterModel_);
     addTab(parameterView, QStringLiteral("参数视图"));
@@ -281,7 +295,7 @@ void EditorTabs::emphasizeFunctionViewParameter(const QString& parameterId) {
         return true;
     };
     if (tryEmphasize(flagPage_) || tryEmphasize(inOutPage_) || tryEmphasize(encPage_) || tryEmphasize(rncPage_)
-        || tryEmphasize(checkPage_) || tryEmphasize(thresholdPage_)) {
+        || tryEmphasize(checkPage_) || tryEmphasize(thresholdPage_) || tryEmphasize(otherPage_)) {
         return;
     }
 }
@@ -434,8 +448,9 @@ void EditorTabs::refresh() {
     const bool showSwitch = selection_.pageId() == "ERNC_Switch_State";
     const bool showCan = selection_.pageId() == "Check" && canShown_;
     const bool showThreshold = selection_.pageId() == "Threshold";
+    const bool showOther = selection_.pageId() == ernc::domain::kOtherPageCategory;
     functionLabel_->setVisible(!showFlag && !showInOut && !showEnc && !showRnc && !showCheck && !showSwitch && !showCan
-        && !showThreshold);
+                                && !showThreshold && !showOther);
     if (flagPage_ != nullptr) {
         flagPage_->setVisible(showFlag);
         if (showFlag) {
@@ -478,11 +493,17 @@ void EditorTabs::refresh() {
             thresholdPage_->reload();
         }
     }
+    if (otherPage_ != nullptr) {
+        otherPage_->setVisible(showOther);
+        if (showOther) {
+            otherPage_->reload();
+        }
+    }
     if (QWidget* functionView = functionLabel_->parentWidget()) {
         if (auto* functionLayout = qobject_cast<QVBoxLayout*>(functionView->layout())) {
             const bool showPage = showFlag || showInOut || showEnc || showRnc || showCheck || showSwitch || showCan
-                || showThreshold;
-            if (functionLayout->count() > 9) {
+                || showThreshold || showOther;
+            if (functionLayout->count() > 10) {
                 functionLayout->setStretch(1, showFlag ? 1 : 0);
                 functionLayout->setStretch(2, showInOut ? 1 : 0);
                 functionLayout->setStretch(3, showEnc ? 1 : 0);
@@ -491,7 +512,8 @@ void EditorTabs::refresh() {
                 functionLayout->setStretch(6, showSwitch ? 1 : 0);
                 functionLayout->setStretch(7, showCan ? 1 : 0);
                 functionLayout->setStretch(8, showThreshold ? 1 : 0);
-                functionLayout->setStretch(9, showPage ? 0 : 1);
+                functionLayout->setStretch(9, showOther ? 1 : 0);
+                functionLayout->setStretch(10, showPage ? 0 : 1);
             }
         }
     }

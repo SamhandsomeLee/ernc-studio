@@ -23,6 +23,7 @@ namespace ernc::presentation {
 class DeviceController;
 class CanNamePage;
 class ThresholdPage;
+class OtherPage;
 class CheckPage;
 class SwitchStatePage;
 class EncParamPage;
@@ -170,6 +171,9 @@ private:
 
     /// 阈值页。由 Function View 通过 Qt 父子关系拥有。其它页面隐藏它。
     ThresholdPage* thresholdPage_ = nullptr;
+
+    /// other 分类页。由 Function View 通过 Qt 父子关系拥有。其它页面隐藏它。
+    OtherPage* otherPage_ = nullptr;
 
     /// 曲线分析页。有区域目录时创建。
     AnalysisPanel* curveAnalysis_ = nullptr;
