@@ -1,5 +1,5 @@
 #include "ernc/application/project/parameter_snapshot.hpp"
-
+#include "ernc/infrastructure/legacy_param_json.hpp"
 #include "ernc/infrastructure/persistence/snapshot_repository.hpp"
 
 #include <QDateTime>
@@ -194,6 +194,55 @@ Result<void> ParameterSnapshotService::hydrateStoreForView(std::int64_t snapshot
     store.observe(row.parameterId, decoded.value(), observedAt);
   }
   return Result<void>::success();
+}
+
+Result<std::int64_t> ParameterSnapshotService::importLegacyDocument(
+    const CaptureSnapshotRequest& request, const ParameterCatalog& catalog,
+    const ernc::infrastructure::LegacyParamJsonDocument& document) {
+  if (request.projectId <= 0 || request.firmwareVersion.empty() || request.catalogVersion.empty()) {
+    return Result<std::int64_t>::failure(ErrorCode::InvalidParameter);
+  }
+  if (document.version != ernc::infrastructure::kLegacyParamJsonVersion) {
+    return Result<std::int64_t>::failure(ErrorCode::InvalidParameter);
+  }
+  if (!database_.isOpen() || !database_.transaction()) {
+    return Result<std::int64_t>::failure(ErrorCode::DatabaseFailed);
+  }
+  SnapshotRepository repository(database_);
+  const Result<std::int64_t> snapshotId = repository.insertSnapshot(
+      request.projectId, isoUtcNow(), std::string_view{"legacy_json_import"}, request.firmwareVersion,
+      request.catalogVersion,
+      request.note);
+  if (!snapshotId.ok()) {
+    database_.rollback();
+    return snapshotId;
+  }
+  for (const ernc::infrastructure::LegacyParamJsonEntry& entry : document.params) {
+    const ParameterDefinition* definition = catalog.find(entry.name);
+    if (definition == nullptr || !isScalarDefinition(*definition)) {
+      continue;
+    }
+    const std::optional<std::string_view> typeToken = dataTypeToken(*definition->dataType);
+    if (!typeToken) {
+      continue;
+    }
+    const Result<std::string> json = scalarToJson(entry.value, *definition->dataType);
+    if (!json.ok()) {
+      database_.rollback();
+      return Result<std::int64_t>::failure(json.error());
+    }
+    const Result<void> inserted = repository.insertParameterValue(snapshotId.value(), definition->id, *typeToken,
+                                                                  json.value(), std::string_view{"imported"});
+    if (!inserted.ok()) {
+      database_.rollback();
+      return Result<std::int64_t>::failure(inserted.error());
+    }
+  }
+  if (!database_.commit()) {
+    database_.rollback();
+    return Result<std::int64_t>::failure(ErrorCode::DatabaseFailed);
+  }
+  return snapshotId;
 }
 
 Result<SnapshotDiff> ParameterSnapshotService::diffAgainstStore(std::int64_t snapshotId,

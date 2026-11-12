@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ernc/domain/catalog.hpp"
+#include "ernc/infrastructure/legacy_param_json.hpp"
 #include "ernc/domain/runtime_store.hpp"
 #include "ernc/domain/snapshot_diff.hpp"
 #include "ernc/domain/types.hpp"
@@ -50,6 +51,11 @@ class ParameterSnapshotService {
   /// @brief 按 ParameterId 比较快照值与 Store 的 deviceValue。
   ernc::domain::Result<ernc::domain::SnapshotDiff> diffAgainstStore(
       std::int64_t snapshotId, const ernc::domain::ParameterRuntimeStore& store);
+
+  /// @brief 把旧版 JSON 标量写入快照表；`source` 为 `legacy_json_import`。
+  ernc::domain::Result<std::int64_t> importLegacyDocument(
+      const CaptureSnapshotRequest& request, const ernc::domain::ParameterCatalog& catalog,
+      const ernc::infrastructure::LegacyParamJsonDocument& document);
 
  private:
   QSqlDatabase& database_;

@@ -1852,3 +1852,34 @@ foreach(ernc_experiment_case IN ITEMS create_and_attach reopen_verify_hash hash_
         COMMAND ernc_experiment_tests "${ernc_experiment_case}"
     )
 endforeach()
+
+# ES-087: legacy parameter JSON import/export (v1 scalars only).
+set(ernc_legacy_param_json_fixture "${CMAKE_SOURCE_DIR}/tests/fixtures/files/legacy_params_v1_minimal.json")
+
+add_executable(ernc_legacy_param_json_tests
+    legacy_param_json_test.cpp
+)
+
+target_link_libraries(ernc_legacy_param_json_tests PRIVATE ernc_filesystem ernc_application ernc_project)
+
+set(ernc_legacy_param_json_cases
+    minimal_fixture_parses
+    parse_rejects_and_reports
+    arrays_and_blob_skipped_with_report
+    invalid_version_fails
+    import_to_staged
+    import_does_not_write_device
+    export_staged_then_device_round_trip
+    import_to_snapshot_persists
+)
+
+foreach(ernc_legacy_param_json_case IN LISTS ernc_legacy_param_json_cases)
+    add_test(
+        NAME "legacy_param_json.${ernc_legacy_param_json_case}"
+        COMMAND ernc_legacy_param_json_tests
+            "${ernc_legacy_param_json_case}"
+            "${CMAKE_SOURCE_DIR}/catalog/parameter_catalog.json"
+            "${ernc_layout_manifest}"
+            "${ernc_legacy_param_json_fixture}"
+    )
+endforeach()

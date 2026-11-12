@@ -1,0 +1,7 @@
+{
+  "version": "1.0.0",
+  "params": [
+    { "name": "ANC_OFF", "value": 0 },
+    { "name": "RNC_param.alpha1", "value": 1.5 }
+  ]
+}
