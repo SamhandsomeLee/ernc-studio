@@ -11,6 +11,7 @@ add_library(ernc_application STATIC
     ../workflows/workflow_runner.cpp
     ../workflows/enc_echo.cpp
     ../workflows/enc_divergence.cpp
+    ../workflows/horn.cpp
 )
 
 target_include_directories(ernc_application PUBLIC

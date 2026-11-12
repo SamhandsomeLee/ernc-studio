@@ -266,6 +266,29 @@ foreach(ernc_enc_divergence_workflow_case IN LISTS ernc_enc_divergence_workflow_
     )
 endforeach()
 
+add_executable(ernc_horn_workflow_tests
+    horn_workflow_test.cpp
+)
+
+target_link_libraries(ernc_horn_workflow_tests PRIVATE ernc_application)
+
+set(ernc_horn_workflow_cases
+    definition_has_twelve_steps_filter_gate
+    input_filter_write_guard
+    filter_unconfirmed_blocks_advance
+    materialize_decodes_f_twice_and_t
+    workflow_completes_with_confirmations
+)
+
+foreach(ernc_horn_workflow_case IN LISTS ernc_horn_workflow_cases)
+    add_test(
+        NAME "horn_workflow.${ernc_horn_workflow_case}"
+        COMMAND ernc_horn_workflow_tests
+            "${ernc_horn_workflow_case}"
+            "${CMAKE_SOURCE_DIR}/firmware/layout_manifest.json"
+    )
+endforeach()
+
 add_executable(ernc_write_plan_tests
     write_plan_test.cpp
 )
