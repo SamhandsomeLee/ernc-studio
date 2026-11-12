@@ -332,14 +332,10 @@ MainWindow::MainWindow(ernc::domain::CatalogLoad catalog, QString catalogPath, Q
     viewMenu->addAction(operationCenter_->toggleViewAction());
     viewMenu->addSeparator();
     QAction* parameterDebug = viewMenu->addAction(QStringLiteral("参数调试"));
-    QAction* curveAnalysis = viewMenu->addAction(QStringLiteral("曲线分析"));
     QAction* faultDiagnosis = viewMenu->addAction(QStringLiteral("故障诊断"));
     QAction* restoreDefault = viewMenu->addAction(QStringLiteral("恢复默认布局"));
     connect(parameterDebug, &QAction::triggered, this, [this] {
         applyWorkspace(presetLayout(WorkspacePreset::ParameterDebug));
-    });
-    connect(curveAnalysis, &QAction::triggered, this, [this] {
-        applyWorkspace(presetLayout(WorkspacePreset::CurveAnalysis));
     });
     connect(faultDiagnosis, &QAction::triggered, this, [this] {
         applyWorkspace(presetLayout(WorkspacePreset::FaultDiagnosis));
@@ -409,7 +405,7 @@ void MainWindow::applyWorkspace(const WorkspaceLayout& layout) {
     if (layout.editorPage == ShellEditorPage::FunctionView) {
         editorTabs_->showFunctionView();
     } else if (layout.editorPage == ShellEditorPage::CurveAnalysis) {
-        editorTabs_->showCurveAnalysis();
+        editorTabs_->showParameterView();
     } else if (layout.editorPage == ShellEditorPage::ParameterView) {
         editorTabs_->showParameterView();
     }

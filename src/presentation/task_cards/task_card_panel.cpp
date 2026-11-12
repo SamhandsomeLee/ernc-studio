@@ -4,7 +4,6 @@
 
 #include <QLabel>
 #include <QPushButton>
-#include <QToolBox>
 #include <QVBoxLayout>
 
 namespace ernc::presentation {
@@ -48,23 +47,10 @@ QWidget* makeCardPage(TaskCardPanel* panel, QWidget* parent) {
 
 TaskCardPanel::TaskCardPanel(QWidget* parent)
     : QWidget(parent) {
+    setObjectName(QStringLiteral("erncTaskCards"));
     auto* layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
-    auto* cards = new QToolBox(this);
-    cards->setObjectName(QStringLiteral("erncTaskCards"));
-    cards->addItem(makeCardPage(this, cards), QStringLiteral("常用操作"));
-    {
-        auto* favorites = new QWidget(cards);
-        auto* favLayout = new QVBoxLayout(favorites);
-        favLayout->setContentsMargins(kSpace16, kSpace16, kSpace16, kSpace16);
-        auto* label = new QLabel(QStringLiteral("未接入"), favorites);
-        label->setWordWrap(true);
-        favLayout->addWidget(label);
-        favLayout->addStretch(1);
-        cards->addItem(favorites, QStringLiteral("收藏与分析"));
-    }
-    cards->setCurrentIndex(0);
-    layout->addWidget(cards);
+    layout->addWidget(makeCardPage(this, this));
 }
 
 }  // namespace ernc::presentation

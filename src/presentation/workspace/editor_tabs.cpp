@@ -9,7 +9,6 @@
 #include "ernc/application/batch_write.hpp"
 #include "scheduler.hpp"
 
-#include "analysis/analysis_panel.hpp"
 #include "controls/parameter_delegates.hpp"
 #include "pages/can_names.hpp"
 #include "pages/can_info_panel.hpp"
@@ -236,10 +235,6 @@ EditorTabs::EditorTabs(const ernc::domain::ParameterCatalog* catalog, ernc::doma
     addTab(functionView, QStringLiteral("函数视图"));
     auto* parameterView = makeParameterView(this, catalog, store, layout, parameterSearch_, parameterProxy_, parameterModel_);
     addTab(parameterView, QStringLiteral("参数视图"));
-    if (regionCatalog != nullptr) {
-        curveAnalysis_ = new AnalysisPanel(*regionCatalog, nullptr, nullptr, this);
-        addTab(curveAnalysis_, QStringLiteral("曲线分析"));
-    }
     canInfoPanel_ = new CanInfoPanel(layout, this);
     addTab(canInfoPanel_, QStringLiteral("CAN信息"));
     auto* table = parameterView->findChild<QTableView*>(QStringLiteral("erncParameterTable"));
@@ -467,16 +462,12 @@ void EditorTabs::showParameterView() {
 }
 
 void EditorTabs::showCurveAnalysis() {
-    if (curveAnalysis_ != nullptr) {
-        setCurrentWidget(curveAnalysis_);
-    }
+    showParameterView();
 }
 
 void EditorTabs::setUiActivityRecorder(
     std::function<void(std::string_view, std::string_view, bool, ernc::domain::ErrorCode)> recorder) {
-    if (curveAnalysis_ != nullptr) {
-        curveAnalysis_->setUiActivityRecorder(std::move(recorder));
-    }
+    (void)recorder;
 }
 
 void EditorTabs::focusParameterTable() {
