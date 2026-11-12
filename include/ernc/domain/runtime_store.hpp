@@ -35,6 +35,14 @@ struct ParameterRuntimeState {
 
     /// 最近一次观察失败的类别。空表示当前没有未清除的观察错误。成功读回会清掉它。
     std::optional<ErrorCode> error;
+
+    /// 从当前工程恢复的历史 Read。只供显示和文件保存，不参与设备读回判断。
+    std::optional<ScalarValue> projectReadValue;
+
+    /// @brief 取得界面或文件所用的 Read 原值。返回指针借用本记录，未有值时为空。
+    const ScalarValue* displayedRead() const noexcept {
+        return projectReadValue ? &*projectReadValue : deviceValue ? &*deviceValue : nullptr;
+    }
 };
 
 /// @brief 按参数标识保存设备读数和用户目标值。
@@ -52,8 +60,17 @@ public:
     /// @param id 参数标识，只在本次调用期间借用。文本会被复制为内部键。
     /// @param value 设备读回的标量，按值复制进 deviceValue。不换算单位，也不改写种类。
     /// @param readAt 这次读回的时刻，由调用方给出。Store 不读取系统钟。
-    /// 写入 deviceValue 和 readAt，清掉 stale 和 error。不改 stagedValue、dirty 和 stagedAt。
+    /// 写入 deviceValue 和 readAt，清掉 stale、error 和同一参数的历史 Read。不改 Set。
     void observe(const ParameterId& id, const ScalarValue& value, RuntimeTime readAt);
+
+    /// @brief 安装一条工程历史读数，保留仍有效的实时 Read。
+    /// @param id 参数标识，复制为内部键。
+    /// @param value 历史标量原值，按值复制，不设置读回时间或验证状态。
+    /// @return 显示工程读数时为 true。已有实时 Read 时保持原状态并返回 false。
+    bool restoreProjectRead(const ParameterId& id, const ScalarValue& value);
+
+    /// @brief 切换或关闭工程时清除历史 Read，保留设备会话中的读数和暂存值。
+    void clearProjectReads() noexcept;
 
     /// @brief 记录一次没有得到设备值的观察。
     /// @param id 参数标识，只在本次调用期间借用。文本会被复制为内部键。
@@ -73,6 +90,10 @@ public:
     /// 只把 dirty 设为 false。不改 stagedValue、deviceValue、两个时刻、stale 和 error。
     /// 没有记录时不新建。这不是设备 ACK，只表示调用方已经确认读回与入队时的目标一致。
     void markClean(const ParameterId& id) noexcept;
+
+    /// @brief 切换工程时清除 Set、暂存时间与 dirty，保留 Read 及其时效状态。
+    /// @note 调用方须拥有 Store 的独占访问权限。
+    void clearStaged() noexcept;
 
     /// @brief 把已有记录标成过期。
     /// 数值、dirty、时刻和 error 保持原样。没有记录时不新建。

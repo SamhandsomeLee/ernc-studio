@@ -26,7 +26,7 @@ constexpr const char* kFlagIds[] = {
 /// 没有数值时的占位。不是 0，也不是关。
 constexpr QStringView kBlank = u"—";
 
-/// @brief 暂存值优先，否则用设备读数。
+/// @brief 暂存值优先，否则用界面显示的 Read（可能来自工程）。
 /// @param state 运行状态。空表示没有记录。
 /// @return 指向状态内部的标量。不转移所有权。两个都空时为空指针。
 const ernc::domain::ScalarValue* shownValue(const ernc::domain::ParameterRuntimeState* state) {
@@ -36,10 +36,7 @@ const ernc::domain::ScalarValue* shownValue(const ernc::domain::ParameterRuntime
     if (state->stagedValue) {
         return &*state->stagedValue;
     }
-    if (state->deviceValue) {
-        return &*state->deviceValue;
-    }
-    return nullptr;
+    return state->displayedRead();
 }
 
 /// @brief 把反向开关显示成开、关或 Unknown。

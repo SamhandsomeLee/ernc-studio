@@ -28,7 +28,7 @@ constexpr QStringView kBlank = u"—";
 /// 多槽参数的入口文字。不是 Mic 或 Spk 名称。
 constexpr QStringView kArrayMark = u"数组";
 
-/// @brief 暂存值优先，否则用设备读数。
+/// @brief 暂存值优先，否则用界面显示的 Read（可能来自工程）。
 /// @param state 运行状态。空表示没有记录。
 /// @return 指向状态内部的标量。不转移所有权。两个都空时为空指针。
 const ernc::domain::ScalarValue* shownValue(const ernc::domain::ParameterRuntimeState* state) {
@@ -38,10 +38,7 @@ const ernc::domain::ScalarValue* shownValue(const ernc::domain::ParameterRuntime
     if (state->stagedValue) {
         return &*state->stagedValue;
     }
-    if (state->deviceValue) {
-        return &*state->deviceValue;
-    }
-    return nullptr;
+    return state->displayedRead();
 }
 
 /// @brief 判断这条路径是不是可以暂存的 1 slot 标量。

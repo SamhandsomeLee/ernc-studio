@@ -4,8 +4,10 @@
 
 #include "json_minimal.cpp"
 
-#include <cstdio>
+#include <charconv>
+#include <cmath>
 #include <fstream>
+#include <limits>
 #include <system_error>
 
 namespace ernc::infrastructure {
@@ -18,8 +20,23 @@ using ernc::domain::ScalarValue;
 using json_minimal::Json;
 using json_minimal::Parser;
 
-ScalarValue numberToScalar(double number) {
-    return ScalarValue::fromFloat(static_cast<float>(number));
+/// @brief 保留超过 float32 精度的整数，同时兼容历史解析器的 float32 小数和小整数。
+/// @param number JSON 中以 double 解析的无单位数值，按原单位保存。
+/// @return 超出有限 float32 范围时为空，由调用方报告该行。
+std::optional<ScalarValue> numberToScalar(double number) {
+    if (!std::isfinite(number) || std::abs(number) > std::numeric_limits<float>::max()) {
+        return std::nullopt;
+    }
+    const float rounded = static_cast<float>(number);
+    if (static_cast<double>(rounded) != number && std::trunc(number) == number) {
+        if (number >= std::numeric_limits<std::int32_t>::min() && number <= std::numeric_limits<std::int32_t>::max()) {
+            return ScalarValue::fromInt32(static_cast<std::int32_t>(number));
+        }
+        if (number >= 0 && number <= std::numeric_limits<std::uint32_t>::max()) {
+            return ScalarValue::fromUInt32(static_cast<std::uint32_t>(number));
+        }
+    }
+    return ScalarValue::fromFloat(rounded);
 }
 
 LegacyParamJsonLoad failure(ErrorCode code) {
@@ -29,6 +46,9 @@ LegacyParamJsonLoad failure(ErrorCode code) {
     return load;
 }
 
+/// @brief 从已解析 JSON 提取 v1 参数，保留可继续处理的逐行问题。
+/// @param root 本次调用借用的 JSON 根对象。
+/// @param catalog 可选目录，仅在本次调用借用，用于报告未知参数。
 LegacyParamJsonLoad extractDocument(const Json& root, const ParameterCatalog* catalog) {
     if (root.kind != Json::Kind::Object) {
         return failure(ErrorCode::InvalidParameter);
@@ -78,8 +98,12 @@ LegacyParamJsonLoad extractDocument(const Json& root, const ParameterCatalog* ca
             load.report.unknownNames.push_back(nameField->text);
             continue;
         }
-        load.document.params.push_back(
-            LegacyParamJsonEntry{nameField->text, numberToScalar(valueField->number)});
+        const auto value = numberToScalar(valueField->number);
+        if (!value) {
+            load.report.malformedEntries.push_back(nameField->text);
+            continue;
+        }
+        load.document.params.push_back(LegacyParamJsonEntry{nameField->text, *value});
     }
     return load;
 }
@@ -100,6 +124,9 @@ std::string escapeJsonString(std::string_view text) {
 }  // namespace
 
 LegacyParamJsonLoad parseLegacyParamJson(std::string_view utf8, const ParameterCatalog* catalog) {
+    if (utf8.starts_with("\xEF\xBB\xBF")) {
+        utf8.remove_prefix(3);
+    }
     Parser parser(utf8);
     const std::optional<Json> root = parser.parseDocument();
     if (!root) {
@@ -137,17 +164,20 @@ Result<std::string> serializeLegacyParamJson(const LegacyParamJsonDocument& docu
         out.append(escapeJsonString(entry.name));
         out.push_back(',');
         out.append("\"value\":");
-        const Result<float> number = entry.value.asFloat();
-        if (!number.ok()) {
-            const Result<std::int32_t> integer = entry.value.asInt32();
-            if (!integer.ok()) {
+        if (const auto number = entry.value.asFloat(); number.ok()) {
+            if (!std::isfinite(number.value())) {
                 return Result<std::string>::failure(ErrorCode::InvalidParameter);
             }
+            char buffer[32];
+            const auto encoded = std::to_chars(buffer, buffer + sizeof(buffer), static_cast<double>(number.value()));
+            if (encoded.ec != std::errc{}) {
+                return Result<std::string>::failure(ErrorCode::InvalidParameter);
+            }
+            out.append(buffer, encoded.ptr);
+        } else if (const auto integer = entry.value.asInt32(); integer.ok()) {
             out.append(std::to_string(integer.value()));
         } else {
-            char buffer[32];
-            std::snprintf(buffer, sizeof(buffer), "%.9g", static_cast<double>(number.value()));
-            out.append(buffer);
+            out.append(std::to_string(entry.value.asUInt32().value()));
         }
         out.push_back('}');
     }
@@ -161,7 +191,9 @@ Result<void> writeLegacyParamJsonFile(const std::filesystem::path& destination,
     if (!text.ok()) {
         return Result<void>::failure(text.error());
     }
-    const std::filesystem::path staging = destination.string() + ".writing";
+    // 保留 Windows 原生宽路径，避免中文路径经过系统代码页。
+    std::filesystem::path staging = destination;
+    staging += ".writing";
     {
         std::ofstream output(staging, std::ios::binary | std::ios::trunc);
         if (!output) {

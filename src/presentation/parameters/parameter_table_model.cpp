@@ -43,11 +43,14 @@ QString formatTime(ernc::domain::RuntimeTime time) {
 
 /// @brief 由一条运行状态决定状态列文字。
 /// @param state Store 里的记录。空表示还没有记录。
-/// @return 过期且已有读数时为「数据已过期」。有未提交目标时为「待写入」。
+/// @return 工程历史值标记「工程历史读数」，设备缓存过期时为「数据已过期」。有未提交目标时为「待写入」。
 /// 有未过期读数时为「已读取」。否则为「未读取」。
 QString statusText(const ernc::domain::ParameterRuntimeState* state) {
     if (state == nullptr) {
         return QStringLiteral("未读取");
+    }
+    if (state->projectReadValue) {
+        return QStringLiteral("工程历史读数");
     }
     if (state->stale && state->deviceValue.has_value()) {
         return QStringLiteral("数据已过期");
@@ -182,6 +185,7 @@ Qt::ItemFlags ParameterTableModel::flags(const QModelIndex& index) const {
     return itemFlags;
 }
 
+// Read 列可以展示工程历史原值。历史值没有本次设备读回时刻。
 void ParameterTableModel::refreshRow(int row) {
     if (catalog_ == nullptr || row < 0 || static_cast<std::size_t>(row) >= catalog_->size() || row >= rows_.size()) {
         return;
@@ -192,13 +196,14 @@ void ParameterTableModel::refreshRow(int row) {
     text.status = statusText(state);
     text.parameter = QString::fromStdString(definition.id.text());
     text.path = definition.firmwarePath ? QString::fromStdString(*definition.firmwarePath) : kBlank.toString();
-    text.read = state != nullptr && state->deviceValue ? formatScalar(*state->deviceValue) : kBlank.toString();
+    const auto* read = state == nullptr ? nullptr : state->displayedRead();
+    text.read = read != nullptr ? formatScalar(*read) : kBlank.toString();
     if (definition.editor && *definition.editor == ernc::domain::EditorKind::Toggle) {
         text.set.clear();
     } else {
         text.set = state != nullptr && state->stagedValue ? formatScalar(*state->stagedValue) : kBlank.toString();
     }
-    if (state != nullptr && state->readAt) {
+    if (state != nullptr && !state->projectReadValue && state->readAt) {
         text.updatedAt = formatTime(*state->readAt);
     } else if (state != nullptr && state->stagedAt) {
         text.updatedAt = formatTime(*state->stagedAt);

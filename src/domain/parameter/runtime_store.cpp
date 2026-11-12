@@ -24,6 +24,22 @@ void ParameterRuntimeStore::observe(const ParameterId& id, const ScalarValue& va
     state.readAt = readAt;
     state.stale = false;
     state.error.reset();
+    state.projectReadValue.reset();
+}
+
+bool ParameterRuntimeStore::restoreProjectRead(const ParameterId& id, const ScalarValue& value) {
+    ParameterRuntimeState& state = slot(id);
+    if (state.deviceValue && !state.stale) {
+        return false;
+    }
+    state.projectReadValue = value;
+    return true;
+}
+
+void ParameterRuntimeStore::clearProjectReads() noexcept {
+    for (auto& entry : records_) {
+        entry.second.projectReadValue.reset();
+    }
 }
 
 void ParameterRuntimeStore::failObservation(const ParameterId& id, ErrorCode error) {
@@ -48,6 +64,14 @@ void ParameterRuntimeStore::markClean(const ParameterId& id) noexcept {
 void ParameterRuntimeStore::markOffline() noexcept {
     for (auto& entry : records_) {
         entry.second.stale = true;
+    }
+}
+
+void ParameterRuntimeStore::clearStaged() noexcept {
+    for (auto& [id, state] : records_) {
+        state.stagedValue.reset();
+        state.stagedAt.reset();
+        state.dirty = false;
     }
 }
 

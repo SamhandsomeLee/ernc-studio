@@ -119,6 +119,10 @@ public:
     void notifyParametersUpdated(ernc::domain::SessionId session, const QStringList& parameterIds);
     void noteDeviceDisconnected();
 
+    /// @brief 文件导入或工程切换后重读 Store，更新参数表与当前功能页。
+    /// @note 只在 UI 主线程调用，不依赖设备会话编号。
+    void refreshLocalParameters();
+
 private:
     /// @brief 按当前选择重写 Function View，并让当前功能页占满剩余高度。
     /// @note 参数表不在这里改写。没有功能页时，说明文字仍停在上方。

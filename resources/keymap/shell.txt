@@ -1,6 +1,6 @@
 # ERNC Studio 窗口快捷键。reserved 只登记，不绑定。
-Ctrl+O open-project reserved
-Ctrl+S save-project reserved
+Ctrl+O open-project
+Ctrl+S save-project
 Ctrl+1 toggle-project-tree
 Ctrl+3 toggle-task-cards
 Ctrl+5 toggle-inspector

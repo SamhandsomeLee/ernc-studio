@@ -71,7 +71,7 @@ QString formatValue(const ernc::domain::ParameterDefinition* definition, const e
 /// @param state 运行状态。空指针时两列都是「—」。只在本次调用期间借用。
 /// @param readText 成功时写入 Read 列。调用方拥有。
 /// @param setText 成功时写入 Set 列。调用方拥有。
-/// @note 过期且已有读数时，Read 末尾附加「数据已过期」。不把过期读数当成当前设备值。
+/// @note Read 末尾区分工程历史值与过期设备读数，两者均不代表当前设备值。
 void formatReadSet(const ernc::domain::ParameterDefinition* definition, const ernc::domain::ParameterRuntimeState* state,
                    QString& readText, QString& setText) {
     readText = kBlank.toString();
@@ -79,9 +79,11 @@ void formatReadSet(const ernc::domain::ParameterDefinition* definition, const er
     if (state == nullptr) {
         return;
     }
-    if (state->deviceValue) {
-        readText = formatValue(definition, *state->deviceValue);
-        if (state->stale) {
+    if (const auto* read = state->displayedRead()) {
+        readText = formatValue(definition, *read);
+        if (state->projectReadValue) {
+            readText += QStringLiteral(" 工程历史读数");
+        } else if (state->stale) {
             readText += QStringLiteral(" 数据已过期");
         }
     }

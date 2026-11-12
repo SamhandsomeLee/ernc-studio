@@ -14,6 +14,9 @@ namespace ernc::infrastructure {
 struct LegacyParamJsonEntry {
     std::string name;
     ernc::domain::ScalarValue value;
+
+    /// 按参数 ID 和带类型的原值比较，用于识别工程 Set 文档是否有变化。
+    bool operator==(const LegacyParamJsonEntry&) const = default;
 };
 
 /// 旧版 `version` + `params` 文档。
@@ -51,10 +54,13 @@ LegacyParamJsonLoad parseLegacyParamJson(std::string_view utf8,
 /// @brief 从文件读取并解析。
 LegacyParamJsonLoad loadLegacyParamJsonFile(const std::filesystem::path& source);
 
-/// @brief 序列化为旧版 JSON 文本。
+/// @brief 序列化为旧版 v1 UTF-8 JSON 文本，保留整数精度，拒绝非有限数值。
+/// @param document 参数 ID 和原单位标量，只在本次调用期间借用。
 ernc::domain::Result<std::string> serializeLegacyParamJson(const LegacyParamJsonDocument& document);
 
 /// @brief 原子写入 JSON 文件。
+/// @param destination 目标文件原生路径，只在本次调用期间借用。失败保留原目标。
+/// @param document v1 参数文档，只在本次调用期间借用。
 ernc::domain::Result<void> writeLegacyParamJsonFile(const std::filesystem::path& destination,
                                                    const LegacyParamJsonDocument& document);
 

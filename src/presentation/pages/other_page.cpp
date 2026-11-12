@@ -23,6 +23,9 @@ namespace {
 constexpr QStringView kBlank = u"—";
 constexpr QStringView kArrayMark = u"数组";
 
+/// @brief 暂存值优先，否则用界面显示的 Read（可能来自工程）。
+/// @param state 运行状态，仅在本次调用期间借用，空时没有可显示的值。
+/// @return 借用状态内的标量，未有数值时为空。
 const ernc::domain::ScalarValue* shownValue(const ernc::domain::ParameterRuntimeState* state) {
     if (state == nullptr) {
         return nullptr;
@@ -30,10 +33,7 @@ const ernc::domain::ScalarValue* shownValue(const ernc::domain::ParameterRuntime
     if (state->stagedValue) {
         return &*state->stagedValue;
     }
-    if (state->deviceValue) {
-        return &*state->deviceValue;
-    }
-    return nullptr;
+    return state->displayedRead();
 }
 
 bool isOneScalarSlot(const ernc::domain::FirmwareLayout* layout, std::string_view firmwarePath) {

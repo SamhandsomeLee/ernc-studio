@@ -99,7 +99,7 @@ struct KeyBinding {
     /// 动作名。不是按钮上的中文。
     std::string action;
 
-    /// 为 true 时不创建快捷键。工程打开和保存属于这类。
+    /// 为 true 时只记录动作，不创建快捷键。
     bool reserved = false;
 };
 

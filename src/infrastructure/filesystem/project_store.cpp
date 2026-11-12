@@ -5,6 +5,7 @@
 #include <QDateTime>
 #include <QFile>
 #include <QJsonDocument>
+#include <QSaveFile>
 #include <QSqlQuery>
 #include <QString>
 
@@ -21,7 +22,6 @@ inline constexpr int kManifestFormatVersion = 1;
 
 const char* kManifestFile = "manifest.json";
 const char* kSqliteFile = "project.sqlite";
-const char* kManifestTempFile = "manifest.json.tmp";
 
 std::atomic<std::uint64_t> gConnectionCounter{0};
 
@@ -64,12 +64,12 @@ Result<void> ProjectStore::ensureBundleLayout(const std::filesystem::path& root,
         }
     }
     const std::filesystem::path sqlite = root / kSqliteFile;
-    if (!create && !std::filesystem::exists(sqlite)) {
-        return Result<void>::failure(ErrorCode::InvalidParameter);
-    }
     const std::filesystem::path manifest = root / kManifestFile;
-    if (!create && !std::filesystem::exists(manifest)) {
-        return Result<void>::failure(ErrorCode::InvalidParameter);
+    if (!create) {
+        std::error_code ec;
+        if (!std::filesystem::is_regular_file(sqlite, ec) || !std::filesystem::is_regular_file(manifest, ec)) {
+            return Result<void>::failure(ErrorCode::InvalidParameter);
+        }
     }
     return Result<void>::success();
 }
@@ -88,20 +88,9 @@ Result<QJsonObject> ProjectStore::readManifest(const std::filesystem::path& root
 }
 
 Result<void> ProjectStore::writeManifestAtomic(const std::filesystem::path& root, const QJsonObject& object) {
-    const std::filesystem::path temp = root / kManifestTempFile;
-    const std::filesystem::path manifest = root / kManifestFile;
-    {
-        QFile file(pathToQString(temp));
-        if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-            return Result<void>::failure(ErrorCode::FileIoFailed);
-        }
-        const QJsonDocument doc(object);
-        if (file.write(doc.toJson(QJsonDocument::Compact)) < 0) {
-            return Result<void>::failure(ErrorCode::FileIoFailed);
-        }
-    }
-    QFile::remove(pathToQString(manifest));
-    if (!QFile::rename(pathToQString(temp), pathToQString(manifest))) {
+    QSaveFile file(pathToQString(root / kManifestFile));
+    const QByteArray bytes = QJsonDocument(object).toJson(QJsonDocument::Compact);
+    if (!file.open(QIODevice::WriteOnly) || file.write(bytes) != bytes.size() || !file.commit()) {
         return Result<void>::failure(ErrorCode::FileIoFailed);
     }
     return Result<void>::success();
@@ -155,12 +144,15 @@ Result<ProjectBundle> ProjectStore::createEmpty(
         return Result<ProjectBundle>::failure(ErrorCode::InvalidParameter);
     }
     std::error_code ec;
-    if (std::filesystem::exists(root, ec)) {
-        return Result<ProjectBundle>::failure(ErrorCode::InvalidParameter);
+    if (!root.parent_path().empty()) {
+        std::filesystem::create_directories(root.parent_path(), ec);
+        if (ec) {
+            return Result<ProjectBundle>::failure(ErrorCode::FileIoFailed);
+        }
     }
-    std::filesystem::create_directories(root, ec);
-    if (ec) {
-        return Result<ProjectBundle>::failure(ErrorCode::FileIoFailed);
+    // 只在成功创建独占根目录后清理失败产物，避免误删已有工程。
+    if (!std::filesystem::create_directory(root, ec)) {
+        return Result<ProjectBundle>::failure(ec ? ErrorCode::FileIoFailed : ErrorCode::InvalidParameter);
     }
     const auto cleanup = [&]() {
         std::error_code ignored;
@@ -283,7 +275,19 @@ Result<ProjectBundle> ProjectStore::open(const std::filesystem::path& root) {
     return Result<ProjectBundle>::success(bundle);
 }
 
-Result<void> ProjectStore::save() {
+Result<ProjectParameterJson> ProjectStore::readParameters() const {
+    if (!summary_) {
+        return Result<ProjectParameterJson>::failure(ErrorCode::InvalidParameter);
+    }
+    const auto manifest = readManifest(summary_->root);
+    if (!manifest.ok()) {
+        return Result<ProjectParameterJson>::failure(manifest.error());
+    }
+    return Result<ProjectParameterJson>::success({manifest.value().value(QStringLiteral("read_parameters")),
+                                                  manifest.value().value(QStringLiteral("staged_parameters"))});
+}
+
+Result<void> ProjectStore::save(const ProjectParameterJson& parameters) {
     if (!isOpen() || !summary_.has_value()) {
         return Result<void>::failure(ErrorCode::InvalidParameter);
     }
@@ -302,6 +306,12 @@ Result<void> ProjectStore::save() {
     }
     QJsonObject object = manifest.value();
     object.insert(QStringLiteral("updated_at"), QString::fromStdString(now));
+    if (!parameters.read.isUndefined()) {
+        object.insert(QStringLiteral("read_parameters"), parameters.read);
+    }
+    if (!parameters.staged.isUndefined()) {
+        object.insert(QStringLiteral("staged_parameters"), parameters.staged);
+    }
     if (!writeManifestAtomic(summary_->root, object).ok()) {
         return Result<void>::failure(ErrorCode::FileIoFailed);
     }

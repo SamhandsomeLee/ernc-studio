@@ -1113,6 +1113,7 @@ if(ERNC_BUILD_UI)
     add_executable(ernc_parameter_store_model_tests
         parameter_store_model_test.cpp
         ../src/presentation/parameters/parameter_table_model.cpp
+        ../src/presentation/parameters/parameter_set_policy.cpp
     )
 
     target_include_directories(ernc_parameter_store_model_tests PRIVATE
@@ -1995,7 +1996,7 @@ add_executable(ernc_project_tests
 
 target_link_libraries(ernc_project_tests PRIVATE ernc_project)
 
-foreach(ernc_project_case IN ITEMS create_empty_project close_and_reopen schema_version_guard)
+foreach(ernc_project_case IN ITEMS create_empty_project close_and_reopen staged_values_reopen schema_version_guard)
     add_test(
         NAME "project.${ernc_project_case}"
         COMMAND ernc_project_tests "${ernc_project_case}"
@@ -2052,6 +2053,8 @@ set(ernc_legacy_param_json_cases
     invalid_version_fails
     import_to_staged
     import_does_not_write_device
+    capture_read_all_scalars_includes_unread
+    export_all_scalars_includes_unread
     export_staged_then_device_round_trip
     import_to_snapshot_persists
 )

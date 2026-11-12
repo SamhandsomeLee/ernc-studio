@@ -101,7 +101,7 @@ const ernc::presentation::KeyBinding* findAction(const ShellKeymap& map, std::st
 
 /// @brief Esc 只关闭浮层，表里没有取消写入。
 /// @param path 快捷键文件路径。调用方拥有。打不开时失败。
-/// @return Esc 是未保留的 `close-overlay`，且没有 `cancel-write` 时为 true。
+/// @return Esc 只绑定 `close-overlay`，且工程打开和保存的快捷键均启用时为 true。
 bool keymapEscDoesNotCancel(const char* path) {
     std::ifstream input(path);
     if (!input) {
@@ -116,7 +116,8 @@ bool keymapEscDoesNotCancel(const char* path) {
     const ernc::presentation::KeyBinding* openProject = findAction(map, "open-project");
     const ernc::presentation::KeyBinding* saveProject = findAction(map, "save-project");
     if (escape == nullptr || escape->key != "Esc" || escape->reserved || openProject == nullptr
-        || !openProject->reserved || saveProject == nullptr || !saveProject->reserved) {
+        || openProject->key != "Ctrl+O" || openProject->reserved || saveProject == nullptr
+        || saveProject->key != "Ctrl+S" || saveProject->reserved) {
         return fail("keymap_esc_does_not_cancel");
     }
     return true;

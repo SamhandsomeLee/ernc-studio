@@ -24,6 +24,7 @@ namespace {
 using ernc::application::CaptureSnapshotRequest;
 using ernc::application::ParameterSnapshotService;
 using ernc::application::ProjectSession;
+using ernc::application::captureReadParameters;
 using ernc::application::exportStagedThenDevice;
 using ernc::application::importToSnapshot;
 using ernc::application::importToStaged;
@@ -290,6 +291,42 @@ bool importDoesNotWriteDevice(const ParameterCatalog& catalog, const FirmwareLay
   return true;
 }
 
+/// @brief 工程 Read 捕获与 JSON 导出在空 Store 下包含相同标量集合。
+bool captureReadAllScalarsIncludesUnread(const ParameterCatalog& catalog) {
+  constexpr const char* name = "capture_read_all_scalars_includes_unread";
+  ParameterRuntimeStore store;
+  const LegacyParamJsonDocument read = captureReadParameters(catalog, store);
+  const Result<LegacyParamJsonDocument> merged = exportStagedThenDevice(catalog, store);
+  if (!merged.ok()) {
+    return fail(name);
+  }
+  if (read.params.size() != merged.value().params.size()) {
+    return fail(name);
+  }
+  const auto* bypass = findParam(read, "Bypass_mod");
+  if (bypass == nullptr) {
+    return fail(name);
+  }
+  const Result<std::uint32_t> number = bypass->value.asUInt32();
+  return number.ok() && number.value() == 0U;
+}
+
+/// @brief 未读标量仍导出，数值为 0。
+bool exportAllScalarsIncludesUnread(const ParameterCatalog& catalog) {
+  constexpr const char* name = "export_all_scalars_includes_unread";
+  ParameterRuntimeStore store;
+  const Result<LegacyParamJsonDocument> exported = exportStagedThenDevice(catalog, store);
+  if (!exported.ok()) {
+    return fail(name);
+  }
+  const auto* bypass = findParam(exported.value(), "Bypass_mod");
+  if (bypass == nullptr) {
+    return fail(name);
+  }
+  const Result<std::uint32_t> number = bypass->value.asUInt32();
+  return number.ok() && number.value() == 0U;
+}
+
 /// @brief staged 优先导出，再 parse，标量往返一致。
 bool exportStagedThenDeviceRoundTrip(const ParameterCatalog& catalog, const FirmwareLayout& layout,
                                      const char* fixturePath) {
@@ -411,6 +448,12 @@ bool runCase(std::string_view caseName, const ParameterCatalog& catalog, const F
   }
   if (caseName == "import_does_not_write_device") {
     return importDoesNotWriteDevice(catalog, layout, fixturePath);
+  }
+  if (caseName == "capture_read_all_scalars_includes_unread") {
+    return captureReadAllScalarsIncludesUnread(catalog);
+  }
+  if (caseName == "export_all_scalars_includes_unread") {
+    return exportAllScalarsIncludesUnread(catalog);
   }
   if (caseName == "export_staged_then_device_round_trip") {
     return exportStagedThenDeviceRoundTrip(catalog, layout, fixturePath);

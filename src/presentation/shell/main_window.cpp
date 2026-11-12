@@ -240,6 +240,7 @@ MainWindow::MainWindow(ernc::domain::CatalogLoad catalog, QString catalogPath, Q
         bar->showMessage(QStringLiteral("未连接设备（会话日志目录创建失败）"));
     }
 
+    addFileMenu();
     QMenu* deviceMenu = menuBar()->addMenu(QStringLiteral("设备"));
     QAction* connectSimulator = deviceMenu->addAction(QStringLiteral("连接虚拟从站"));
     QAction* connectSerial = deviceMenu->addAction(QStringLiteral("连接串口设备…"));
@@ -427,16 +428,20 @@ void MainWindow::bindShellKeymap() {
         if (sequence.isEmpty()) {
             continue;
         }
-        QAction* toggle = nullptr;
+        QAction* actionWithShortcut = nullptr;
         if (binding.action == "toggle-project-tree") {
-            toggle = projectTree_->toggleViewAction();
+            actionWithShortcut = projectTree_->toggleViewAction();
         } else if (binding.action == "toggle-task-cards") {
-            toggle = taskCards_->toggleViewAction();
+            actionWithShortcut = taskCards_->toggleViewAction();
         } else if (binding.action == "toggle-inspector") {
-            toggle = inspectorDock_->toggleViewAction();
+            actionWithShortcut = inspectorDock_->toggleViewAction();
+        } else if (binding.action == "open-project") {
+            actionWithShortcut = openProjectAction_;
+        } else if (binding.action == "save-project") {
+            actionWithShortcut = saveProjectAction_;
         }
-        if (toggle != nullptr) {
-            toggle->setShortcut(sequence);
+        if (actionWithShortcut != nullptr) {
+            actionWithShortcut->setShortcut(sequence);
             continue;
         }
         auto* shortcut = new QShortcut(sequence, this);
@@ -514,6 +519,10 @@ void MainWindow::onParametersUpdated(const ernc::domain::SessionId sessionId, co
 }
 
 void MainWindow::closeEvent(QCloseEvent* event) {
+    if (!confirmLeavingProject()) {
+        event->ignore();
+        return;
+    }
     if (deviceController_ != nullptr && deviceController_->connected()) {
         deviceController_->disconnectDevice();
     }

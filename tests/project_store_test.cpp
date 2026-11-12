@@ -189,6 +189,42 @@ bool closeAndReopen() {
         && summary.catalogVersion == kCatalogVersion && summary.sqliteSchemaVersion == kLatestSchemaVersion;
 }
 
+/// @brief Read 和 Set 跨会话独立恢复，包含只读原值和超过 float32 精度的整数。
+bool stagedValuesReopen() {
+    constexpr const char* name = "staged_values_reopen";
+    TempWorkspace workspace;
+    const auto root = workspace.bundlePath();
+    const ernc::infrastructure::LegacyParamJsonDocument read{
+        "1.0.0", {{"SpeakerCheckValue", ernc::domain::ScalarValue::fromUInt32(UINT32_MAX - 2U)},
+                   {"Step", ernc::domain::ScalarValue::fromFloat(0.25f)}}};
+    const ernc::infrastructure::LegacyParamJsonDocument staged{
+        "1.0.0", {{"SpeakerCheckValue", ernc::domain::ScalarValue::fromUInt32(UINT32_MAX)}}};
+    {
+        ProjectSession session;
+        if (!session.create(root, kProjectName, kCatalogVersion).ok()) {
+            return fail(name);
+        }
+        const auto empty = session.loadParameters();
+        if (!empty.ok() || !empty.value().read.document.params.empty() || !empty.value().staged.document.params.empty()
+            || !session.saveParameters(read, staged).ok()) {
+            return fail(name);
+        }
+        const ernc::infrastructure::LegacyParamJsonDocument unsupported{"2.0.0", {}};
+        if (session.saveParameters(staged, unsupported).ok()) {
+            return fail(name);
+        }
+    }
+
+    ProjectSession reopened;
+    if (!reopened.open(root).ok()) {
+        return fail(name);
+    }
+    const auto loaded = reopened.loadParameters();
+    return loaded.ok() && loaded.value().read.document.version == "1.0.0"
+        && loaded.value().staged.document.version == "1.0.0"
+        && loaded.value().read.document.params == read.params && loaded.value().staged.document.params == staged.params;
+}
+
 bool setUserVersion(const std::filesystem::path& sqlitePath, int version) {
     const QString connectionName = QStringLiteral("ernc_project_test_bump");
     QSqlDatabase database = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), connectionName);
@@ -228,6 +264,9 @@ bool runCase(std::string_view name) {
     }
     if (name == "close_and_reopen") {
         return closeAndReopen();
+    }
+    if (name == "staged_values_reopen") {
+        return stagedValuesReopen();
     }
     if (name == "schema_version_guard") {
         return schemaVersionGuard();

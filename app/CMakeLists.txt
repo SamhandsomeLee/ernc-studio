@@ -1,4 +1,4 @@
-find_package(Qt6 REQUIRED COMPONENTS Widgets Core SerialPort)
+find_package(Qt6 REQUIRED COMPONENTS Widgets Core Concurrent SerialPort Sql)
 
 qt_standard_project_setup()
 
@@ -7,6 +7,7 @@ qt_add_executable(ernc_app
     ../src/presentation/theme/theme.cpp
     ../src/presentation/theme/status_badge.cpp
     ../src/presentation/shell/main_window.cpp
+    ../src/presentation/shell/main_window_files.cpp
     ../src/presentation/shell/layout_settings.cpp
     ../src/presentation/navigator/navigator_pages.cpp
     ../src/presentation/navigator/navigator_model.cpp
@@ -57,8 +58,8 @@ target_compile_definitions(ernc_app PRIVATE
     "ERNC_SHELL_KEYMAP_PATH=\"${CMAKE_SOURCE_DIR}/resources/keymap/shell.txt\""
 )
 
-target_link_libraries(ernc_app PRIVATE Qt6::Widgets Qt6::SerialPort ernc_ui_qwt ernc_domain ernc_application ernc_device
-    ernc_logging ernc_filesystem ernc_serial)
+target_link_libraries(ernc_app PRIVATE Qt6::Widgets Qt6::Concurrent Qt6::SerialPort ernc_ui_qwt ernc_domain ernc_application ernc_device
+    ernc_logging ernc_filesystem ernc_project ernc_serial)
 
 set_target_properties(ernc_app PROPERTIES
     OUTPUT_NAME "ernc-studio"

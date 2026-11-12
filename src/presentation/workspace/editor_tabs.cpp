@@ -399,6 +399,15 @@ void EditorTabs::noteDeviceDisconnected() {
     refresh();
 }
 
+void EditorTabs::refreshLocalParameters() {
+    if (parameterModel_ != nullptr && catalog_ != nullptr) {
+        for (const auto& definition : catalog_->entries()) {
+            parameterModel_->noteLocalEdit(definition.id);
+        }
+    }
+    refresh();
+}
+
 void EditorTabs::openWritePlan() {
     WritePlanDialog::Sources sources;
     sources.catalog = catalog_;

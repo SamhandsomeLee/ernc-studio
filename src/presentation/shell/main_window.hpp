@@ -1,9 +1,11 @@
 #pragma once
 
 #include "ernc/domain/catalog.hpp"
+#include "ernc/domain/project_bundle.hpp"
 #include "ernc/domain/firmware_layout.hpp"
 #include "ernc/domain/region_catalog.hpp"
 #include "ernc/domain/runtime_store.hpp"
+#include "ernc/infrastructure/legacy_param_json.hpp"
 #include "shell/layout_settings.hpp"
 
 #include <QMainWindow>
@@ -11,7 +13,9 @@
 
 #include <memory>
 #include <optional>
+#include <vector>
 
+class QAction;
 class QCloseEvent;
 class QDockWidget;
 class QTimer;
@@ -41,11 +45,38 @@ public:
 
 protected:
     /// @brief 窗口关闭时保存几何和停靠状态。
-    /// @param event 关闭事件。调用方拥有。本函数接受它，不忽略关闭。
+    /// @param event 调用方拥有的关闭事件。取消关闭工程或保存失败时忽略。
     /// @note `--exit-after-show` 不写 `QSettings`。不保存参数 id。
     void closeEvent(QCloseEvent* event) override;
 
 private:
+    /// @brief 创建文件菜单。动作由窗口拥有，只在 UI 主线程调用一次。
+    void addFileMenu();
+
+    /// @brief 选择目标目录并创建空工程。创建失败或取消时保留当前工作区。
+    void createProject();
+
+    /// @brief 打开目录工程，恢复历史 Read 和 Set，保留有效的实时读数。
+    void openProject();
+
+    /// @brief 保存当前工程的标量 Read 和 Set 值。无工程或保存失败时返回 false。
+    bool saveProject();
+
+    /// @brief 询问如何处理尚未保存的 Read 或 Set 值。取消或保存失败时返回 false。
+    bool confirmLeavingProject();
+
+    /// @brief 关闭工程，清除工程历史 Read 和 Set。取消时保留原工程和运行态。
+    bool closeProject();
+
+    /// @brief 刷新标题和依赖当前工程的菜单可用状态。
+    void updateProjectActions();
+
+    /// @brief 读取旧版 JSON 并暂存其中可编辑的标量，显示应用及跳过结果。
+    void importParameters();
+
+    /// @brief 按 Set 优先、Read 回退的规则写旧版 JSON，源值只在 UI 线程复制。
+    void exportParameters();
+
     /// @brief 增加一个可拖动、可浮动、可关闭的占位 Dock。
     /// @param objectName 稳定的对象名。调用方拥有该字符串的原件，本函数只复制它。
     /// @param title 标题栏和面板里显示的区域名称。不是设备状态。
@@ -95,6 +126,24 @@ private:
 
     /// 参数运行状态。本窗口拥有。参数表只借用它，不保存第二份数值。
     ernc::domain::ParameterRuntimeStore parameterStore_;
+
+    /// 当前工程摘要。UI 线程持有，SQLite 连接由每次 Storage Worker 操作独占。
+    std::optional<ernc::domain::ProjectBundle> project_;
+
+    /// 最近一次成功保存或打开时显示的 Read 值，用于检测未保存的更改。
+    std::vector<ernc::infrastructure::LegacyParamJsonEntry> savedProjectRead_;
+
+    /// 最近一次成功保存或打开时显示的 Set 值，用于检测未保存的更改。
+    std::vector<ernc::infrastructure::LegacyParamJsonEntry> savedProjectSet_;
+
+    /// 打开工程动作，用于接入快捷键表。菜单通过 Qt 父子关系拥有它。
+    QAction* openProjectAction_ = nullptr;
+
+    /// 保存工程动作，只在工程打开后启用。菜单通过 Qt 父子关系拥有它。
+    QAction* saveProjectAction_ = nullptr;
+
+    /// 关闭工程动作，只在工程打开后启用。菜单通过 Qt 父子关系拥有它。
+    QAction* closeProjectAction_ = nullptr;
 
     /// 已加载的参数目录。由项目树模型拥有内容，本窗口只保存指针。
     const ernc::domain::ParameterCatalog* catalog_{nullptr};
