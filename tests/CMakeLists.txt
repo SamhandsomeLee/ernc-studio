@@ -198,6 +198,29 @@ foreach(ernc_command_policy_case IN LISTS ernc_command_policy_cases)
     )
 endforeach()
 
+add_executable(ernc_workflow_tests
+    workflow_test.cpp
+)
+
+target_link_libraries(ernc_workflow_tests PRIVATE ernc_application)
+
+set(ernc_workflow_cases
+    unconfirmed_formula_blocks_advance
+    formula_confirmed_resume_then_complete
+    user_confirm_required_before_second_step
+    device_disconnect_resume_cycle
+    cancel_stops_running
+    empty_definition_rejected
+)
+
+foreach(ernc_workflow_case IN LISTS ernc_workflow_cases)
+    add_test(
+        NAME "workflow.${ernc_workflow_case}"
+        COMMAND ernc_workflow_tests
+            "${ernc_workflow_case}"
+    )
+endforeach()
+
 add_executable(ernc_write_plan_tests
     write_plan_test.cpp
 )

@@ -15,6 +15,7 @@ add_library(ernc_domain STATIC
     control_semantics/toggle_semantics.cpp
     control_semantics/command_policy.cpp
     transfer/chunk_plan.cpp
+    workflows/workflow_run_state.cpp
 )
 
 target_include_directories(ernc_domain PUBLIC
