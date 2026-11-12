@@ -49,6 +49,18 @@ qt_add_resources(ernc_app "ernc_themes"
     FILES "${CMAKE_SOURCE_DIR}/resources/themes/ernc-light.qss"
 )
 
+qt_add_resources(ernc_app "ernc_icons"
+    PREFIX "/ernc"
+    BASE "${CMAKE_SOURCE_DIR}/resources"
+    FILES "${CMAKE_SOURCE_DIR}/resources/icons/ernc-studio.png"
+)
+
+if(WIN32)
+    target_sources(ernc_app PRIVATE ernc-studio.rc)
+    set_property(SOURCE ernc-studio.rc APPEND PROPERTY OBJECT_DEPENDS
+        "${CMAKE_SOURCE_DIR}/resources/icons/ernc-studio.ico")
+endif()
+
 target_include_directories(ernc_app PRIVATE
     "${CMAKE_SOURCE_DIR}/src/presentation"
 )
