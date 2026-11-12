@@ -1,5 +1,7 @@
 #include "session.hpp"
 
+#include "ernc/infrastructure/logging/diagnostic_log.hpp"
+
 #include <limits>
 
 namespace ernc::application {
@@ -25,6 +27,10 @@ ErrorCode codeOf(const Result<void>& result) {
 }  // namespace
 
 DeviceSession::DeviceSession(ernc::ports::IDeviceTransport& transport) : transport_(transport) {}
+
+void DeviceSession::attachDiagnosticLog(ernc::infrastructure::DiagnosticLog* log) noexcept {
+    diagnosticLog_ = log;
+}
 
 SessionState DeviceSession::state() const noexcept {
     return state_;
@@ -60,6 +66,13 @@ Result<SessionId> DeviceSession::connect() {
         return Result<SessionId>::failure(codeOf(opened));
     }
     state_ = SessionState::Connected;
+    if (diagnosticLog_ != nullptr) {
+        ernc::infrastructure::LogEvent event;
+        event.kind = ernc::infrastructure::LogEventKind::SessionConnected;
+        event.sessionId = id.raw();
+        event.success = true;
+        diagnosticLog_->appendEvent(std::move(event));
+    }
     return Result<SessionId>::success(id);
 }
 
@@ -78,6 +91,15 @@ Result<void> DeviceSession::disconnect() {
         }
     }
     state_ = SessionState::Disconnected;
+    if (diagnosticLog_ != nullptr) {
+        ernc::infrastructure::LogEvent event;
+        event.kind = ernc::infrastructure::LogEventKind::SessionDisconnected;
+        event.success = closed.ok();
+        if (!closed.ok()) {
+            event.error = codeOf(closed);
+        }
+        diagnosticLog_->appendEvent(std::move(event));
+    }
     if (!closed.ok()) {
         return Result<void>::failure(codeOf(closed));
     }

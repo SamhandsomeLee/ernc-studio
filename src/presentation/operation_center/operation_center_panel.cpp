@@ -10,17 +10,6 @@
 #include <QVBoxLayout>
 
 namespace ernc::presentation {
-namespace {
-
-/// @brief 做一条标明不是通信记录的示例行。
-/// @param number 示例序号，从 1 开始。没有物理单位。
-/// @return 调用方拥有的一行文本。
-std::string sampleLine(int number) {
-    return "示例 " + std::to_string(number) + "。不是通信记录。";
-}
-
-} // namespace
-
 OperationCenterPanel::OperationCenterPanel(QWidget* parent)
     : QWidget(parent) {
     auto* layout = new QVBoxLayout(this);
@@ -51,9 +40,7 @@ OperationCenterPanel::OperationCenterPanel(QWidget* parent)
     cancel->setEnabled(false);
     layout->addWidget(cancel, 0, Qt::AlignLeft);
 
-    for (int number = 1; number <= 3; ++number) {
-        log_.append(sampleLine(number));
-    }
+    log_.append("尚无诊断记录。连接设备或执行读写后，操作摘要将出现在此处。");
     auto* logView = new QPlainTextEdit(this);
     logView->setObjectName(QStringLiteral("erncOperationLog"));
     logView->setReadOnly(true);

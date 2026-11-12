@@ -1,6 +1,8 @@
 #include "cancellation.hpp"
 #include "scheduler.hpp"
 
+#include "ernc/infrastructure/logging/diagnostic_log.hpp"
+
 #include "ernc/protocol/modbus_fc03.hpp"
 #include "ernc/protocol/modbus_fc16.hpp"
 
@@ -51,6 +53,69 @@ Result<std::vector<std::uint8_t>> encodeRequest(const CommandRequest& request) {
 CommandScheduler::CommandScheduler(DeviceSession& session, ernc::ports::IDeviceTransport& transport)
     : session_(session), transport_(transport) {}
 
+void CommandScheduler::attachDiagnosticLog(ernc::infrastructure::DiagnosticLog* log) noexcept {
+    diagnosticLog_ = log;
+}
+
+void CommandScheduler::logCommandEnqueued(const PendingCommand& command) {
+    if (diagnosticLog_ == nullptr) {
+        return;
+    }
+    ernc::infrastructure::LogEvent event;
+    event.kind = ernc::infrastructure::LogEventKind::CommandEnqueued;
+    event.sessionId = command.session.raw();
+    event.commandId = command.id.raw();
+    event.firstSlot = command.request.firstSlot;
+    event.slotCount = command.request.slotCount;
+    diagnosticLog_->appendEvent(std::move(event));
+}
+
+void CommandScheduler::logCommandTx(const PendingCommand& command) {
+    if (diagnosticLog_ == nullptr) {
+        return;
+    }
+    ernc::infrastructure::WireTraceRecord record;
+    record.sessionId = command.session.raw();
+    record.commandId = command.id.raw();
+    record.attempt = command.attempt == 0U ? 1U : command.attempt;
+    record.direction = ernc::infrastructure::WireDirection::Tx;
+    record.frameHex = ernc::infrastructure::bytesToHex(command.wire);
+    record.firstSlot = command.request.firstSlot;
+    record.slotCount = command.request.slotCount;
+    diagnosticLog_->appendWire(std::move(record));
+}
+
+void CommandScheduler::logCommandRx(const PendingCommand& command, std::span<const std::uint8_t> bytes) {
+    if (diagnosticLog_ == nullptr) {
+        return;
+    }
+    ernc::infrastructure::WireTraceRecord record;
+    record.sessionId = command.session.raw();
+    record.commandId = command.id.raw();
+    record.attempt = command.attempt == 0U ? 1U : command.attempt;
+    record.direction = ernc::infrastructure::WireDirection::Rx;
+    record.frameHex = ernc::infrastructure::bytesToHex(bytes);
+    record.firstSlot = command.request.firstSlot;
+    record.slotCount = command.request.slotCount;
+    diagnosticLog_->appendWire(std::move(record));
+}
+
+void CommandScheduler::logCommandFinished(const PendingCommand& command, bool success, ErrorCode error) {
+    if (diagnosticLog_ == nullptr) {
+        return;
+    }
+    ernc::infrastructure::LogEvent event;
+    event.kind = ernc::infrastructure::LogEventKind::CommandFinished;
+    event.sessionId = command.session.raw();
+    event.commandId = command.id.raw();
+    event.firstSlot = command.request.firstSlot;
+    event.slotCount = command.request.slotCount;
+    event.success = success;
+    event.error = error;
+    event.attempt = command.attempt == 0U ? 1U : command.attempt;
+    diagnosticLog_->appendEvent(std::move(event));
+}
+
 Result<CommandId> CommandScheduler::enqueue(const CommandRequest& request) {
     if (session_.state() != SessionState::Connected && session_.state() != SessionState::Degraded) {
         return Result<CommandId>::failure(ErrorCode::DeviceDisconnected);
@@ -72,6 +137,7 @@ Result<CommandId> CommandScheduler::enqueue(const CommandRequest& request) {
     command.session = session_.currentId();
     command.request = request;
     command.wire = *encoded;
+    logCommandEnqueued(command);
     if (inflight_.has_value()) {
         enqueueWaiting(std::move(command));
         return Result<CommandId>::success(*id);
@@ -81,6 +147,7 @@ Result<CommandId> CommandScheduler::enqueue(const CommandRequest& request) {
         completeFailure(command, codeOf(sent));
         return Result<CommandId>::success(*id);
     }
+    logCommandTx(command);
     inflight_ = std::move(command);
     return Result<CommandId>::success(*id);
 }
@@ -210,6 +277,9 @@ void CommandScheduler::readAvailable() {
         if (!discardNextFrame_ && !inflight_.has_value()) {
             continue;
         }
+        if (inflight_.has_value()) {
+            logCommandRx(*inflight_, step.bytes);
+        }
         parser_.append(step.bytes);
         consumeParser();
     }
@@ -276,6 +346,8 @@ void CommandScheduler::matchFrame(std::span<const std::uint8_t> frame) {
             outcome.id = command.id;
             outcome.session = command.session;
             outcome.body = compareWriteReadBack(command.request.payload, payload.bytes);
+            const bool verified = std::holds_alternative<WriteVerification>(outcome.body);
+            logCommandFinished(command, verified, verified ? ErrorCode::Unknown : ErrorCode::ReadBackMismatch);
             finished_.push_back(std::move(outcome));
             return;
         }
@@ -287,6 +359,7 @@ void CommandScheduler::matchFrame(std::span<const std::uint8_t> frame) {
         outcome.id = command.id;
         outcome.session = command.session;
         outcome.body = std::move(read);
+        logCommandFinished(command, true, ErrorCode::Unknown);
         finished_.push_back(std::move(outcome));
         return;
     }
@@ -317,6 +390,7 @@ void CommandScheduler::matchFrame(std::span<const std::uint8_t> frame) {
     outcome.id = command.id;
     outcome.session = command.session;
     outcome.body = std::move(written);
+    logCommandFinished(command, true, ErrorCode::Unknown);
     finished_.push_back(std::move(outcome));
 }
 
@@ -344,6 +418,7 @@ void CommandScheduler::applyReadRetry(RetryTime now, const ReadRetryLimit& limit
         }
         inflight_->attempt = static_cast<std::uint8_t>(inflight_->attempt + 1);
         inflight_->sentAt = now;
+        logCommandTx(*inflight_);
         return;
     }
     parser_.clear();
@@ -395,6 +470,7 @@ void CommandScheduler::promoteAcked() {
         failInFlight(codeOf(sent));
         return;
     }
+    logCommandTx(*inflight_);
     inflight_->writePhase = WritePhase::Verifying;
 }
 
@@ -414,12 +490,14 @@ void CommandScheduler::startNext() {
             completeFailure(command, codeOf(sent));
             continue;
         }
+        logCommandTx(command);
         inflight_ = std::move(command);
     }
 }
 
 void CommandScheduler::completeFailure(const PendingCommand& command, ErrorCode code,
                                        std::optional<std::uint8_t> exceptionCode) {
+    logCommandFinished(command, false, code);
     FailedCommand failed;
     failed.code = code;
     failed.exceptionCode = exceptionCode;

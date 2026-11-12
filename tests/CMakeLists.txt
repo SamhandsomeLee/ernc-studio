@@ -843,6 +843,29 @@ foreach(ernc_retry_policy_case IN LISTS ernc_retry_policy_cases)
     )
 endforeach()
 
+# ES-089: structured diagnostic log (operations + wire trace).
+add_executable(ernc_diagnostic_log_tests
+    diagnostic_log_test.cpp
+)
+
+target_link_libraries(ernc_diagnostic_log_tests PRIVATE ernc_logging ernc_device)
+
+set(ernc_diagnostic_log_cases
+    region_progress_throttle
+    wire_links_command
+    retry_distinct_tx_attempts
+    export_replay_bundle
+    failed_command_records_slot_and_error
+    log_append_and_query_by_session
+)
+
+foreach(ernc_diagnostic_log_case IN LISTS ernc_diagnostic_log_cases)
+    add_test(
+        NAME "diagnostic_log.${ernc_diagnostic_log_case}"
+        COMMAND ernc_diagnostic_log_tests "${ernc_diagnostic_log_case}"
+    )
+endforeach()
+
 add_executable(ernc_theme_tokens_tests
     theme_tokens_test.cpp
 )

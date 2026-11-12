@@ -14,6 +14,10 @@
 #include <variant>
 #include <vector>
 
+namespace ernc::infrastructure {
+class DiagnosticLog;
+}
+
 namespace ernc::application {
 
 /// 调度器里的一次读或写。读不使用 payload。
@@ -214,7 +218,11 @@ public:
     /// 在途命令和等待命令都以 OperationCancelled 结束。这次调用不会接着发送下一条。
     void cancel();
 
+    /// @brief 可选诊断日志接收端；不拥有指针。在入队、TX/RX、终态时写入。
+    void attachDiagnosticLog(ernc::infrastructure::DiagnosticLog* log) noexcept;
+
 private:
+    ernc::infrastructure::DiagnosticLog* diagnosticLog_{nullptr};
     /// 一条已接受、尚未结束的命令。wire 是编码后的整帧。
     struct PendingCommand {
         /// 本调度器分配的代号。
@@ -238,6 +246,11 @@ private:
         /// 当前这一帧已经 submit 的次数，含第一次。进入读回时清回 0，让读回单独计时。
         std::uint8_t attempt{0};
     };
+
+    void logCommandEnqueued(const PendingCommand& command);
+    void logCommandTx(const PendingCommand& command);
+    void logCommandRx(const PendingCommand& command, std::span<const std::uint8_t> bytes);
+    void logCommandFinished(const PendingCommand& command, bool success, ernc::domain::ErrorCode error);
 
     /// @brief 分配下一个不复用的命令代号。
     /// @return 数值还没用尽时为新代号。用尽时为空，调用方不得入队。

@@ -6,6 +6,10 @@
 #include <cstddef>
 #include <cstdint>
 
+namespace ernc::infrastructure {
+class DiagnosticLog;
+}
+
 namespace ernc::application {
 
 /// 设备会话的生命周期。Disconnecting 只在断开过程中出现。
@@ -91,7 +95,11 @@ public:
     /// @return 断连后为 0。
     std::size_t pendingCount() const noexcept;
 
+    /// @brief 可选诊断日志；记录 connect/disconnect。
+    void attachDiagnosticLog(ernc::infrastructure::DiagnosticLog* log) noexcept;
+
 private:
+    ernc::infrastructure::DiagnosticLog* diagnosticLog_{nullptr};
     /// 调用方拥有的端口。本对象只在与它相同的线程上使用。
     ernc::ports::IDeviceTransport& transport_;
 

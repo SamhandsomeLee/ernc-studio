@@ -27,6 +27,7 @@ qt_add_executable(ernc_app
     ../src/presentation/inspector/inspector_panel.cpp
     ../src/presentation/task_cards/task_card_panel.cpp
     ../src/presentation/operation_center/operation_center_panel.cpp
+    ../src/presentation/diagnostics/diagnostic_log_presenter.cpp
 )
 
 qt_add_resources(ernc_app "ernc_themes"
@@ -46,7 +47,7 @@ target_compile_definitions(ernc_app PRIVATE
     "ERNC_SHELL_KEYMAP_PATH=\"${CMAKE_SOURCE_DIR}/resources/keymap/shell.txt\""
 )
 
-target_link_libraries(ernc_app PRIVATE Qt6::Widgets ernc_domain ernc_application)
+target_link_libraries(ernc_app PRIVATE Qt6::Widgets ernc_domain ernc_application ernc_logging)
 
 set_target_properties(ernc_app PROPERTIES
     OUTPUT_NAME "ernc-studio"
