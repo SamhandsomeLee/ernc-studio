@@ -151,20 +151,24 @@ QWidget* makeParameterView(QWidget* parent, const ernc::domain::ParameterCatalog
     rows->setVisible(false);
     rows->setSectionResizeMode(QHeaderView::Fixed);
     rows->setDefaultSectionSize(30);
-    const auto addColumnToggle = [displayMenu, table](const QString& label, FakeParameterColumn column) {
+    const auto addColumnToggle = [displayMenu, table](const QString& label, FakeParameterColumn column,
+                                                      bool visibleByDefault) {
         const int index = static_cast<int>(column);
-        table->setColumnHidden(index, true);
+        table->setColumnHidden(index, !visibleByDefault);
         QAction* action = displayMenu->addAction(label);
         action->setCheckable(true);
+        action->setChecked(visibleByDefault);
         QObject::connect(action, &QAction::toggled, table, [table, index](bool visible) {
             table->setColumnHidden(index, !visible);
         });
     };
-    addColumnToggle(QStringLiteral("固件路径"), FakeParameterColumn::Path);
-    addColumnToggle(QStringLiteral("更新时间"), FakeParameterColumn::UpdatedAt);
+    addColumnToggle(QStringLiteral("固件路径"), FakeParameterColumn::Path, true);
+    addColumnToggle(QStringLiteral("更新时间"), FakeParameterColumn::UpdatedAt, true);
     displayMenu->addSeparator();
     QAction* standardDensity = displayMenu->addAction(QStringLiteral("标准行距"));
     standardDensity->setCheckable(true);
+    standardDensity->setChecked(true);
+    rows->setDefaultSectionSize(34);
     QObject::connect(standardDensity, &QAction::toggled, rows, [rows](bool standard) {
         rows->setDefaultSectionSize(standard ? 34 : 30);
     });
