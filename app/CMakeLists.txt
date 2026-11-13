@@ -2,12 +2,28 @@ find_package(Qt6 REQUIRED COMPONENTS Widgets Core Concurrent SerialPort Sql)
 
 qt_standard_project_setup()
 
+set(ERNC_GIT_COMMIT_SHORT "unknown")
+find_package(Git QUIET)
+if(Git_FOUND AND EXISTS "${CMAKE_SOURCE_DIR}/.git")
+    execute_process(
+        COMMAND "${GIT_EXECUTABLE}" rev-parse --short=6 HEAD
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+        OUTPUT_VARIABLE _ernc_git_commit_short
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+        RESULT_VARIABLE _ernc_git_rev_parse_result)
+    if(_ernc_git_rev_parse_result EQUAL 0 AND _ernc_git_commit_short)
+        set(ERNC_GIT_COMMIT_SHORT "${_ernc_git_commit_short}")
+    endif()
+endif()
+
 qt_add_executable(ernc_app
     main.cpp
     ../src/presentation/theme/theme.cpp
     ../src/presentation/theme/status_badge.cpp
     ../src/presentation/shell/main_window.cpp
     ../src/presentation/shell/main_window_files.cpp
+    ../src/presentation/shell/window_title.cpp
     ../src/presentation/shell/layout_settings.cpp
     ../src/presentation/navigator/navigator_pages.cpp
     ../src/presentation/navigator/navigator_model.cpp
@@ -68,6 +84,7 @@ target_include_directories(ernc_app PRIVATE
 )
 
 target_compile_definitions(ernc_app PRIVATE
+    "ERNC_GIT_COMMIT_SHORT=\"${ERNC_GIT_COMMIT_SHORT}\""
     "ERNC_PARAMETER_CATALOG_PATH=\"${CMAKE_SOURCE_DIR}/catalog/parameter_catalog.json\""
     "ERNC_LAYOUT_MANIFEST_PATH=\"${CMAKE_SOURCE_DIR}/firmware/layout_manifest.json\""
     "ERNC_CAN_NAMES_PATH=\"${CMAKE_SOURCE_DIR}/catalog/source/can_names.raw.json\""

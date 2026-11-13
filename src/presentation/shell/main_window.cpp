@@ -1,4 +1,5 @@
 #include "shell/layout_settings.hpp"
+#include "shell/window_title.hpp"
 #include "shell/main_window.hpp"
 #include "shell/product_ui.hpp"
 
@@ -107,7 +108,7 @@ void applyTreeSelection(EditorTabs* tabs, const QModelIndex& current) {
 MainWindow::MainWindow(ernc::domain::CatalogLoad catalog, QString catalogPath, QWidget* parent)
     : QMainWindow(parent) {
     setObjectName(QStringLiteral("erncMainWindow"));
-    setWindowTitle(QStringLiteral("ERNC Studio"));
+    setWindowTitle(applicationBaseTitle());
 
     projectTree_ = addPlaceholderDock(
         QStringLiteral("erncDockProjectTree"), QStringLiteral("项目树"), Qt::LeftDockWidgetArea);

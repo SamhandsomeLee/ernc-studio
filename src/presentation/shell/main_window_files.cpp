@@ -1,6 +1,7 @@
 #include "shell/main_window.hpp"
 
 #include "shell/product_ui.hpp"
+#include "shell/window_title.hpp"
 
 #include "ernc/application/project/legacy_param_json_bridge.hpp"
 #include "ernc/application/project/project_session.hpp"
@@ -327,10 +328,10 @@ void MainWindow::updateProjectActions() {
     if (kProjectBundleUiEnabled) {
         saveProjectAction_->setEnabled(project_.has_value());
         closeProjectAction_->setEnabled(project_.has_value());
-        setWindowTitle(project_ ? QStringLiteral("ERNC Studio — %1").arg(QString::fromStdString(project_->name))
-                               : QStringLiteral("ERNC Studio"));
+        setWindowTitle(project_ ? applicationWindowTitle(QString::fromStdString(project_->name))
+                               : applicationBaseTitle());
     } else {
-        setWindowTitle(QStringLiteral("ERNC Studio"));
+        setWindowTitle(applicationBaseTitle());
     }
     updateWorkspaceContext();
 }
