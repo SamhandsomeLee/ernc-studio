@@ -15,6 +15,35 @@ if (-not (Test-Path $mingwBin)) {
     Write-Error "MINGW64 bin not found at $mingwBin"
 }
 
+function Resolve-InnoCompiler {
+    foreach ($candidate in @(
+            (Get-Command ISCC.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source),
+            'C:\Program Files (x86)\Inno Setup 6\ISCC.exe',
+            'C:\Program Files\Inno Setup 6\ISCC.exe',
+            (Join-Path $repoRoot 'tools\.cache\inno\ISCC.exe')
+        )) {
+        if ($candidate -and (Test-Path $candidate)) {
+            return $candidate
+        }
+    }
+
+    $cacheRoot = Join-Path $repoRoot 'tools\.cache\inno'
+    New-Item -ItemType Directory -Force -Path $cacheRoot | Out-Null
+    $installer = Join-Path $cacheRoot 'innosetup-6.3.3.exe'
+    $url = 'https://files.jrsoftware.org/is/6/innosetup-6.3.3.exe'
+    Write-Host "[package] downloading Inno Setup 6.3.3 (first time only) ..."
+    Invoke-WebRequest -Uri $url -OutFile $installer -UseBasicParsing
+    $proc = Start-Process -FilePath $installer -ArgumentList @("/DIR=$cacheRoot", '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART') -Wait -PassThru
+    if ($proc.ExitCode -ne 0) {
+        throw "Inno Setup installer exited with code $($proc.ExitCode)"
+    }
+    $iscc = Join-Path $cacheRoot 'ISCC.exe'
+    if (-not (Test-Path $iscc)) {
+        throw 'ISCC.exe not found after Inno Setup install'
+    }
+    return $iscc
+}
+
 $env:Path = "$mingwBin;$env:Path"
 
 $preset = 'mingw64-release'
@@ -101,19 +130,32 @@ if (Test-Path $zipPath) {
 Write-Host "[package] zip -> $zipPath"
 Compress-Archive -LiteralPath $stageDir -DestinationPath $zipPath -CompressionLevel Optimal
 
-$nsisScript = Join-Path $repoRoot 'tools\installer\ernc-studio.nsi'
-$makensis = Get-Command makensis -ErrorAction SilentlyContinue
-if ($makensis -and (Test-Path $nsisScript)) {
-    $setupExe = Join-Path $packageRoot "ERNC-Studio-$gitShort-setup.exe"
-    Write-Host "[package] NSIS -> $setupExe"
-    & makensis /DStageDir="$stageDir" /DOutFile="$setupExe" $nsisScript | Out-Host
-    if ($LASTEXITCODE -ne 0) {
-        Write-Warning "NSIS build failed; ZIP package is still available."
-    }
+$innoScript = Join-Path $repoRoot 'tools\installer\ernc-studio.iss'
+$setupExe = Join-Path $packageRoot "ERNC-Studio-$gitShort-setup.exe"
+if (-not (Test-Path $innoScript)) {
+    Write-Warning "Missing $innoScript; skipped setup.exe"
 } else {
-    Write-Host "[package] makensis or tools/installer/ernc-studio.nsi not found; skipped setup.exe"
+    try {
+        $isccPath = Resolve-InnoCompiler
+        Write-Host "[package] Inno Setup ($isccPath) -> $packageRoot"
+        & $isccPath "/DStageDir=$stageDir" "/DGitShort=$gitShort" "/O$packageRoot" $innoScript | Out-Host
+        if ($LASTEXITCODE -ne 0) {
+            throw "ISCC exited with code $LASTEXITCODE"
+        }
+        if (-not (Test-Path $setupExe)) {
+            $built = Get-ChildItem -Path $packageRoot -Filter "ERNC-Studio-$gitShort-setup.exe" | Select-Object -First 1
+            if (-not $built) {
+                throw 'Setup executable was not produced'
+            }
+        }
+    } catch {
+        Write-Warning "Installer build failed: $($_.Exception.Message). ZIP package is still available."
+    }
 }
 
 Write-Host "[package] done"
 Write-Host "  Staged: $stageDir"
 Write-Host "  Zip:    $zipPath"
+if (Test-Path $setupExe) {
+    Write-Host "  Setup:  $setupExe"
+}

@@ -12,7 +12,7 @@ ERNC Studio 是六通道 ERNC/RNC 设备的 Windows 桌面工程工作站。本�
 
 ## 架构
 
-分层、依赖方向和线程归属见 [docs/architecture/README.md](docs/architecture/README.md)。当前阶段只建立仓库约束、MINGW64 构建合同和最小桌面入口，不预建尚未使用的业务模块。
+分层、依赖方向和线程归属见 [docs/architecture/README.md](docs/architecture/README.md)。应用为模块化单体（Presentation / Application / Domain / Infrastructure），UI 不直接持有串口或协议编解码。
 
 ## 构建
 
@@ -33,7 +33,35 @@ cmake --preset mingw64-release
 cmake --build --preset mingw64-release
 ```
 
-`mingw64-comm` 不构建 Qt 界面。`mingw64-dev` 和 `mingw64-release` 构建最小主窗口。MSVC、UCRT64 和 CLANG64 会在配置阶段失败。
+`mingw64-comm` 不构建 Qt 界面。`mingw64-dev` 和 `mingw64-release` 构建桌面主程序 `ernc-studio`。MSVC、UCRT64 和 CLANG64 会在配置阶段失败。
+
+## Windows 发行（安装包 / 便携包）
+
+在已配置 MINGW64 的前提下，仓库根目录执行：
+
+```powershell
+$env:Path = "D:\msys64\mingw64\bin;" + $env:Path
+powershell -NoProfile -File .\tools\package-win.ps1
+```
+
+产物位于 `build/mingw64-release/package/`：
+
+| 产物 | 用途 |
+|------|------|
+| `ERNC-Studio-<git6>-setup.exe` | Inno Setup 安装向导；默认装到 `Program Files\ERNC Studio`，含 exe、Qt 运行时、`catalog/`、`firmware/`、`resources/keymap/` |
+| `ERNC-Studio-<git6>-win64.zip` | 便携压缩包，解压即可运行 |
+| `ERNC-Studio-<git6>-win64/` | 与 zip 相同的展开目录 |
+
+Release 运行时通过 `resolveBundledResourcePath` 优先读取 exe 同级 bundled 目录；开发构建仍可回退 CMake 源码路径。步骤、验证清单与边界说明见 [docs/dev/PACKAGING.md](docs/dev/PACKAGING.md)。
+
+## 文档
+
+| 文档 | 内容 |
+|------|------|
+| [docs/architecture/README.md](docs/architecture/README.md) | 分层与运行时边界 |
+| [docs/dev/ENVIRONMENT.md](docs/dev/ENVIRONMENT.md) | 工具链与 Preset |
+| [docs/dev/PACKAGING.md](docs/dev/PACKAGING.md) | Windows 打包与安装 |
+| [AGENTS.md](AGENTS.md) | 协作与 Agent 约定 |
 
 ## 分支与提交
 

@@ -5,6 +5,7 @@
 /CMakeUserPresets.json
 /.vs/
 /.cache/
+/tools/.cache/
 *.user
 *.obj
 *.o
