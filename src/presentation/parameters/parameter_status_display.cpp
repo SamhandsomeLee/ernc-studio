@@ -36,7 +36,7 @@ QString parameterStatusText(const ernc::domain::ParameterRuntimeState* state) {
         return QStringLiteral("未读取");
     }
     if (state->projectReadValue) {
-        return QStringLiteral("工程历史读数");
+        return QStringLiteral("历史读数");
     }
     if (state->stale && state->deviceValue.has_value()) {
         return QStringLiteral("数据已过期");

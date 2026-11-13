@@ -266,7 +266,7 @@ void RncParamPage::reload() {
         const bool historical = read != nullptr && (state->projectReadValue || state->stale);
         control.value->setText(QString::fromStdString(displayScalar(read)));
         control.value->setToolTip(read == nullptr ? QStringLiteral("未读取") : state->projectReadValue
-            ? QStringLiteral("工程历史读数") : state->stale ? QStringLiteral("数据已过期") : QStringLiteral("设备读数"));
+            ? QStringLiteral("历史读数") : state->stale ? QStringLiteral("数据已过期") : QStringLiteral("设备读数"));
         if (control.value->property("historical").toBool() != historical) {
             control.value->setProperty("historical", historical);
             control.value->style()->unpolish(control.value);

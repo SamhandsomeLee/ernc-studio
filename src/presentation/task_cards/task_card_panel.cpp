@@ -27,13 +27,13 @@ QWidget* makeCardPage(TaskCardPanel* panel, QWidget* parent) {
     layout->addSpacing(kSpace4);
 
     auto* hint = new QLabel(
-        QStringLiteral("全工程操作仅处理标量。写入前可查看范围和跳过项。"), page);
+        QStringLiteral("全部参数操作仅处理标量。写入前可查看范围和跳过项。"), page);
     hint->setWordWrap(true);
     layout->addWidget(hint);
 
     auto* readAll = new QPushButton(QStringLiteral("读取全部可读参数"), page);
     readAll->setObjectName(QStringLiteral("erncTaskReadAll"));
-    auto* writeAll = new QPushButton(QStringLiteral("全工程写入计划"), page);
+    auto* writeAll = new QPushButton(QStringLiteral("全部待写计划"), page);
     writeAll->setObjectName(QStringLiteral("erncTaskWriteAll"));
 
     layout->addWidget(readAll);

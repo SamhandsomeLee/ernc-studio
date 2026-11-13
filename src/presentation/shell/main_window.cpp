@@ -1,5 +1,6 @@
 #include "shell/layout_settings.hpp"
 #include "shell/main_window.hpp"
+#include "shell/product_ui.hpp"
 
 #include "arrays/array_detail_panel.hpp"
 
@@ -380,15 +381,17 @@ MainWindow::MainWindow(ernc::domain::CatalogLoad catalog, QString catalogPath, Q
     });
     connect(restoreDefault, &QAction::triggered, this, [this] { restoreDefaultShellLayout(); });
 
-    auto* tools = addToolBar(QStringLiteral("工程工具栏"));
+    auto* tools = addToolBar(kProjectBundleUiEnabled ? QStringLiteral("工程工具栏") : QStringLiteral("工具栏"));
     tools->setObjectName(QStringLiteral("erncWorkbenchTools"));
     tools->setMovable(false);
     tools->setFloatable(false);
     tools->setToolButtonStyle(Qt::ToolButtonTextOnly);
-    openProjectAction_->setIconText(QStringLiteral("打开工程"));
-    tools->addAction(openProjectAction_);
-    tools->addAction(saveProjectAction_);
-    tools->addSeparator();
+    if (kProjectBundleUiEnabled) {
+        openProjectAction_->setIconText(QStringLiteral("打开工程"));
+        tools->addAction(openProjectAction_);
+        tools->addAction(saveProjectAction_);
+        tools->addSeparator();
+    }
     auto* connection = new QToolButton(tools);
     connection->setObjectName(QStringLiteral("erncDeviceMenuButton"));
     connection->setText(QStringLiteral("连接设备"));
@@ -427,8 +430,12 @@ void MainWindow::updateWorkspaceContext() {
     } else if (scope == QStringLiteral("RNC_Param")) {
         scope = QStringLiteral("RNC 参数");
     }
-    const QString name = project_ ? QString::fromStdString(project_->name) : QStringLiteral("未打开工程");
-    workspaceContext_->setText(QStringLiteral("%1  /  %2").arg(name, scope));
+    if (kProjectBundleUiEnabled) {
+        const QString name = project_ ? QString::fromStdString(project_->name) : QStringLiteral("未打开工程");
+        workspaceContext_->setText(QStringLiteral("%1  /  %2").arg(name, scope));
+    } else {
+        workspaceContext_->setText(scope);
+    }
     workspaceContext_->setToolTip(workspaceContext_->text());
 }
 
@@ -568,9 +575,9 @@ void MainWindow::bindShellKeymap() {
             actionWithShortcut = taskCards_->toggleViewAction();
         } else if (binding.action == "toggle-inspector") {
             actionWithShortcut = inspectorDock_->toggleViewAction();
-        } else if (binding.action == "open-project") {
+        } else if (kProjectBundleUiEnabled && binding.action == "open-project") {
             actionWithShortcut = openProjectAction_;
-        } else if (binding.action == "save-project") {
+        } else if (kProjectBundleUiEnabled && binding.action == "save-project") {
             actionWithShortcut = saveProjectAction_;
         }
         if (actionWithShortcut != nullptr) {
@@ -670,7 +677,7 @@ void MainWindow::onParametersUpdated(const ernc::domain::SessionId sessionId, co
 }
 
 void MainWindow::closeEvent(QCloseEvent* event) {
-    if (!confirmLeavingProject()) {
+    if (kProjectBundleUiEnabled && !confirmLeavingProject()) {
         event->ignore();
         return;
     }

@@ -1,5 +1,7 @@
 #include "shell/main_window.hpp"
 
+#include "shell/product_ui.hpp"
+
 #include "ernc/application/project/legacy_param_json_bridge.hpp"
 #include "ernc/application/project/project_session.hpp"
 #include "workspace/editor_tabs.hpp"
@@ -139,17 +141,30 @@ void showParameterReport(QMainWindow& owner, const QString& title, const LegacyP
 
 void MainWindow::addFileMenu() {
     QMenu* menu = menuBar()->addMenu(QStringLiteral("文件"));
-    QAction* create = menu->addAction(QStringLiteral("新建工程…"), this, &MainWindow::createProject);
-    openProjectAction_ = menu->addAction(QStringLiteral("打开工程…"), this, &MainWindow::openProject);
-    saveProjectAction_ = menu->addAction(QStringLiteral("保存工程"), this, &MainWindow::saveProject);
-    closeProjectAction_ = menu->addAction(QStringLiteral("关闭工程"), this, &MainWindow::closeProject);
-    menu->addSeparator();
+    if (kProjectBundleUiEnabled) {
+        QAction* create = menu->addAction(QStringLiteral("新建工程…"), this, &MainWindow::createProject);
+        openProjectAction_ = menu->addAction(QStringLiteral("打开工程…"), this, &MainWindow::openProject);
+        saveProjectAction_ = menu->addAction(QStringLiteral("保存工程"), this, &MainWindow::saveProject);
+        closeProjectAction_ = menu->addAction(QStringLiteral("关闭工程"), this, &MainWindow::closeProject);
+        menu->addSeparator();
+        const bool canStage = catalog_ != nullptr && firmwareLayout_.has_value();
+        create->setEnabled(canStage);
+        openProjectAction_->setEnabled(canStage);
+    } else {
+        openProjectAction_ = new QAction(this);
+        saveProjectAction_ = new QAction(this);
+        closeProjectAction_ = new QAction(this);
+        openProjectAction_->setVisible(false);
+        saveProjectAction_->setVisible(false);
+        closeProjectAction_->setVisible(false);
+        openProjectAction_->setEnabled(false);
+        saveProjectAction_->setEnabled(false);
+        closeProjectAction_->setEnabled(false);
+    }
     QAction* importAction = menu->addAction(QStringLiteral("导入 JSON 参数…"), this, &MainWindow::importParameters);
     QAction* exportAction = menu->addAction(QStringLiteral("导出 JSON 参数…"), this, &MainWindow::exportParameters);
 
     const bool canStage = catalog_ != nullptr && firmwareLayout_.has_value();
-    create->setEnabled(canStage);
-    openProjectAction_->setEnabled(canStage);
     importAction->setEnabled(canStage);
     exportAction->setEnabled(catalog_ != nullptr);
     updateProjectActions();
@@ -304,10 +319,14 @@ bool MainWindow::closeProject() {
 }
 
 void MainWindow::updateProjectActions() {
-    saveProjectAction_->setEnabled(project_.has_value());
-    closeProjectAction_->setEnabled(project_.has_value());
-    setWindowTitle(project_ ? QStringLiteral("ERNC Studio — %1").arg(QString::fromStdString(project_->name))
-                           : QStringLiteral("ERNC Studio"));
+    if (kProjectBundleUiEnabled) {
+        saveProjectAction_->setEnabled(project_.has_value());
+        closeProjectAction_->setEnabled(project_.has_value());
+        setWindowTitle(project_ ? QStringLiteral("ERNC Studio — %1").arg(QString::fromStdString(project_->name))
+                               : QStringLiteral("ERNC Studio"));
+    } else {
+        setWindowTitle(QStringLiteral("ERNC Studio"));
+    }
     updateWorkspaceContext();
 }
 
@@ -335,7 +354,7 @@ void MainWindow::importParameters() {
 }
 
 void MainWindow::exportParameters() {
-    const QString directory = project_
+    const QString directory = (kProjectBundleUiEnabled && project_)
         ? QString::fromStdWString((project_->root / "data" / "exports").wstring()) : QString();
     QFileDialog dialog(this, QStringLiteral("导出 JSON 参数（优先 Set，其次 Read）"), directory,
                        QStringLiteral("JSON 参数 (*.json)"));

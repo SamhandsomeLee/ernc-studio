@@ -81,7 +81,7 @@ void formatReadSet(const ernc::domain::ParameterDefinition* definition, const er
     if (const auto* read = state->displayedRead()) {
         readText = formatValue(definition, *read);
         if (state->projectReadValue) {
-            readText += QStringLiteral(" 工程历史读数");
+            readText += QStringLiteral(" 历史读数");
         } else if (state->stale) {
             readText += QStringLiteral(" 数据已过期");
         }
@@ -309,7 +309,7 @@ void WritePlanDialog::rebuild() {
             : QString::fromStdString(rejected.id.text());
         append(rejected.id, path, exclusionText(rejected.reason), false);
     }
-    const QString scopeName = isNavigatorAllPage(page) ? QStringLiteral("全工程 · 待写标量") : page;
+    const QString scopeName = isNavigatorAllPage(page) ? QStringLiteral("全部 · 待写标量") : page;
     scopeLabel_->setText(QStringLiteral("%1 · %2 项待写入 · %3 项跳过")
         .arg(scopeName).arg(sendCount).arg(table_->rowCount() - sendCount));
     confirmButton_->setEnabled(sendCount > 0);

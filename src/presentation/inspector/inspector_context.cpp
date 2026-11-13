@@ -118,8 +118,8 @@ InspectorText describeInspector(
     std::optional<ernc::domain::RuntimeTime> timestamp;
     if (state != nullptr) {
         if (state->projectReadValue) {
-            status = "工程历史读数";
-            source = "工程文件";
+            status = "历史读数";
+            source = "本地数据";
         } else if (read != nullptr) {
             status = state->stale ? "数据已过期" : "已读取";
             source = state->stale ? "设备缓存" : "设备读回";
