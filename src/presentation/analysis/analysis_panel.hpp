@@ -61,6 +61,8 @@ public:
     /// @brief 借出区域工作区。
     RegionWorkspace* regionWorkspace() const noexcept;
 
+    /// @brief 曲线解码与载入提示写入主窗口状态栏。空函数表示不展示。
+    void setStatusSink(std::function<void(const QString&)> sink);
 
     /// @brief 把 UI 会话记录器接到区域工作区。
     void setUiActivityRecorder(
@@ -79,6 +81,9 @@ private:
 
     /// @brief 实部与虚部都已 ingest 时刷新 ERNC_TF 专业图。
     void bindTfPlotIfReady();
+
+    /// @brief 把分析页提示转发到状态栏 sink。
+    void publishStatus(const QString& text);
 
     /// 区域目录。本控件不拥有。
     const ernc::domain::RegionCatalog& catalog_;
@@ -101,8 +106,8 @@ private:
     /// 谱半径专业图。本控件拥有。
     SpecRadiusPlot* specPlot_ = nullptr;
 
-    /// 状态说明。本控件拥有。
-    QLabel* status_ = nullptr;
+    /// 状态栏展示回调。不拥有。
+    std::function<void(const QString&)> statusSink_;
 
     /// 最近一次批量导入的顶层路径。
     std::string lastRegionPath_;

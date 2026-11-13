@@ -252,6 +252,13 @@ MainWindow::MainWindow(ernc::domain::CatalogLoad catalog, QString catalogPath, Q
     taskStatus_->setTextFormat(Qt::PlainText);
     taskStatus_->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
     bar->addWidget(taskStatus_, 1);
+    if (editorTabs_ != nullptr) {
+        editorTabs_->setRegionStatusSink([this](const QString& text) {
+            if (taskStatus_ != nullptr) {
+                taskStatus_->setText(text);
+            }
+        });
+    }
     devicePumpTimer_ = new QTimer(this);
     devicePumpTimer_->setInterval(10);
     QObject::connect(devicePumpTimer_, &QTimer::timeout, this, [this] {

@@ -194,8 +194,6 @@ RegionWorkspace::RegionWorkspace(const ernc::domain::RegionCatalog& catalog, ern
     , progress_(QStringLiteral("空闲"))
     , regionBox_(new QComboBox(this))
     , fieldBox_(new QComboBox(this))
-    , statusLabel_(new QLabel(status_, this))
-    , progressLabel_(new QLabel(progress_, this))
     , progressBar_(new QProgressBar(this))
     , readButton_(new QPushButton(QStringLiteral("从设备读取"), this))
     , importButton_(new QPushButton(QStringLiteral("导入 BIN/TXT"), this))
@@ -218,8 +216,6 @@ RegionWorkspace::RegionWorkspace(const ernc::domain::RegionCatalog& catalog, ern
     scopeLayout->addRow(QStringLiteral("区域"), regionBox_);
     scopeLayout->addRow(QStringLiteral("字段"), fieldBox_);
     layout->addWidget(scopeGroup);
-    layout->addWidget(statusLabel_);
-    layout->addWidget(progressLabel_);
     progressBar_->setObjectName(QStringLiteral("erncRegionReadProgress"));
     progressBar_->setRange(0, 100);
     progressBar_->setValue(0);
@@ -241,7 +237,8 @@ RegionWorkspace::RegionWorkspace(const ernc::domain::RegionCatalog& catalog, ern
     layout->addLayout(advancedActions);
     writeButton_->setEnabled(false);
     cancelButton_->setEnabled(false);
-    layout->addWidget(stack_, 1);
+    stack_->setVisible(false);
+    layout->addWidget(stack_);
     QObject::connect(regionBox_, &QComboBox::currentTextChanged, this, [this](const QString& path) { selectRegion(path); });
     QObject::connect(fieldBox_, &QComboBox::currentTextChanged, this, [this](const QString& path) {
         selectField(path == QStringLiteral("全部") ? QString() : path);
@@ -332,12 +329,12 @@ ernc::domain::Result<void> RegionWorkspace::readSelected() {
     const ernc::domain::RegionDefinition* region = selectedRegion();
     if (region == nullptr) {
         status_ = QStringLiteral("未选择读取范围");
-        statusLabel_->setText(status_);
+        publishRegionStatus();
         return ernc::domain::Result<void>::failure(ernc::domain::ErrorCode::InvalidParameter);
     }
     if (!ernc::domain::realReadPermitted(region->evidence)) {
         status_ = QStringLiteral("区域读取未授权（证据等级不支持 FC03）");
-        statusLabel_->setText(status_);
+        publishRegionStatus();
         return ernc::domain::Result<void>::failure(ernc::domain::ErrorCode::InvalidParameter);
     }
     ernc::domain::Result<void> started = ernc::domain::Result<void>::failure(ernc::domain::ErrorCode::InvalidParameter);
@@ -347,7 +344,7 @@ ernc::domain::Result<void> RegionWorkspace::readSelected() {
         started = reader_->start(*region);
     } else {
         status_ = QStringLiteral("未绑定设备：请先在「设备」菜单连接虚拟从站或串口");
-        statusLabel_->setText(status_);
+        publishRegionStatus();
         return ernc::domain::Result<void>::failure(ernc::domain::ErrorCode::DeviceDisconnected);
     }
     if (!started.ok()) {
@@ -367,7 +364,7 @@ ernc::domain::Result<void> RegionWorkspace::readSelected() {
         noteReadProgress(activeReadPath_, 0, region->size);
         notifyUiAction("region.read.start", importDetailJson(*region, {}, std::nullopt), true, ErrorCode::Unknown);
     }
-    statusLabel_->setText(status_);
+    publishRegionStatus();
     refreshProgress();
     return started;
 }
@@ -412,7 +409,7 @@ ernc::domain::Result<void> RegionWorkspace::importFiles(const std::vector<std::f
             detail << "}";
             notifyUiAction("region.import.reject", detail.str(), false, ErrorCode::InvalidParameter);
             status_ = QStringLiteral("无法识别文件：%1").arg(QString::fromStdString(source.filename().string()));
-            statusLabel_->setText(status_);
+            publishRegionStatus();
             return ernc::domain::Result<void>::failure(ErrorCode::InvalidParameter);
         }
 
@@ -472,9 +469,8 @@ ernc::domain::Result<void> RegionWorkspace::importFiles(const std::vector<std::f
                        importDetailJson(loaded.region, source, loaded.bytes.size()), true, ErrorCode::Unknown);
     }
     status_ = QStringLiteral("已导入 %1 个文件并更新曲线").arg(importedCount);
-    statusLabel_->setText(status_);
     progress_ = QStringLiteral("文件导入完成");
-    progressLabel_->setText(progress_);
+    publishRegionStatus();
     writeButton_->setEnabled(false);
     return ernc::domain::Result<void>::success();
 }
@@ -491,7 +487,7 @@ ernc::domain::Result<void> RegionWorkspace::importBin(const std::filesystem::pat
     const ernc::domain::Result<std::vector<std::uint8_t>> loaded = ernc::infrastructure::readRegionBin(*region, source);
     if (!loaded.ok() || loaded.tryValue() == nullptr) {
         status_ = QStringLiteral("导入失败");
-        statusLabel_->setText(status_);
+        publishRegionStatus();
         const ErrorCode error = loaded.ok() ? ErrorCode::Unknown : loaded.error();
         notifyUiAction("region.import.bin", importDetailJson(*region, source, bytesOnDisk), false, error);
         return ernc::domain::Result<void>::failure(error);
@@ -503,7 +499,7 @@ ernc::domain::Result<void> RegionWorkspace::importBin(const std::filesystem::pat
         specPage_->loadReadBytes(*imported_);
     }
     status_ = QStringLiteral("已导入，尚未写入");
-    statusLabel_->setText(status_);
+    publishRegionStatus();
     writeButton_->setEnabled(false);
     refreshProgress();
     notifyUiAction("region.import.bin", importDetailJson(*region, source, bytesOnDisk), true, ErrorCode::Unknown);
@@ -523,7 +519,7 @@ ernc::domain::Result<void> RegionWorkspace::importTxt(const std::filesystem::pat
     const ernc::domain::Result<std::vector<float>> loaded = ernc::infrastructure::readRegionTxt(*region, source);
     if (!loaded.ok() || loaded.tryValue() == nullptr) {
         status_ = QStringLiteral("导入失败");
-        statusLabel_->setText(status_);
+        publishRegionStatus();
         const ErrorCode error = loaded.ok() ? ErrorCode::Unknown : loaded.error();
         notifyUiAction("region.import.txt", importDetailJson(*region, source, bytesOnDisk), false, error);
         return ernc::domain::Result<void>::failure(error);
@@ -535,7 +531,7 @@ ernc::domain::Result<void> RegionWorkspace::importTxt(const std::filesystem::pat
         specPage_->loadReadBytes(*imported_);
     }
     status_ = QStringLiteral("已导入，尚未写入");
-    statusLabel_->setText(status_);
+    publishRegionStatus();
     writeButton_->setEnabled(false);
     refreshProgress();
     notifyUiAction("region.import.txt", importDetailJson(*region, source, bytesOnDisk), true, ErrorCode::Unknown);
@@ -570,7 +566,7 @@ void RegionWorkspace::noteReadProgress(const QString& path, const quint64 filled
     progressBar_->setValue(static_cast<int>(std::min<quint64>(filledSlots, static_cast<quint64>(INT_MAX))));
     progressBar_->setVisible(true);
     progress_ = QStringLiteral("正在读取 · %1 / %2 slots").arg(filledSlots).arg(plannedSlots);
-    progressLabel_->setText(progress_);
+    publishRegionStatus();
 }
 
 void RegionWorkspace::noteReadFinished(const bool success, const QString& path, const QByteArray& bytes,
@@ -618,8 +614,7 @@ void RegionWorkspace::noteReadFinished(const bool success, const QString& path, 
         notifyUiAction("region.read.finish", std::string{"{\"region\":\""} + escapeJson(path.toStdString()) + "\"}",
                        false, error);
     }
-    statusLabel_->setText(status_);
-    progressLabel_->setText(progress_);
+    publishRegionStatus();
     setReadRunning(false);
     activeReadPath_.clear();
 }
@@ -634,7 +629,7 @@ void RegionWorkspace::noteWriteProgress(const QString& path, const quint64 verif
     progressBar_->setValue(static_cast<int>(std::min<quint64>(verifiedSlots, static_cast<quint64>(INT_MAX))));
     progressBar_->setVisible(true);
     progress_ = QStringLiteral("正在写入 · %1 / %2 slots").arg(verifiedSlots).arg(plannedSlots);
-    progressLabel_->setText(progress_);
+    publishRegionStatus();
 }
 
 void RegionWorkspace::noteWriteFinished(const bool success, const QString& path, const int errorCode) {
@@ -654,8 +649,7 @@ void RegionWorkspace::noteWriteFinished(const bool success, const QString& path,
         notifyUiAction("region.write.finish", std::string{"{\"region\":\""} + escapeJson(path.toStdString()) + "\"}", false,
                        error);
     }
-    statusLabel_->setText(status_);
-    progressLabel_->setText(progress_);
+    publishRegionStatus();
     setWriteRunning(false);
     activeWritePath_.clear();
 }
@@ -684,7 +678,7 @@ ernc::domain::Result<ernc::application::RegionWritePreview> RegionWorkspace::pre
     const std::optional<std::vector<std::uint8_t>> bytes = currentBytes();
     if (region == nullptr || !bytes) {
         status_ = QStringLiteral("预览失败");
-        statusLabel_->setText(status_);
+        publishRegionStatus();
         writeButton_->setEnabled(false);
         return ernc::domain::Result<ernc::application::RegionWritePreview>::failure(ernc::domain::ErrorCode::InvalidParameter);
     }
@@ -701,7 +695,7 @@ ernc::domain::Result<ernc::application::RegionWritePreview> RegionWorkspace::pre
         status_ = preview_->commitPermitted ? QStringLiteral("预览可写入") : QStringLiteral("预览完成，当前区域不能写入");
         writeButton_->setEnabled(true);
     }
-    statusLabel_->setText(status_);
+    publishRegionStatus();
     refreshProgress();
     return preview;
 }
@@ -711,7 +705,7 @@ ernc::domain::Result<void> RegionWorkspace::writeSelected() {
     const std::optional<std::vector<std::uint8_t>> bytes = currentBytes();
     if (region == nullptr || !preview_ || !previewBytes_ || !bytes || *bytes != *previewBytes_ || !preview_->commitPermitted) {
         status_ = QStringLiteral("写入被拒绝");
-        statusLabel_->setText(status_);
+        publishRegionStatus();
         return ernc::domain::Result<void>::failure(ernc::domain::ErrorCode::InvalidParameter);
     }
     ernc::domain::Result<void> started = ernc::domain::Result<void>::failure(ernc::domain::ErrorCode::InvalidParameter);
@@ -729,7 +723,7 @@ ernc::domain::Result<void> RegionWorkspace::writeSelected() {
     } else {
         status_ = QStringLiteral("写入被拒绝");
     }
-    statusLabel_->setText(status_);
+    publishRegionStatus();
     refreshProgress();
     return started;
 }
@@ -780,7 +774,7 @@ void RegionWorkspace::cancelTransfer() {
         writer_->cancel();
     }
     status_ = (readRunning_ || writeRunning_) ? QStringLiteral("正在取消，等待当前分包结束") : QStringLiteral("已取消");
-    statusLabel_->setText(status_);
+    publishRegionStatus();
     refreshProgress();
 }
 
@@ -818,8 +812,7 @@ void RegionWorkspace::clearImported() {
     writeButton_->setEnabled(false);
     status_ = QStringLiteral("空闲");
     progress_ = QStringLiteral("空闲");
-    statusLabel_->setText(status_);
-    progressLabel_->setText(progress_);
+    publishRegionStatus();
     progressBar_->setVisible(false);
 }
 
@@ -870,11 +863,11 @@ void RegionWorkspace::refreshSelection() {
         specPage_ = new SpecRadiusPage(*selected_, stack_);
         stack_->addWidget(specPage_);
         stack_->setCurrentWidget(specPage_);
+        stack_->setVisible(true);
     } else {
-        auto* summary = new QLabel(selected_ ? QString::fromStdString(selected_->path) : QStringLiteral("未选择"), stack_);
-        stack_->addWidget(summary);
-        stack_->setCurrentWidget(summary);
+        stack_->setVisible(false);
     }
+    publishRegionStatus();
 }
 
 std::optional<std::vector<std::uint8_t>> RegionWorkspace::currentBytes() const {
@@ -901,7 +894,7 @@ void RegionWorkspace::refreshProgress() {
     } else if (!readRunning_ && !writeRunning_) {
         progress_ = QStringLiteral("空闲");
     }
-    progressLabel_->setText(progress_);
+    publishRegionStatus();
 }
 
 void RegionWorkspace::setReadRunning(const bool running) {
@@ -924,6 +917,46 @@ void RegionWorkspace::setTransferRunning(const bool running) {
     writeButton_->setEnabled(!running && preview_.has_value() && preview_->commitPermitted);
     if (running) {
         progressBar_->setVisible(true);
+    }
+}
+
+void RegionWorkspace::setStatusSink(std::function<void(const QString&)> sink) {
+    statusSink_ = std::move(sink);
+    refreshStatusPresentation();
+}
+
+void RegionWorkspace::refreshStatusPresentation() {
+    publishRegionStatus();
+}
+
+QString RegionWorkspace::currentScopeSummary() const {
+    if (regionPath_.isEmpty()) {
+        return {};
+    }
+    QString scope = regionPath_;
+    if (!fieldPath_.isEmpty()) {
+        scope += QStringLiteral(" · ") + fieldPath_;
+    } else {
+        scope += QStringLiteral(" · 全部");
+    }
+    return scope;
+}
+
+void RegionWorkspace::publishRegionStatus() {
+    QStringList parts;
+    const QString scope = currentScopeSummary();
+    if (!scope.isEmpty()) {
+        parts.append(scope);
+    }
+    if (!status_.isEmpty() && status_ != QStringLiteral("空闲")) {
+        parts.append(status_);
+    }
+    if (!progress_.isEmpty() && progress_ != QStringLiteral("空闲")) {
+        parts.append(progress_);
+    }
+    const QString message = parts.isEmpty() ? QStringLiteral("就绪") : parts.join(QStringLiteral(" · "));
+    if (statusSink_) {
+        statusSink_(message);
     }
 }
 

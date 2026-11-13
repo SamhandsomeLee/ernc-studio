@@ -299,6 +299,7 @@ EditorTabs::EditorTabs(const ernc::domain::ParameterCatalog* catalog, ernc::doma
         // Region 写入仍保持为空；读取稍后通过 DeviceController 绑定，串口对象不进入 UI 线程。
         curveAnalysis_ = new AnalysisPanel(*regionCatalog, nullptr, nullptr, this);
         addTab(curveAnalysis_, QStringLiteral("曲线分析"));
+        applyRegionStatusSink();
     }
     canInfoPanel_ = new CanInfoPanel(layout, this);
     addTab(canInfoPanel_, QStringLiteral("CAN信息"));
@@ -705,7 +706,25 @@ void EditorTabs::showParameterView() {
 void EditorTabs::showCurveAnalysis() {
     if (curveAnalysis_ != nullptr) {
         showNamedPage(QStringLiteral("erncCurveAnalysis"));
+        if (RegionWorkspace* workspace = curveAnalysis_->regionWorkspace()) {
+            workspace->refreshStatusPresentation();
+        }
     }
+}
+
+void EditorTabs::setRegionStatusSink(std::function<void(const QString&)> sink) {
+    regionStatusSink_ = std::move(sink);
+    applyRegionStatusSink();
+}
+
+void EditorTabs::applyRegionStatusSink() {
+    if (curveAnalysis_ == nullptr) {
+        return;
+    }
+    if (RegionWorkspace* workspace = curveAnalysis_->regionWorkspace()) {
+        workspace->setStatusSink(regionStatusSink_);
+    }
+    curveAnalysis_->setStatusSink(regionStatusSink_);
 }
 
 void EditorTabs::setUiActivityRecorder(

@@ -74,6 +74,9 @@ public:
     /// @brief 切到 CAN 信息页。
     void showCanInfoTab();
 
+    /// @brief 把区域工作区状态汇总到主窗口状态栏。
+    void setRegionStatusSink(std::function<void(const QString&)> sink);
+
     /// @brief 把会话 UI 记录接到曲线分析页。
     /// @param recorder 曲线导入操作的记录回调。本控件复制它，空函数表示停止记录。
     void setUiActivityRecorder(
@@ -254,6 +257,11 @@ private:
     ernc::domain::ArrayRuntimeStore* arrayStore_{nullptr};
     ArrayDetailPanel* arrayDetail_{nullptr};
     std::function<void()> arrayDetailPresenter_;
+
+    /// 主窗口状态栏展示区域/曲线状态。空表示仅保留内存状态。
+    std::function<void(const QString&)> regionStatusSink_;
+
+    void applyRegionStatusSink();
 };
 
 } // namespace ernc::presentation

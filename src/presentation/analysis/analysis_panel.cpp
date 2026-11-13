@@ -56,9 +56,6 @@ AnalysisPanel::AnalysisPanel(const ernc::domain::RegionCatalog& catalog, ernc::a
     tabs_->addTab(tfPlot_, QStringLiteral("传递函数"));
     tabs_->addTab(specPlot_, QStringLiteral("谱半径"));
     rightLayout->addWidget(tabs_, 1);
-    status_ = new QLabel(QStringLiteral("从左侧导入 BIN 或 TXT，曲线会出现在右侧。"), right);
-    status_->setWordWrap(true);
-    rightLayout->addWidget(status_);
     splitter->addWidget(regionWorkspace_);
     splitter->addWidget(right);
     splitter->setStretchFactor(0, 0);
@@ -67,7 +64,7 @@ AnalysisPanel::AnalysisPanel(const ernc::domain::RegionCatalog& catalog, ernc::a
     regionWorkspace_->setBytesAvailableHandler([this](const RegionDefinition& region, std::span<const std::uint8_t> bytes) {
         const Result<void> loaded = loadRegionBytes(region, bytes);
         if (!loaded.ok()) {
-            status_->setText(QStringLiteral("解码失败，请核对区域与文件长度。"));
+            publishStatus(QStringLiteral("解码失败，请核对区域与文件长度。"));
             if (uiActivityRecorder_) {
                 std::ostringstream detail;
                 detail << "{\"region\":\"" << region.path << "\",\"byte_count\":" << bytes.size()
@@ -82,9 +79,19 @@ AnalysisPanel::AnalysisPanel(const ernc::domain::RegionCatalog& catalog, ernc::a
                    << ",\"stage\":\"analysis.decode\"}";
             uiActivityRecorder_("region.decode", detail.str(), true, ernc::domain::ErrorCode::Unknown);
         }
-        status_->setText(QStringLiteral("已载入 ") + QString::fromStdString(region.path));
+        publishStatus(QStringLiteral("已载入 ") + QString::fromStdString(region.path));
         focusSpecializedTab(region.path);
     });
+}
+
+void AnalysisPanel::setStatusSink(std::function<void(const QString&)> sink) {
+    statusSink_ = std::move(sink);
+}
+
+void AnalysisPanel::publishStatus(const QString& text) {
+    if (statusSink_) {
+        statusSink_(text);
+    }
 }
 
 void AnalysisPanel::prepareIngest(std::string_view regionPath) {

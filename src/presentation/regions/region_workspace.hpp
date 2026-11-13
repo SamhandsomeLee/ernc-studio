@@ -151,6 +151,13 @@ public:
     void setWriteHandlers(std::function<ernc::domain::Result<void>(const QString& path, const QByteArray& bytes)> start,
                           std::function<void()> cancel);
 
+    /// @brief 把区域范围、状态与进度汇总到主窗口状态栏等外部展示。
+    /// @param sink 收到一行纯文本摘要。空函数表示只更新内部 `statusText` / `progressText`。
+    void setStatusSink(std::function<void(const QString&)> sink);
+
+    /// @brief 用当前范围与状态/进度重新推送状态栏摘要。
+    void refreshStatusPresentation();
+
     /// @brief 接收设备门面发来的大区域写入进度。
     void noteWriteProgress(const QString& path, quint64 verifiedBytes, quint64 plannedBytes);
 
@@ -186,6 +193,12 @@ private:
 
     /// @brief 按读或写的进度刷新文字。
     void refreshProgress();
+
+    /// @brief 当前数据范围的一行摘要（区域 · 字段）。
+    QString currentScopeSummary() const;
+
+    /// @brief 根据 `status_`、`progress_` 与范围刷新外部状态栏。
+    void publishRegionStatus();
 
     /// @brief 切换大区域传输期间的控件可用性。
     void setReadRunning(bool running);
@@ -245,11 +258,8 @@ private:
     /// 子字段下拉框。由 Qt 父子关系拥有。
     QComboBox* fieldBox_;
 
-    /// 状态标签。
-    QLabel* statusLabel_;
-
-    /// 进度标签。
-    QLabel* progressLabel_;
+    /// 汇总状态展示回调。不拥有。
+    std::function<void(const QString&)> statusSink_;
 
     /// 西门子式确定进度条：以 4-byte slot 为单位显示已完成/总量。
     QProgressBar* progressBar_;
