@@ -699,8 +699,31 @@ void DeviceController::readCanMsg() {
         emit canMsgUpdated(false);
         return;
     }
+    if (canMsgReadBusy()) {
+        return;
+    }
+    if (linkKind_ == LinkKind::Serial && serialWorker_ != nullptr) {
+        if (activeArrayIo_.has_value() || !activeRegionPath_.empty() || writeBusy()) {
+            return;
+        }
+        int workerGate = -1;
+        QMetaObject::invokeMethod(serialWorker_, "startCanMsgRead", Qt::BlockingQueuedConnection,
+                                  Q_RETURN_ARG(int, workerGate));
+        std::ostringstream detail;
+        detail << R"({"scope":"Can_Msg","transport":"serial","worker_gate":)" << workerGate << "}";
+        const bool started = workerGate == 0;
+        recordUi("parameter.can_msg_read.start", detail.str(), started,
+                 started ? ErrorCode::Unknown : ErrorCode::InvalidParameter);
+        if (!started) {
+            emit canMsgUpdated(false);
+            return;
+        }
+        pumpSerial();
+        return;
+    }
     if (linkKind_ != LinkKind::Simulator) {
-        recordUi("parameter.can_msg_read.start", R"({"reason":"serial_unsupported"})", false, ErrorCode::InvalidParameter);
+        recordUi("parameter.can_msg_read.start", R"({"reason":"no_transport"})", false, ErrorCode::InvalidParameter);
+        emit canMsgUpdated(false);
         return;
     }
     if (activeRead_.has_value() || stack_.batchReader().busy()) {
@@ -732,6 +755,11 @@ void DeviceController::readCanMsg() {
 bool DeviceController::canMsgReadBusy() const noexcept {
     if (linkKind_ == LinkKind::Simulator && stack_.connected()) {
         return parameterReaderBusy();
+    }
+    if (linkKind_ == LinkKind::Serial && serialWorker_ != nullptr) {
+        bool busy = false;
+        QMetaObject::invokeMethod(serialWorker_, "canMsgReadBusy", Qt::BlockingQueuedConnection, Q_RETURN_ARG(bool, busy));
+        return busy;
     }
     return false;
 }
@@ -949,6 +977,21 @@ void DeviceController::pumpSerial() {
         emit scalarReadFinished(report.scalarReadSuccess, report.scalarReadParameterId,
                                 QString::fromStdString(report.scalarReadDetailJson));
         emit operationLogRefreshRequested();
+    }
+    if (report.canMsgReadFinished) {
+        bool success = false;
+        canMsgSnapshot_.clear();
+        canMsgSnapshotValid_ = false;
+        if (report.canMsgReadSuccess && report.canMsgElements.size() == kCanMsgElementCount) {
+            canMsgSnapshot_ = report.canMsgElements;
+            canMsgSnapshotValid_ = true;
+            success = true;
+        }
+        std::ostringstream detail;
+        detail << R"({"scope":"Can_Msg","transport":"serial","elements":)" << canMsgSnapshot_.size() << "}";
+        recordUi("parameter.can_msg_read.finish", detail.str(), success,
+                 success ? ErrorCode::Unknown : ErrorCode::ResponseMismatch);
+        emit canMsgUpdated(success);
     }
     if (report.readFinished) {
         recordUi("parameter.batch_read.finish", report.readDetailJson, report.readSuccess,

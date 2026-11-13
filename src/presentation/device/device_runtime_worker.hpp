@@ -61,10 +61,16 @@ public:
         bool regionSuccess{false};
         int regionErrorCode{static_cast<int>(ernc::domain::ErrorCode::Unknown)};
         std::vector<std::uint8_t> regionBytes;
+        bool canMsgReadFinished{false};
+        bool canMsgReadSuccess{false};
+        /// Can_Msg float[72]；仅 canMsgReadFinished 时有效。
+        std::vector<float> canMsgElements;
     };
 
     Q_INVOKABLE PumpReport doPump();
     Q_INVOKABLE bool isWriteBusy() const;
+    /// @return 已入队 Can_Msg 读且尚未在 pump 中结束时为 true。
+    Q_INVOKABLE bool canMsgReadBusy() const;
 
     DeviceRuntimeWorker(const ernc::domain::ParameterCatalog& catalog, const ernc::domain::FirmwareLayout& layout,
                         ernc::domain::ParameterRuntimeStore& store, ernc::domain::ArrayRuntimeStore& arrayStore,
@@ -86,6 +92,9 @@ public slots:
     /// @return 0 表示命令已入队；非 0 为拒绝码，供 UI 线程记录为 worker_gate。
     /// @note 调用方当前通过 BlockingQueuedConnection 等待入队结果；本函数不得同步回调 UI 线程。
     int startScalarRead(const QString& parameterId);
+    /// @brief 入队读固件 Can_Msg（72×float32）。0 表示已入队。
+    /// @return 0 成功入队；非 0 为拒绝码（与 startScalarRead 同类门控）。
+    int startCanMsgRead();
     int startRegionRead(const QString& path);
     void cancelRegionRead();
     int startRegionWrite(const QString& path, const QByteArray& bytes);
@@ -107,9 +116,11 @@ private:
 
     void pumpBatchRead();
     void pumpScalarRead();
+    void pumpCanMsgRead();
     void pumpBatchWrite(PumpReport& report);
     void finishBatchReadIfIdle(PumpReport& report);
     void finishScalarReadIfIdle(PumpReport& report);
+    void finishCanMsgReadIfIdle(PumpReport& report);
     void pumpRegionRead(PumpReport& report);
     void pumpRegionWrite(PumpReport& report);
     void traceScalarWorkerGate(const QString& parameterId, int gate);
@@ -133,6 +144,7 @@ private:
     std::optional<ernc::application::BatchReadTicket> activeRead_;
     std::optional<ernc::application::ReadTicket> activeScalarRead_;
     QString activeScalarReadId_;
+    std::optional<ernc::application::ReadTicket> activeCanMsgRead_;
     std::string lastReadCategory_;
     QStringList parametersTouchedThisRead_;
     bool wasWriteBusy_{false};

@@ -95,7 +95,7 @@ public:
     /// @brief 批量读目录内全部 FC03 可读项（含多 slot 紧凑数组）。根级 Region（check_data、ERNC_TF）整段跳过，不走 RegionReader。
     void readAllScalars();
 
-    /// @brief 读固件 Can_Msg float[72]。仅模拟器路径；与批量读不要并发。
+    /// @brief 读固件 Can_Msg float[72]。模拟器与串口均可；与批量读/区域读不要并发。
     void readCanMsg();
 
     /// @brief 最近一次成功读回的 Can_Msg 元素；长度应为 72。

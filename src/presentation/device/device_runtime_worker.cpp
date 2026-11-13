@@ -20,6 +20,8 @@
 namespace ernc::presentation {
 namespace {
 
+constexpr std::size_t kCanMsgElementCount = 72U;
+
 std::string jsonQuote(const std::string& text) {
     std::string out;
     out.reserve(text.size() + 2U);
@@ -117,6 +119,7 @@ void DeviceRuntimeWorker::doDisconnect() {
     activeRead_.reset();
     activeScalarRead_.reset();
     activeScalarReadId_.clear();
+    activeCanMsgRead_.reset();
     wasWriteBusy_ = false;
 }
 
@@ -194,6 +197,10 @@ bool DeviceRuntimeWorker::isWriteBusy() const {
     return stack_ != nullptr && stack_->batchWriter().busy();
 }
 
+bool DeviceRuntimeWorker::canMsgReadBusy() const {
+    return activeCanMsgRead_.has_value();
+}
+
 quint64 DeviceRuntimeWorker::sessionIdRaw() const {
     if (stack_ == nullptr || !stack_->connected()) {
         return 0;
@@ -203,7 +210,7 @@ quint64 DeviceRuntimeWorker::sessionIdRaw() const {
 
 bool DeviceRuntimeWorker::startBatchRead(const QString& pageId) {
     if (stack_ == nullptr || !stack_->connected() || stack_->batchReader().busy() || activeScalarRead_.has_value()
-        || stack_->parameterReader().busy()) {
+        || activeCanMsgRead_.has_value() || stack_->parameterReader().busy()) {
         return false;
     }
     ernc::application::BatchReadScope scope;
@@ -265,7 +272,7 @@ int DeviceRuntimeWorker::startScalarRead(const QString& parameterId) {
         traceScalarWorkerGate(parameterId, 4);
         return 4;
     }
-    if (activeScalarRead_.has_value()) {
+    if (activeScalarRead_.has_value() || activeCanMsgRead_.has_value()) {
         traceScalarWorkerGate(parameterId, 5);
         return 5;
     }
@@ -313,8 +320,51 @@ int DeviceRuntimeWorker::startScalarRead(const QString& parameterId) {
     return 0;
 }
 
+int DeviceRuntimeWorker::startCanMsgRead() {
+    using ernc::domain::ErrorCode;
+    if (stack_ == nullptr || !stack_->connected()) {
+        return 1;
+    }
+    if (!activeRegionPath_.empty()) {
+        return 2;
+    }
+    if (regionReader_ != nullptr && regionReader_->busy()) {
+        return 3;
+    }
+    if (activeRead_.has_value()) {
+        return 4;
+    }
+    if (activeScalarRead_.has_value() || activeCanMsgRead_.has_value()) {
+        return 5;
+    }
+    if (stack_->batchReader().busy()) {
+        return 6;
+    }
+    if (stack_->parameterReader().busy()) {
+        return 7;
+    }
+    if (stack_->batchWriter().busy()) {
+        return 8;
+    }
+    const ernc::domain::Result<ernc::domain::ParameterId> parsed = ernc::domain::ParameterId::parse("Can_Msg");
+    if (!parsed.ok() || parsed.tryValue() == nullptr) {
+        return 9;
+    }
+    const ernc::domain::Result<ernc::application::ReadTicket> started =
+        stack_->parameterReader().read(*parsed.tryValue());
+    if (!started.ok() || started.tryValue() == nullptr) {
+        if (started.tryError() != nullptr) {
+            return static_cast<int>(*started.tryError());
+        }
+        return static_cast<int>(ErrorCode::Unknown);
+    }
+    activeCanMsgRead_ = started.value();
+    return 0;
+}
+
 bool DeviceRuntimeWorker::startArrayRead(const QString& parameterId) {
-    if (stack_ == nullptr || !stack_->connected() || stack_->batchReader().busy() || activeScalarRead_.has_value()) {
+    if (stack_ == nullptr || !stack_->connected() || stack_->batchReader().busy() || activeScalarRead_.has_value()
+        || activeCanMsgRead_.has_value()) {
         return false;
     }
     const ernc::domain::Result<ernc::domain::ParameterId> parsed = ernc::domain::ParameterId::parse(parameterId.toStdString());
@@ -365,11 +415,13 @@ DeviceRuntimeWorker::PumpReport DeviceRuntimeWorker::doPump() {
     stack_->scheduler().pump();
     pumpBatchRead();
     pumpScalarRead();
+    pumpCanMsgRead();
     pumpBatchWrite(report);
     pumpRegionRead(report);
     pumpRegionWrite(report);
     finishBatchReadIfIdle(report);
     finishScalarReadIfIdle(report);
+    finishCanMsgReadIfIdle(report);
     report.writerBusy = stack_->batchWriter().busy();
     report.writeItems = stack_->batchWriter().items();
     report.writeInflight = stack_->batchWriter().inFlight();
@@ -470,6 +522,18 @@ void DeviceRuntimeWorker::pumpScalarRead() {
     }
 }
 
+void DeviceRuntimeWorker::pumpCanMsgRead() {
+    if (!activeCanMsgRead_.has_value() || stack_ == nullptr) {
+        return;
+    }
+    const RuntimeTime readAt = now();
+    for (const ernc::application::CommandId id : activeCanMsgRead_->commands()) {
+        if (std::optional<ernc::application::CommandOutcome> outcome = stack_->scheduler().takeResult(id)) {
+            stack_->parameterReader().apply(*outcome, readAt);
+        }
+    }
+}
+
 void DeviceRuntimeWorker::finishScalarReadIfIdle(PumpReport& report) {
     if (!activeScalarRead_.has_value() || stack_ == nullptr || stack_->parameterReader().busy()) {
         return;
@@ -487,6 +551,30 @@ void DeviceRuntimeWorker::finishScalarReadIfIdle(PumpReport& report) {
     report.parametersUpdated = QStringList{activeScalarReadId_};
     activeScalarRead_.reset();
     activeScalarReadId_.clear();
+}
+
+void DeviceRuntimeWorker::finishCanMsgReadIfIdle(PumpReport& report) {
+    if (!activeCanMsgRead_.has_value() || stack_ == nullptr || stack_->parameterReader().busy()) {
+        return;
+    }
+    const ernc::application::ParameterReadImage* image = stack_->parameterReader().image();
+    report.canMsgReadFinished = true;
+    report.canMsgReadSuccess = false;
+    if (image != nullptr && !image->scalar && image->elements.size() == kCanMsgElementCount) {
+        report.canMsgElements.reserve(kCanMsgElementCount);
+        for (const ernc::domain::ScalarValue& element : image->elements) {
+            const ernc::domain::Result<float> number = element.asFloat();
+            if (!number.ok()) {
+                report.canMsgElements.clear();
+                break;
+            }
+            report.canMsgElements.push_back(number.value());
+        }
+        if (report.canMsgElements.size() == kCanMsgElementCount) {
+            report.canMsgReadSuccess = true;
+        }
+    }
+    activeCanMsgRead_.reset();
 }
 
 void DeviceRuntimeWorker::pumpBatchWrite(PumpReport& report) {
