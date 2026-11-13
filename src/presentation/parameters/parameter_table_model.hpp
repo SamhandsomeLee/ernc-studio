@@ -1,11 +1,16 @@
 #pragma once
 
 #include "ernc/domain/catalog.hpp"
+#include "ernc/domain/firmware_layout.hpp"
 #include "ernc/domain/runtime_store.hpp"
 
 #include <QAbstractTableModel>
 #include <QString>
 #include <QVector>
+
+namespace ernc::domain {
+class ArrayRuntimeStore;
+}
 
 namespace ernc::presentation {
 
@@ -19,7 +24,11 @@ public:
     /// @param store 运行状态，只借用。空指针时各行都显示未读取。调用方保证它比本模型活得久。
     /// @param parent Qt 父对象。非空时由父子关系拥有本模型。必须在 UI 主线程创建。
     explicit ParameterTableModel(const ernc::domain::ParameterCatalog* catalog, ernc::domain::ParameterRuntimeStore* store,
-                                 QObject* parent = nullptr);
+                                 QObject* parent = nullptr, const ernc::domain::FirmwareLayout* layout = nullptr,
+                                 ernc::domain::ArrayRuntimeStore* arrayStore = nullptr);
+
+    /// @brief 绑定紧凑数组运行状态。批量读多 slot 参数写入这里，不写标量 Store。
+    void setArrayRuntimeStore(ernc::domain::ArrayRuntimeStore* store) noexcept { arrayStore_ = store; }
 
     /// @brief 指定此后接受哪一次会话的更新通知。
     /// @param session 当前会话代号。none() 表示不接受任何通知。
@@ -116,6 +125,12 @@ private:
 
     /// 运行状态。本模型不拥有。空时不读取数值。
     ernc::domain::ParameterRuntimeStore* store_;
+
+    /// 固件布局。只借用。决定一行是否走紧凑数组状态。
+    const ernc::domain::FirmwareLayout* layout_{nullptr};
+
+    /// 数组运行状态。只借用。
+    ernc::domain::ArrayRuntimeStore* arrayStore_{nullptr};
 
     /// 当前接受的会话代号。新建时为 none()。
     ernc::domain::SessionId session_{ernc::domain::SessionId::none()};

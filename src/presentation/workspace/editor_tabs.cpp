@@ -123,9 +123,9 @@ QWidget* makeParameterView(QWidget* parent, const ernc::domain::ParameterCatalog
 
     auto* table = new QTableView(view);
     table->setObjectName(QStringLiteral("erncParameterTable"));
-    auto* model = new ParameterTableModel(catalog, store, table);
+    auto* model = new ParameterTableModel(catalog, store, table, layout, nullptr);
     modelOut = model;
-    proxy = new ParameterFilterProxy(catalog, store, table);
+    proxy = new ParameterFilterProxy(catalog, store, table, layout, nullptr);
     proxy->setSourceModel(model);
     table->setModel(proxy);
     table->setSortingEnabled(true);
@@ -134,7 +134,7 @@ QWidget* makeParameterView(QWidget* parent, const ernc::domain::ParameterCatalog
     table->setSelectionBehavior(QAbstractItemView::SelectRows);
     table->setSelectionMode(QAbstractItemView::SingleSelection);
     table->setUpdateThreshold(0);
-    table->setItemDelegate(new ParameterDelegate(catalog, layout, store, table));
+    table->setItemDelegate(new ParameterDelegate(catalog, layout, store, table, nullptr));
     table->setEditTriggers(QAbstractItemView::DoubleClicked | QAbstractItemView::EditKeyPressed);
     auto* header = table->horizontalHeader();
     header->setSectionResizeMode(QHeaderView::Interactive);
@@ -404,6 +404,17 @@ void EditorTabs::syncParameterSelection() {
 
 void EditorTabs::setArrayRuntimeStore(ernc::domain::ArrayRuntimeStore* store) noexcept {
     arrayStore_ = store;
+    if (parameterModel_ != nullptr) {
+        parameterModel_->setArrayRuntimeStore(store);
+    }
+    if (parameterProxy_ != nullptr) {
+        parameterProxy_->setArrayRuntimeStore(store);
+    }
+    if (parameterTable_ != nullptr) {
+        if (auto* delegate = dynamic_cast<ParameterDelegate*>(parameterTable_->itemDelegate())) {
+            delegate->setArrayRuntimeStore(store);
+        }
+    }
     if (thresholdPage_ != nullptr) {
         thresholdPage_->setArrayRuntimeStore(store);
     }

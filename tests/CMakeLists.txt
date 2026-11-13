@@ -349,6 +349,15 @@ foreach(ernc_legacy_region_case IN ITEMS bin_round_trip_matches_bytes txt_round_
     )
 endforeach()
 
+add_executable(ernc_region_export_paths_tests region_export_paths_test.cpp)
+target_link_libraries(ernc_region_export_paths_tests PRIVATE ernc_filesystem)
+foreach(ernc_region_export_paths_case IN ITEMS whole_region_bin_name subregion_bin_name export_dir_under_output)
+    add_test(
+        NAME "region_export_paths.${ernc_region_export_paths_case}"
+        COMMAND ernc_region_export_paths_tests "${ernc_region_export_paths_case}"
+    )
+endforeach()
+
 add_executable(ernc_region_decode_tests
     region_decode_test.cpp
 )
@@ -1142,6 +1151,9 @@ if(ERNC_BUILD_UI)
         parameter_filter_test.cpp
         ../src/presentation/parameters/parameter_table_model.cpp
         ../src/presentation/parameters/parameter_filter_proxy.cpp
+        ../src/presentation/parameters/parameter_status_display.cpp
+        ../src/presentation/parameters/parameter_set_policy.cpp
+        ../src/presentation/arrays/array_summary.cpp
     )
 
     target_include_directories(ernc_parameter_filter_tests PRIVATE

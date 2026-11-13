@@ -7,6 +7,9 @@
 #include "parameters/parameter_status_display.hpp"
 #include "parameters/scalar_display.hpp"
 
+#include "ernc/domain/array_parameter.hpp"
+#include "ernc/domain/array_runtime_store.hpp"
+
 #include <QApplication>
 #include <QLineEdit>
 #include <QMouseEvent>
@@ -20,8 +23,9 @@
 namespace ernc::presentation {
 
 ParameterDelegate::ParameterDelegate(const ernc::domain::ParameterCatalog* catalog, const ernc::domain::FirmwareLayout* layout,
-                                     ernc::domain::ParameterRuntimeStore* store, QObject* parent)
-    : QStyledItemDelegate(parent), catalog_{catalog}, layout_{layout}, store_{store} {
+                                     ernc::domain::ParameterRuntimeStore* store, QObject* parent,
+                                     ernc::domain::ArrayRuntimeStore* arrayStore)
+    : QStyledItemDelegate(parent), catalog_{catalog}, layout_{layout}, store_{store}, arrayStore_{arrayStore} {
     if (catalog_ != nullptr && layout_ != nullptr && store_ != nullptr) {
         stager_.emplace(*catalog_, *layout_, *store_);
     }
@@ -162,14 +166,24 @@ void ParameterDelegate::initStyleOption(QStyleOptionViewItem* option, const QMod
     }
     const ernc::domain::ParameterRuntimeState* state = store_ == nullptr ? nullptr : store_->find(definition->id);
     if (index.column() == static_cast<int>(FakeParameterColumn::Status)) {
-        option->text = parameterStatusText(state);
-        if (state != nullptr) {
-            if (state->projectReadValue || (state->stale && state->displayedRead() != nullptr)) {
-                option->text.prepend(QStringLiteral("◷ "));
-            } else if (state->dirty) {
-                option->text.prepend(QStringLiteral("▲ "));
-                option->palette.setColor(QPalette::Text, QColor(QStringLiteral("#A86609")));
-            }
+        option->text = parameterRowStatusText(*definition, layout_, store_, arrayStore_);
+        bool stampHistoryOrStale = false;
+        bool markDirty = false;
+        if (layout_ != nullptr && arrayStore_ != nullptr
+            && ernc::domain::shouldUseCompactArrayUi(definition, *layout_)) {
+            const ernc::domain::ArrayRuntimeMeta* meta = arrayStore_->meta(definition->id);
+            stampHistoryOrStale = arrayStore_->hasAnyRead(definition->id) && meta != nullptr && meta->stale;
+            markDirty = arrayStore_->dirtyCount(definition->id) > 0U;
+        } else if (state != nullptr) {
+            stampHistoryOrStale =
+                state->projectReadValue || (state->stale && state->displayedRead() != nullptr);
+            markDirty = state->dirty;
+        }
+        if (stampHistoryOrStale) {
+            option->text.prepend(QStringLiteral("◷ "));
+        } else if (markDirty) {
+            option->text.prepend(QStringLiteral("▲ "));
+            option->palette.setColor(QPalette::Text, QColor(QStringLiteral("#A86609")));
         }
     }
     if (index.column() == static_cast<int>(FakeParameterColumn::Read)

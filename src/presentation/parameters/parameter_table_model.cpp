@@ -6,6 +6,10 @@
 
 #include "parameters/fake_parameter_rows.hpp"
 
+#include "arrays/array_summary.hpp"
+
+#include "ernc/domain/array_runtime_store.hpp"
+
 #include <QDateTime>
 #include <QTimeZone>
 
@@ -28,8 +32,9 @@ QString formatTime(ernc::domain::RuntimeTime time) {
 } // namespace
 
 ParameterTableModel::ParameterTableModel(const ernc::domain::ParameterCatalog* catalog, ernc::domain::ParameterRuntimeStore* store,
-                                         QObject* parent)
-    : QAbstractTableModel(parent), catalog_{catalog}, store_{store} {
+                                         QObject* parent, const ernc::domain::FirmwareLayout* layout,
+                                         ernc::domain::ArrayRuntimeStore* arrayStore)
+    : QAbstractTableModel(parent), catalog_{catalog}, store_{store}, layout_{layout}, arrayStore_{arrayStore} {
     if (catalog_ == nullptr) {
         return;
     }
@@ -187,18 +192,29 @@ void ParameterTableModel::refreshRow(int row) {
     const ernc::domain::ParameterDefinition& definition = catalog_->entries()[static_cast<std::size_t>(row)];
     const ernc::domain::ParameterRuntimeState* state = store_ == nullptr ? nullptr : store_->find(definition.id);
     RowText& text = rows_[row];
-    text.status = parameterStatusText(state);
+    text.status = parameterRowStatusText(definition, layout_, store_, arrayStore_);
     text.parameter = QString::fromStdString(definition.id.text());
     text.path = definition.firmwarePath ? QString::fromStdString(*definition.firmwarePath) : kBlank.toString();
+    const bool compactArray = usesCompactArrayUi(&definition, layout_);
     const auto* read = state == nullptr ? nullptr : state->displayedRead();
     if (definition.editor && *definition.editor == ernc::domain::EditorKind::Toggle) {
         text.read.clear();
         text.set.clear();
+    } else if (compactArray && layout_ != nullptr) {
+        text.read = compactArrayCaption(definition, *layout_, arrayStore_);
+        text.set = kBlank.toString();
     } else {
         text.read = QString::fromStdString(displayScalar(read));
         text.set = QString::fromStdString(displayScalar(state != nullptr && state->stagedValue ? &*state->stagedValue : nullptr));
     }
-    if (state != nullptr && !state->projectReadValue && state->readAt) {
+    if (compactArray && arrayStore_ != nullptr) {
+        const ernc::domain::ArrayRuntimeMeta* meta = arrayStore_->meta(definition.id);
+        if (meta != nullptr && meta->readAt) {
+            text.updatedAt = formatTime(*meta->readAt);
+        } else {
+            text.updatedAt = kBlank.toString();
+        }
+    } else if (state != nullptr && !state->projectReadValue && state->readAt) {
         text.updatedAt = formatTime(*state->readAt);
     } else if (state != nullptr && state->stagedAt) {
         text.updatedAt = formatTime(*state->stagedAt);

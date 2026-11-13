@@ -1,10 +1,14 @@
 #include "parameters/parameter_filter_proxy.hpp"
 
+#include "parameters/parameter_status_display.hpp"
+
 namespace ernc::presentation {
 
 ParameterFilterProxy::ParameterFilterProxy(const ernc::domain::ParameterCatalog* catalog,
-                                           ernc::domain::ParameterRuntimeStore* store, QObject* parent)
-    : QSortFilterProxyModel(parent), catalog_{catalog}, store_{store} {
+                                           ernc::domain::ParameterRuntimeStore* store, QObject* parent,
+                                           const ernc::domain::FirmwareLayout* layout,
+                                           ernc::domain::ArrayRuntimeStore* arrayStore)
+    : QSortFilterProxyModel(parent), catalog_{catalog}, store_{store}, layout_{layout}, arrayStore_{arrayStore} {
     setDynamicSortFilter(true);
 }
 
@@ -75,16 +79,11 @@ bool ParameterFilterProxy::filterAcceptsRow(int sourceRow, const QModelIndex& so
             return false;
         }
     }
-    const ernc::domain::ParameterRuntimeState* state = store_ == nullptr ? nullptr : store_->find(definition.id);
-    if (dirtyOnly_) {
-        if (state == nullptr || !state->dirty) {
-            return false;
-        }
+    if (dirtyOnly_ && !parameterRowHasPendingWrite(definition, layout_, store_, arrayStore_)) {
+        return false;
     }
-    if (readObservedOnly_) {
-        if (state == nullptr || !state->deviceValue || state->stale) {
-            return false;
-        }
+    if (readObservedOnly_ && !parameterRowReadObserved(definition, layout_, store_, arrayStore_)) {
+        return false;
     }
     return true;
 }

@@ -1,10 +1,15 @@
 #pragma once
 
 #include "ernc/domain/catalog.hpp"
+#include "ernc/domain/firmware_layout.hpp"
 #include "ernc/domain/runtime_store.hpp"
 
 #include <QSortFilterProxyModel>
 #include <QString>
+
+namespace ernc::domain {
+class ArrayRuntimeStore;
+}
 
 namespace ernc::presentation {
 
@@ -17,7 +22,10 @@ public:
     /// @param store 运行状态，只借用。Dirty 判断读它的 `dirty`，不读状态列文字。
     /// @param parent Qt 父对象。非空时由父子关系拥有本代理。必须在 UI 主线程创建。
     explicit ParameterFilterProxy(const ernc::domain::ParameterCatalog* catalog, ernc::domain::ParameterRuntimeStore* store,
-                                  QObject* parent = nullptr);
+                                  QObject* parent = nullptr, const ernc::domain::FirmwareLayout* layout = nullptr,
+                                  ernc::domain::ArrayRuntimeStore* arrayStore = nullptr);
+
+    void setArrayRuntimeStore(ernc::domain::ArrayRuntimeStore* store) noexcept { arrayStore_ = store; }
 
     /// @brief 设置当前项目树页面。
     /// @param pageId 页面 id。`ALL` 或空文本表示不按分类限制。其它文本必须与目录 `category` 完全相同。
@@ -55,6 +63,12 @@ private:
 
     /// 运行状态。本代理不拥有。
     ernc::domain::ParameterRuntimeStore* store_;
+
+    /// 固件布局。只借用。
+    const ernc::domain::FirmwareLayout* layout_{nullptr};
+
+    /// 数组运行状态。只借用。
+    ernc::domain::ArrayRuntimeStore* arrayStore_{nullptr};
 
     /// 当前页面 id。空或 `ALL` 表示全部分类。
     QString page_;

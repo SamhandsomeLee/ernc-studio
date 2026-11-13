@@ -10,7 +10,7 @@
 
 namespace ernc::presentation {
 
-/// @brief 功能页数组行摘要，例如「12 元 · 已读 · 2 待写」。
+/// @brief 功能页数组行摘要，例如「长度12 · 已读 · 2 待写」。
 QString compactArrayCaption(const ernc::domain::ParameterDefinition& definition,
                             const ernc::domain::FirmwareLayout& layout,
                             const ernc::domain::ArrayRuntimeStore* arrayStore);

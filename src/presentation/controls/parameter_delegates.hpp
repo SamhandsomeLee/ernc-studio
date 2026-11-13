@@ -12,6 +12,10 @@
 
 class QWidget;
 
+namespace ernc::domain {
+class ArrayRuntimeStore;
+}
+
 namespace ernc::presentation {
 
 class ParameterTableModel;
@@ -27,7 +31,10 @@ public:
     /// @param store 运行状态，只借用。空指针时编辑确认不会暂存。
     /// @param parent Qt 父对象。非空时由父子关系拥有本委托。必须在 UI 主线程创建。
     explicit ParameterDelegate(const ernc::domain::ParameterCatalog* catalog, const ernc::domain::FirmwareLayout* layout,
-                               ernc::domain::ParameterRuntimeStore* store, QObject* parent = nullptr);
+                               ernc::domain::ParameterRuntimeStore* store, QObject* parent = nullptr,
+                               ernc::domain::ArrayRuntimeStore* arrayStore = nullptr);
+
+    void setArrayRuntimeStore(ernc::domain::ArrayRuntimeStore* store) noexcept { arrayStore_ = store; }
 
     /// @brief Set 列只展示实际存在的用户目标值。
     /// @param definition 目录中的一条参数。只借用。
@@ -100,6 +107,9 @@ private:
 
     /// 运行状态。本委托不拥有。
     ernc::domain::ParameterRuntimeStore* store_;
+
+    /// 数组运行状态。本委托不拥有。
+    ernc::domain::ArrayRuntimeStore* arrayStore_{nullptr};
 
     /// 暂存入口。目录、布局和 Store 都存在时才构造。
     /// setModelData 是 const 的 Qt 接口，所以这里允许在确认编辑时修改暂存。

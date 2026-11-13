@@ -3,9 +3,11 @@
 #include "ernc/application/region_writer.hpp"
 
 #include "ernc/infrastructure/legacy_region_codec.hpp"
+#include "ernc/infrastructure/region_export_paths.hpp"
 #include "regions/spec_radius_page.hpp"
 
 #include <QComboBox>
+#include <QCoreApplication>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QFormLayout>
@@ -227,8 +229,17 @@ RegionWorkspace::RegionWorkspace(const ernc::domain::RegionCatalog& catalog, ern
         (void)importFiles(paths);
     });
     QObject::connect(exportButton_, &QPushButton::clicked, this, [this]() {
+        QString suggestedPath;
+        if (selected_ && !QCoreApplication::applicationDirPath().isEmpty()) {
+            const std::filesystem::path appBase(QCoreApplication::applicationDirPath().toStdWString());
+            const auto suggested = ernc::infrastructure::defaultRegionExportFile(
+                appBase, regionPath_.toStdString(), selected_->path, false);
+            if (suggested.ok()) {
+                suggestedPath = QString::fromStdWString(suggested.value().wstring());
+            }
+        }
         const QString fileName = QFileDialog::getSaveFileName(
-            this, QStringLiteral("导出区域数据"), QString(),
+            this, QStringLiteral("导出区域数据"), suggestedPath,
             QStringLiteral("二进制 (*.bin);;文本 (*.txt)"));
         if (fileName.isEmpty()) {
             return;

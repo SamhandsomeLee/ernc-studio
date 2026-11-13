@@ -21,7 +21,7 @@ QString compactArrayCaption(const ernc::domain::ParameterDefinition& definition,
         return QStringLiteral("数组");
     }
     const std::size_t count = resolved.field().slotCount;
-    QString caption = QString::number(static_cast<qulonglong>(count)) + QStringLiteral(" 元");
+    QString caption = QStringLiteral("长度") + QString::number(static_cast<qulonglong>(count));
     if (arrayStore == nullptr) {
         return caption;
     }
