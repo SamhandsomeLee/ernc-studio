@@ -2,6 +2,7 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -78,8 +79,8 @@ bool checkCatalogFile(const char* path) {
         /// 同名 manifest 字段对应的数据类型。
         DataType dataType;
 
-        /// 这条记录应载入的控制类型。
-        EditorKind editor;
+        /// 这条记录应载入的控制类型。空表示不声明 editor。
+        std::optional<EditorKind> editor;
 
         /// true 表示目录里写了 access。三个开关没有单独的访问证据，应为 false。
         bool hasAccess;
@@ -97,11 +98,11 @@ bool checkCatalogFile(const char* path) {
             EditorKind::Toggle, true, AccessMode::ReadWrite, true},
         {"RNC_OFF", "RNC_OFF", "ERNC_Flag", "RNC开关，0开启，1关闭", DataType::Float32,
             EditorKind::Toggle, true, AccessMode::ReadWrite, true},
-        {"Step", "Step", "RNC_Param", "实时步长显示", DataType::Float32, EditorKind::ReadOnly, true,
-            AccessMode::ReadOnly, false},
+        {"Step", "Step", "RNC_Param", "实时步长显示", DataType::Float32, std::nullopt, true, AccessMode::ReadWrite,
+            false},
         {"RNC_refresh", "RNC_refresh", "ERNC_Flag",
             "算法重置，1重置，0算法启动。注：重置1后需要置0开启算法，且需要在车速大于5kmph是重置",
-            DataType::Int32, EditorKind::MomentaryCommand, true, AccessMode::Command, false},
+            DataType::Int32, std::nullopt, true, AccessMode::ReadWrite, false},
     };
 
     for (const Expected& item : expected) {
@@ -110,7 +111,8 @@ bool checkCatalogFile(const char* path) {
             || !entry->category || *entry->category != item.category || !entry->descriptionZh
             || *entry->descriptionZh != item.description || !entry->dataType
             || *entry->dataType != item.dataType || !entry->shape || *entry->shape != ValueShape::Scalar
-            || !entry->editor || *entry->editor != item.editor
+            || entry->editor.has_value() != item.editor.has_value()
+            || (entry->editor && item.editor && *entry->editor != *item.editor)
             || entry->access.has_value() != item.hasAccess) {
             return fail(item.id);
         }
@@ -175,8 +177,7 @@ bool checkCatalogFile(const char* path) {
         if (!entry.firmwarePath || entry.firmwarePath->empty()) {
             return fail("struct-path");
         }
-        if (entry.id.text() == "Step" || entry.id.text() == "RNC_refresh"
-            || entry.id.text() == "SpkState" || entry.id.text() == "MicState") {
+        if (entry.id.text() == "SpkState" || entry.id.text() == "MicState") {
             continue;
         }
         if (!entry.access || *entry.access != AccessMode::ReadWrite) {

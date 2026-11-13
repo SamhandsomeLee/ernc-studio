@@ -1218,6 +1218,7 @@ void DeviceController::readArrayParameter(const QString& parameterIdQString) {
     }
     if (!connected()) {
         recordUi("parameter.array_read.start", R"({"reason":"disconnected"})", false, ErrorCode::DeviceDisconnected);
+        emit readPageFinished(false, QStringLiteral("未连接设备"));
         return;
     }
     if (linkKind_ == LinkKind::Serial && serialWorker_ != nullptr) {

@@ -283,7 +283,7 @@ bool finishMemory(MemoryBench& bench, WritePlanDialog& dialog, RuntimeTime readA
 /// @brief ERNC_Flag 在确认前显示开关差异，确认后因没有会话而不发送。
 /// @param catalog 正式目录。
 /// @param layout 正式布局。
-/// @return ANC_OFF 的 Read 为过期的关、Set 为开，RNC_refresh 为命令，且确认后仍是待写入时为 true。
+/// @return ANC_OFF 的 Read 为过期的关、Set 为开，RNC_refresh 为待写入，且确认后仍是待写入时为 true。
 bool flagPreviewBeforeWrite(const ParameterCatalog& catalog, const FirmwareLayout& layout) {
     ParameterRuntimeStore store;
     ParameterId anc = ParameterId::parse("ANC_OFF").value();
@@ -305,7 +305,7 @@ bool flagPreviewBeforeWrite(const ParameterCatalog& catalog, const FirmwareLayou
     if (cellAt(dialog, ancRow, WritePlanColumn::Read) != QStringLiteral("关 数据已过期")
         || cellAt(dialog, ancRow, WritePlanColumn::Set) != QStringLiteral("开")
         || cellAt(dialog, ancRow, WritePlanColumn::Status) != QStringLiteral("待写入")
-        || cellAt(dialog, refreshRow, WritePlanColumn::Status) != QStringLiteral("命令")) {
+        || cellAt(dialog, refreshRow, WritePlanColumn::Status) != QStringLiteral("待写入")) {
         return fail("flag_preview_before_write");
     }
     dialog.confirmWrite();
@@ -316,10 +316,10 @@ bool flagPreviewBeforeWrite(const ParameterCatalog& catalog, const FirmwareLayou
     return true;
 }
 
-/// @brief RNC 页的时间保持固件原值，Step 被标成只读。
+/// @brief RNC 页的时间保持固件原值，Step 可进入写入计划。
 /// @param catalog 正式目录。
 /// @param layout 正式布局。
-/// @return running_time 的 Set 为 1100 且不含秒，Step 状态为只读时为 true。
+/// @return running_time 的 Set 为 1100 且不含秒，Step 状态为待写入时为 true。
 bool rncTimeAndStep(const ParameterCatalog& catalog, const FirmwareLayout& layout) {
     ParameterRuntimeStore store;
     ParameterId running = ParameterId::parse("running_time").value();
@@ -339,7 +339,7 @@ bool rncTimeAndStep(const ParameterCatalog& catalog, const FirmwareLayout& layou
     const QString setText = cellAt(dialog, timeRow, WritePlanColumn::Set);
     if (setText != QStringLiteral("1100") || setText.contains(QStringLiteral("秒"))
         || cellAt(dialog, timeRow, WritePlanColumn::Read).contains(QStringLiteral("秒"))
-        || cellAt(dialog, stepRow, WritePlanColumn::Status) != QStringLiteral("只读")) {
+        || cellAt(dialog, stepRow, WritePlanColumn::Status) != QStringLiteral("待写入")) {
         return fail("rnc_time_and_step");
     }
     return true;

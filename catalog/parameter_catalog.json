@@ -59,8 +59,7 @@
       "description_zh": "算法重置，1重置，0算法启动。注：重置1后需要置0开启算法，且需要在车速大于5kmph是重置",
       "data_type": "int32",
       "shape": "scalar",
-      "access": "command",
-      "editor": "momentary_command"
+      "access": "read_write"
     },
     {
       "id": "SpeakerCheckValue",
@@ -85,8 +84,7 @@
       "description_zh": "实时步长显示",
       "data_type": "float32",
       "shape": "scalar",
-      "access": "read_only",
-      "editor": "read_only"
+      "access": "read_write"
     },
     {
       "id": "Bypass_mod",

@@ -57,7 +57,7 @@ bool policyIsReserved() {
 
 /// @brief 正式目录里的三类参数得到预留分类，但当前不拦截。
 /// @param catalogPath 参数目录路径，只在本次调用期间借用。
-/// @return RNC_refresh 是一次性触发，ANC_OFF 是普通写入，Step 不可作动，且都还没被排除时为 true。
+/// @return RNC_refresh、ANC_OFF 和 Step 都是普通写入，且都还没被排除时为 true。
 bool catalogClassesStayReserved(const char* catalogPath) {
     const CatalogLoad loaded = ParameterCatalogLoader::loadFile(catalogPath);
     if (!loaded.ok()) {
@@ -69,21 +69,22 @@ bool catalogClassesStayReserved(const char* catalogPath) {
     if (refresh == nullptr || anc == nullptr || step == nullptr) {
         return fail("catalog_classes_stay_reserved");
     }
-    const ActuationPolicy oneShot = ernc::domain::classifyActuation(*refresh);
+    const ActuationPolicy refreshPolicy = ernc::domain::classifyActuation(*refresh);
     const ActuationPolicy normal = ernc::domain::classifyActuation(*anc);
-    const ActuationPolicy blocked = ernc::domain::classifyActuation(*step);
-    if (oneShot.kind != ActuationKind::OneShot || oneShot.includeInBulkWritePlan || oneShot.allowGenericRetry
-        || oneShot.realWritePermitted) {
+    const ActuationPolicy stepPolicy = ernc::domain::classifyActuation(*step);
+    if (refreshPolicy.kind != ActuationKind::NormalWrite || !refreshPolicy.includeInBulkWritePlan
+        || !refreshPolicy.allowGenericRetry) {
         return fail("catalog_classes_stay_reserved");
     }
     if (normal.kind != ActuationKind::NormalWrite || !normal.includeInBulkWritePlan || !normal.allowGenericRetry) {
         return fail("catalog_classes_stay_reserved");
     }
-    if (blocked.kind != ActuationKind::NotActuated || blocked.includeInBulkWritePlan || blocked.realWritePermitted) {
+    if (stepPolicy.kind != ActuationKind::NormalWrite || !stepPolicy.includeInBulkWritePlan
+        || !stepPolicy.allowGenericRetry) {
         return fail("catalog_classes_stay_reserved");
     }
-    if (ernc::domain::excludedFromBulkWrite(oneShot) || ernc::domain::genericRetryPermitted(normal)
-        || ernc::domain::genericRetryPermitted(oneShot)) {
+    if (ernc::domain::excludedFromBulkWrite(refreshPolicy) || ernc::domain::excludedFromBulkWrite(stepPolicy)
+        || ernc::domain::genericRetryPermitted(normal)) {
         return fail("catalog_classes_stay_reserved");
     }
     return true;

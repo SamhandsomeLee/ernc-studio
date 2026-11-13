@@ -89,34 +89,48 @@ bool ancOffStagesScalar(const ParameterCatalog& catalog, const FirmwareLayout& l
     return true;
 }
 
-/// @brief Step 是只读参数，暂存被拒绝。
+/// @brief Step 可暂存浮点。
 /// @param catalog 正式目录。
 /// @param layout 正式布局。
-/// @return 错误码为 ReadOnlyViolation 且 Store 仍为空时为 true。
-bool stepIsReadOnly(const ParameterCatalog& catalog, const FirmwareLayout& layout) {
+/// @return Store 里出现 stagedValue 时为 true。
+bool stepCanStage(const ParameterCatalog& catalog, const FirmwareLayout& layout) {
     ParameterRuntimeStore store;
     ParameterStager stager{catalog, layout, store};
     ParameterId id = ParameterId::parse("ANC_OFF").value();
-    if (!parseId("Step", "step_is_read_only", id)) {
+    if (!parseId("Step", "step_can_stage", id)) {
         return false;
     }
-    return rejected(stager.stage(id, ScalarValue::fromFloat(1.0F), RuntimeTime{std::chrono::seconds{1}}),
-                    ErrorCode::ReadOnlyViolation, store, "step_is_read_only");
+    const RuntimeTime stagedAt{std::chrono::seconds{1}};
+    if (!stager.stage(id, ScalarValue::fromFloat(1.0F), stagedAt).ok()) {
+        return fail("step_can_stage");
+    }
+    const ParameterRuntimeState* state = store.find(id);
+    if (state == nullptr || !state->dirty || !state->stagedValue) {
+        return fail("step_can_stage");
+    }
+    return true;
 }
 
-/// @brief RNC_refresh 是命令，不能当作普通暂存。
+/// @brief RNC_refresh 可暂存 int32。
 /// @param catalog 正式目录。
 /// @param layout 正式布局。
-/// @return 错误码为 InvalidParameter 且 Store 仍为空时为 true。
-bool refreshIsRejected(const ParameterCatalog& catalog, const FirmwareLayout& layout) {
+/// @return Store 里出现 stagedValue 时为 true。
+bool refreshCanStage(const ParameterCatalog& catalog, const FirmwareLayout& layout) {
     ParameterRuntimeStore store;
     ParameterStager stager{catalog, layout, store};
     ParameterId id = ParameterId::parse("ANC_OFF").value();
-    if (!parseId("RNC_refresh", "refresh_is_rejected", id)) {
+    if (!parseId("RNC_refresh", "refresh_can_stage", id)) {
         return false;
     }
-    return rejected(stager.stage(id, ScalarValue::fromInt32(1), RuntimeTime{std::chrono::seconds{1}}),
-                    ErrorCode::InvalidParameter, store, "refresh_is_rejected");
+    const RuntimeTime stagedAt{std::chrono::seconds{1}};
+    if (!stager.stage(id, ScalarValue::fromInt32(1), stagedAt).ok()) {
+        return fail("refresh_can_stage");
+    }
+    const ParameterRuntimeState* state = store.find(id);
+    if (state == nullptr || !state->dirty || !state->stagedValue) {
+        return fail("refresh_can_stage");
+    }
+    return true;
 }
 
 /// @brief 非有限浮点不能暂存。
@@ -236,11 +250,11 @@ bool runCase(std::string_view name, const ParameterCatalog& catalog, const Firmw
     if (name == "anc_off_stages_scalar") {
         return ancOffStagesScalar(catalog, layout);
     }
-    if (name == "step_is_read_only") {
-        return stepIsReadOnly(catalog, layout);
+    if (name == "step_can_stage") {
+        return stepCanStage(catalog, layout);
     }
-    if (name == "refresh_is_rejected") {
-        return refreshIsRejected(catalog, layout);
+    if (name == "refresh_can_stage") {
+        return refreshCanStage(catalog, layout);
     }
     if (name == "nan_is_rejected") {
         return nanIsRejected(catalog, layout);

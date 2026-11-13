@@ -52,30 +52,32 @@ bool parseId(const char* text, const char* name, ParameterId& id) {
     return true;
 }
 
-/// @brief Step 只显示，确认不会暂存。
+/// @brief Step 可以像其它标量一样暂存。
 /// @param catalog 正式目录。
 /// @param layout 正式布局。
-/// @return 没有输入框，读数仍是 3，且没有 stagedValue 时为 true。
-bool stepHasNoWriter(const ParameterCatalog& catalog, const FirmwareLayout& layout) {
+/// @return 有输入框，暂存 1 后显示 Set 且 deviceValue 仍是 3 时为 true。
+bool stepCanStage(const ParameterCatalog& catalog, const FirmwareLayout& layout) {
     ParameterRuntimeStore store;
     ParameterId step = ParameterId::parse("Step").value();
-    if (!parseId("Step", "step_has_no_writer", step)) {
+    if (!parseId("Step", "step_can_stage", step)) {
         return false;
     }
     store.observe(step, ScalarValue::fromFloat(3.0F), RuntimeTime{std::chrono::seconds{1}});
     RncParamPage page(&catalog, &store, &layout);
-    if (page.hasEditor(QStringLiteral("Step")) || page.valueText(QStringLiteral("Step")) != QStringLiteral("3")
+    if (!page.hasEditor(QStringLiteral("Step")) || page.valueText(QStringLiteral("Step")) != QStringLiteral("3")
         || !page.detailText(QStringLiteral("Step")).contains(QStringLiteral("实时步长显示"))) {
-        return fail("step_has_no_writer");
+        return fail("step_can_stage");
     }
     page.commitValue(QStringLiteral("Step"), QStringLiteral("1"));
     const ParameterRuntimeState* state = store.find(step);
-    if (state == nullptr || state->dirty || state->stagedValue || !state->deviceValue) {
-        return fail("step_has_no_writer");
+    if (state == nullptr || !state->dirty || !state->stagedValue || !state->deviceValue) {
+        return fail("step_can_stage");
     }
     const Result<float> device = state->deviceValue->asFloat();
-    if (!device.ok() || device.value() != 3.0F) {
-        return fail("step_has_no_writer");
+    const Result<float> staged = state->stagedValue->asFloat();
+    if (!device.ok() || device.value() != 3.0F || !staged.ok() || staged.value() != 1.0F
+        || page.valueText(QStringLiteral("Step")) != QStringLiteral("1")) {
+        return fail("step_can_stage");
     }
     return true;
 }
@@ -221,8 +223,8 @@ bool rncPageFollowsTree(const ParameterCatalog& catalog, const FirmwareLayout& l
 /// @return 该用例通过时为 true。
 bool runCase(std::string_view name, const ParameterCatalog& catalog, const FirmwareLayout& layout, bool& recognized) {
     recognized = true;
-    if (name == "step_has_no_writer") {
-        return stepHasNoWriter(catalog, layout);
+    if (name == "step_can_stage") {
+        return stepCanStage(catalog, layout);
     }
     if (name == "running_time_keeps_firmware_value") {
         return runningTimeKeepsFirmwareValue(catalog, layout);

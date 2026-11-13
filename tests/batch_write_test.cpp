@@ -293,33 +293,58 @@ bool mismatchNamesAncThenWritesEnc(const ParameterCatalog& catalog, const Firmwa
     return true;
 }
 
-/// @brief Step 和 Can_Msg 不产生 FC16。
+/// @brief Step 写入 slot 7，Can_Msg 仍因不是 1 个 slot 被跳过。
 /// @param catalog 正式目录。
 /// @param layout 正式布局。
-/// @return Step 被排除，Can_Msg 因不是 1 个 slot 被跳过，提交数为 0 时为 true。
-bool stepAndCanMsgAreNotWritten(const ParameterCatalog& catalog, const FirmwareLayout& layout) {
-    Bench bench{catalog, layout};
-    if (!bench.session.connect().ok()) {
-        return fail("step_and_can_msg_are_not_written");
+/// @return Step 为 Verified 且提交 1 帧 slot 7，Can_Msg 为 NotOneSlot 时为 true。
+bool stepWritesCanMsgSkipped(const ParameterCatalog& catalog, const FirmwareLayout& layout) {
+    SlaveImage image{std::vector<std::uint8_t>(64U, 0)};
+    RecordingTransport transport{image};
+    DeviceSession session{transport};
+    CommandScheduler scheduler{session, transport};
+    ParameterRuntimeStore store;
+    ParameterStager stager{catalog, layout, store};
+    ParameterBatchWriter writer{catalog, layout, store, session, scheduler};
+    if (!session.connect().ok()) {
+        return fail("step_writes_can_msg_skipped");
     }
     ParameterId step = ParameterId::parse("Step").value();
     ParameterId can = ParameterId::parse("Can_Msg").value();
-    if (!parseId("Step", "step_and_can_msg_are_not_written", step)
-        || !parseId("Can_Msg", "step_and_can_msg_are_not_written", can)) {
+    if (!parseId("Step", "step_writes_can_msg_skipped", step)
+        || !parseId("Can_Msg", "step_writes_can_msg_skipped", can)) {
         return false;
     }
     const RuntimeTime stagedAt{std::chrono::seconds{1}};
-    bench.store.stage(step, ScalarValue::fromFloat(1.0F), stagedAt);
-    bench.store.stage(can, ScalarValue::fromFloat(1.0F), stagedAt);
-    if (!bench.writer.start(selectedTwo(step, can)).ok() || bench.writer.busy()) {
-        return fail("step_and_can_msg_are_not_written");
+    if (!stager.stage(step, ScalarValue::fromFloat(1.0F), stagedAt).ok()) {
+        return fail("step_writes_can_msg_skipped");
     }
-    const BatchWriteItem* stepItem = findItem(bench.writer.items(), step);
-    const BatchWriteItem* canItem = findItem(bench.writer.items(), can);
-    if (stepItem == nullptr || canItem == nullptr || stepItem->kind != BatchWriteKind::Excluded
-        || stepItem->exclusion != WriteExclusion::ReadOnly || canItem->kind != BatchWriteKind::NotOneSlot
-        || !bench.transport.submitted().empty()) {
-        return fail("step_and_can_msg_are_not_written");
+    store.stage(can, ScalarValue::fromFloat(1.0F), stagedAt);
+    if (!writer.start(selectedTwo(step, can)).ok() || !writer.busy()) {
+        return fail("step_writes_can_msg_skipped");
+    }
+    const BatchWriteItem* canItem = findItem(writer.items(), can);
+    if (canItem == nullptr || canItem->kind != BatchWriteKind::NotOneSlot) {
+        return fail("step_writes_can_msg_skipped");
+    }
+    const RuntimeTime readAt{std::chrono::seconds{2}};
+    for (int turn = 0; turn < 8 && writer.busy(); ++turn) {
+        if (const std::optional<ernc::application::CommandId> id = writer.inFlight()) {
+            if (std::optional<ernc::application::CommandOutcome> outcome = scheduler.takeResult(*id)) {
+                writer.apply(*outcome, readAt);
+            }
+        }
+        scheduler.pump();
+    }
+    if (writer.busy()) {
+        return fail("step_writes_can_msg_skipped");
+    }
+    const BatchWriteItem* stepItem = findItem(writer.items(), step);
+    if (stepItem == nullptr || stepItem->kind != BatchWriteKind::Verified) {
+        return fail("step_writes_can_msg_skipped");
+    }
+    const std::vector<std::vector<std::uint8_t>>& frames = transport.submitted();
+    if (frames.size() != 1U || !oneSlotHeader(frames[0], 0x10, 7)) {
+        return fail("step_writes_can_msg_skipped");
     }
     return true;
 }
@@ -338,8 +363,8 @@ bool runCase(std::string_view name, const ParameterCatalog& catalog, const Firmw
     if (name == "mismatch_names_anc_then_writes_enc") {
         return mismatchNamesAncThenWritesEnc(catalog, layout);
     }
-    if (name == "step_and_can_msg_are_not_written") {
-        return stepAndCanMsgAreNotWritten(catalog, layout);
+    if (name == "step_writes_can_msg_skipped") {
+        return stepWritesCanMsgSkipped(catalog, layout);
     }
     recognized = false;
     return false;

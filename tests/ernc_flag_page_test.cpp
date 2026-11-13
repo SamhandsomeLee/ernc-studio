@@ -186,32 +186,32 @@ bool bypassHasNoToggle(const ParameterCatalog& catalog, const FirmwareLayout& la
     return true;
 }
 
-/// @brief RNC_refresh 不能执行，也不写入 1 再写 0。
+/// @brief RNC_refresh 像其它数值一样可以暂存。
 /// @param catalog 正式目录。
 /// @param layout 正式布局。
-/// @return 控件不可用，按下后原值仍是 4 且没有暂存时为 true。
-bool refreshStaysBlocked(const ParameterCatalog& catalog, const FirmwareLayout& layout) {
+/// @return 有编辑框，暂存 1 后 Read 仍显示固件 4 且 dirty 为 true。
+bool refreshCanStage(const ParameterCatalog& catalog, const FirmwareLayout& layout) {
     ParameterRuntimeStore store;
     ParameterId refresh = ParameterId::parse("RNC_refresh").value();
-    if (!parseId("RNC_refresh", "refresh_stays_blocked", refresh)) {
+    if (!parseId("RNC_refresh", "refresh_can_stage", refresh)) {
         return false;
     }
     store.observe(refresh, ScalarValue::fromInt32(4), RuntimeTime{std::chrono::seconds{5}});
     ErncFlagPage page(&catalog, &store, &layout);
     if (page.refreshEnabled() || page.hasToggle(QStringLiteral("RNC_refresh"))
         || page.valueText(QStringLiteral("RNC_refresh")) != QStringLiteral("4")) {
-        return fail("refresh_stays_blocked");
+        return fail("refresh_can_stage");
     }
-    page.pressRefresh();
-    page.chooseToggle(QStringLiteral("RNC_refresh"), QStringLiteral("开"));
     page.commitRaw(QStringLiteral("RNC_refresh"), QStringLiteral("1"));
     const ParameterRuntimeState* state = store.find(refresh);
-    if (state == nullptr || state->dirty || state->stagedValue || page.valueText(QStringLiteral("RNC_refresh")) != QStringLiteral("4")) {
-        return fail("refresh_stays_blocked");
+    if (state == nullptr || !state->dirty || !state->stagedValue
+        || page.valueText(QStringLiteral("RNC_refresh")) != QStringLiteral("1")) {
+        return fail("refresh_can_stage");
     }
+    const Result<std::int32_t> staged = state->stagedValue->asInt32();
     const Result<std::int32_t> device = state->deviceValue->asInt32();
-    if (!device.ok() || device.value() != 4) {
-        return fail("refresh_stays_blocked");
+    if (!staged.ok() || staged.value() != 1 || !device.ok() || device.value() != 4) {
+        return fail("refresh_can_stage");
     }
     return true;
 }
@@ -259,8 +259,8 @@ bool runCase(std::string_view name, const ParameterCatalog& catalog, const Firmw
     if (name == "bypass_has_no_toggle") {
         return bypassHasNoToggle(catalog, layout);
     }
-    if (name == "refresh_stays_blocked") {
-        return refreshStaysBlocked(catalog, layout);
+    if (name == "refresh_can_stage") {
+        return refreshCanStage(catalog, layout);
     }
     if (name == "flag_page_follows_tree") {
         return flagPageFollowsTree(catalog, layout);

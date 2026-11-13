@@ -474,8 +474,8 @@ target_link_libraries(ernc_stage_value_tests PRIVATE ernc_application)
 
 set(ernc_stage_value_cases
     anc_off_stages_scalar
-    step_is_read_only
-    refresh_is_rejected
+    step_can_stage
+    refresh_can_stage
     nan_is_rejected
     type_mismatch_is_rejected
     can_msg_is_rejected
@@ -543,7 +543,7 @@ target_link_libraries(ernc_batch_write_tests PRIVATE ernc_application ernc_simul
 set(ernc_batch_write_cases
     two_scalars_write_one_at_a_time
     mismatch_names_anc_then_writes_enc
-    step_and_can_msg_are_not_written
+    step_writes_can_msg_skipped
 )
 
 foreach(ernc_batch_write_case IN LISTS ernc_batch_write_cases)
@@ -1200,7 +1200,7 @@ if(ERNC_BUILD_UI)
     set(ernc_parameter_delegate_cases
         anc_off_toggle_words
         anc_off_on_stages_zero
-        step_has_no_editor
+        step_set_is_editable
         rnc_alpha1_set_editable
         running_time_keeps_firmware_value
     )
@@ -1276,7 +1276,7 @@ if(ERNC_BUILD_UI)
         unknown_toggle_is_not_off
         speaker_keeps_raw_number
         bypass_has_no_toggle
-        refresh_stays_blocked
+        refresh_can_stage
         flag_page_follows_tree
     )
 
@@ -1401,7 +1401,7 @@ if(ERNC_BUILD_UI)
     target_link_libraries(ernc_rnc_param_page_tests PRIVATE Qt6::Widgets ernc_ui_qwt ernc_filesystem ernc_domain ernc_application)
 
     set(ernc_rnc_param_page_cases
-        step_has_no_writer
+        step_can_stage
         running_time_keeps_firmware_value
         alpha_stages_and_leaky_keeps_id
         spec_radius_shows_parameter_view_hint

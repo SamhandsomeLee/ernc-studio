@@ -138,8 +138,6 @@ ErncFlagPage::ErncFlagPage(const ernc::domain::ParameterCatalog* catalog, ernc::
 
         const bool toggle = definition != nullptr && definition->editor
             && *definition->editor == ernc::domain::EditorKind::Toggle;
-        const bool command = definition != nullptr && definition->editor
-            && *definition->editor == ernc::domain::EditorKind::MomentaryCommand;
         if (toggle) {
             auto* choice = new ParameterToggleSwitch(row);
             line->addWidget(choice);
@@ -150,22 +148,9 @@ ErncFlagPage::ErncFlagPage(const ernc::domain::ParameterCatalog* catalog, ernc::
                 }
                 chooseToggle(parameterId, word);
             });
-        } else if (command) {
-            auto* blocked = new QLabel(QStringLiteral("车速映射未确认，不能执行"), row);
-            blocked->setObjectName(QStringLiteral("erncFlagRefreshBlock"));
-            blocked->setWordWrap(true);
-            blocked->setMaximumWidth(280);
-            blocked->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
-            auto* button = new QPushButton(QStringLiteral("执行"), row);
-            button->setObjectName(QStringLiteral("erncFlagRefresh"));
-            button->setEnabled(false);
-            function_view_layout::styleActionButton(button);
-            line->addWidget(blocked);
-            line->addWidget(button);
-            control.refresh = button;
-            connect(button, &QPushButton::clicked, this, [this] { pressRefresh(); });
         } else if (definition != nullptr && definition->dataType
-                   && *definition->dataType == ernc::domain::DataType::UInt32) {
+                   && (*definition->dataType == ernc::domain::DataType::UInt32
+                       || *definition->dataType == ernc::domain::DataType::Int32)) {
             auto* editor = new QLineEdit(row);
             function_view_layout::styleScalarEditor(editor);
             line->addWidget(editor);
@@ -232,11 +217,10 @@ void ErncFlagPage::reload() {
             control.toggle->setSuppressSignals(true);
             control.toggle->applyCaption(text);
             control.toggle->setSuppressSignals(false);
-        } else if (control.refresh != nullptr) {
-            control.value->setText(rawIntText(value));
-            control.refresh->setEnabled(false);
         } else if (control.raw != nullptr) {
-            const QString text = rawUintText(value);
+            const ernc::domain::DataType dataType =
+                definition != nullptr && definition->dataType ? *definition->dataType : ernc::domain::DataType::UInt32;
+            const QString text = dataType == ernc::domain::DataType::Int32 ? rawIntText(value) : rawUintText(value);
             control.value->setText(text);
             control.raw->setText(text == kBlank.toString() ? QString() : text);
         } else if (control.value != nullptr) {
@@ -311,16 +295,31 @@ void ErncFlagPage::commitRaw(const QString& parameterId, const QString& text) {
         return;
     }
     const ernc::domain::ParameterDefinition* definition = catalog_->find(parameterId.toStdString());
-    if (definition == nullptr || !definition->dataType || *definition->dataType != ernc::domain::DataType::UInt32) {
-        return;
-    }
-    bool ok = false;
-    const uint number = text.trimmed().toUInt(&ok);
-    if (!ok) {
+    if (definition == nullptr || !definition->dataType) {
         return;
     }
     const ernc::domain::RuntimeTime stagedAt = std::chrono::system_clock::now();
-    if (!stager_->stage(definition->id, ernc::domain::ScalarValue::fromUInt32(static_cast<std::uint32_t>(number)), stagedAt).ok()) {
+    if (*definition->dataType == ernc::domain::DataType::UInt32) {
+        bool ok = false;
+        const uint number = text.trimmed().toUInt(&ok);
+        if (!ok) {
+            return;
+        }
+        if (!stager_->stage(definition->id, ernc::domain::ScalarValue::fromUInt32(static_cast<std::uint32_t>(number)),
+                            stagedAt)
+                 .ok()) {
+            return;
+        }
+    } else if (*definition->dataType == ernc::domain::DataType::Int32) {
+        bool ok = false;
+        const int number = text.trimmed().toInt(&ok);
+        if (!ok) {
+            return;
+        }
+        if (!stager_->stage(definition->id, ernc::domain::ScalarValue::fromInt32(number), stagedAt).ok()) {
+            return;
+        }
+    } else {
         return;
     }
     notifyEdited(definition->id);

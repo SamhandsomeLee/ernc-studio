@@ -100,7 +100,7 @@
       "type": "int32_t",
       "shape": [],
       "status": "pack4-sequential",
-      "writable": false
+      "writable": true
     },
     {
       "path": "SpeakerCheckValue",
@@ -133,7 +133,7 @@
       "type": "float",
       "shape": [],
       "status": "pack4-sequential",
-      "writable": false
+      "writable": true
     },
     {
       "path": "Bypass_mod",

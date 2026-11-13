@@ -127,25 +127,25 @@ bool ancOffOnStagesZero(const ParameterCatalog& catalog, const FirmwareLayout& l
     return true;
 }
 
-/// @brief Step 的 Set 列不可编辑，也不创建控件。
+/// @brief Step 的 Set 列可编辑，并能创建控件。
 /// @param catalog 正式目录。
 /// @param layout 正式布局。
-/// @return flags 没有可编辑标志，createEditor 为空时为 true。
-bool stepHasNoEditor(const ParameterCatalog& catalog, const FirmwareLayout& layout) {
+/// @return flags 含可编辑标志，createEditor 非空时为 true。
+bool stepSetIsEditable(const ParameterCatalog& catalog, const FirmwareLayout& layout) {
     ParameterRuntimeStore store;
     ParameterTableModel model{&catalog, &store};
     ParameterDelegate delegate{&catalog, &layout, &store};
     const int row = sourceRow(model, QStringLiteral("Step"));
     if (row < 0) {
-        return fail("step_has_no_editor");
+        return fail("step_set_is_editable");
     }
     const QModelIndex setIndex = model.index(row, static_cast<int>(FakeParameterColumn::Set));
-    if (model.flags(setIndex).testFlag(Qt::ItemIsEditable)) {
-        return fail("step_has_no_editor");
+    if (!model.flags(setIndex).testFlag(Qt::ItemIsEditable)) {
+        return fail("step_set_is_editable");
     }
     QWidget parent;
-    if (delegate.createEditor(&parent, QStyleOptionViewItem{}, setIndex) != nullptr) {
-        return fail("step_has_no_editor");
+    if (delegate.createEditor(&parent, QStyleOptionViewItem{}, setIndex) == nullptr) {
+        return fail("step_set_is_editable");
     }
     return true;
 }
@@ -209,8 +209,8 @@ bool runCase(std::string_view name, const ParameterCatalog& catalog, const Firmw
     if (name == "anc_off_on_stages_zero") {
         return ancOffOnStagesZero(catalog, layout);
     }
-    if (name == "step_has_no_editor") {
-        return stepHasNoEditor(catalog, layout);
+    if (name == "step_set_is_editable") {
+        return stepSetIsEditable(catalog, layout);
     }
     if (name == "rnc_alpha1_set_editable") {
         return rncAlpha1SetEditable(catalog, layout);

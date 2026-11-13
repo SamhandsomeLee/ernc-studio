@@ -24,8 +24,8 @@ class QWidget;
 
 namespace ernc::presentation {
 
-/// ERNC_Flag 功能页。三个反向开关和两个原值参数只暂存，不连接设备。
-/// RNC_refresh 只显示，执行控件保持不可用。必须在 UI 主线程创建和调用。
+/// ERNC_Flag 功能页。三个反向开关和数值参数只暂存，不连接设备。
+/// 必须在 UI 主线程创建和调用。
 class ErncFlagPage final : public QWidget {
 public:
     /// @brief 按目录生成旗标页。
@@ -82,18 +82,17 @@ public:
     /// @note 开暂存线值 0，关暂存线值 1。不发送 FC16。失败时 Store 不变。只在 UI 主线程调用。
     void chooseToggle(const QString& parameterId, const QString& word);
 
-    /// @brief 确认一个 uint32 原值。
-    /// @param parameterId 目录主键。只接受 SpeakerCheckValue 和 Bypass_mod。调用方拥有原件。
+    /// @brief 确认一个 int32 或 uint32 原值。
+    /// @param parameterId 目录主键。只接受 RNC_refresh、SpeakerCheckValue 和 Bypass_mod。调用方拥有原件。
     /// @param text 十进制文本。调用方拥有原件。「开」和空文本不暂存。
-    /// @note 种类必须是 uint32。不把 0 或 1 解释成开关。不发送 FC16。只在 UI 主线程调用。
+    /// @note 不把 0 或 1 解释成开关。不发送 FC16。只在 UI 主线程调用。
     void commitRaw(const QString& parameterId, const QString& text);
 
-    /// @brief RNC_refresh 的执行控件能否点击。
-    /// @return 本页存在该控件时为 false。车速映射未确认，不能执行。
+    /// @brief 兼容测试：本页不再提供 RNC_refresh 脉冲按钮。
+    /// @return 恒为 false。
     bool refreshEnabled() const;
 
-    /// @brief 按下 RNC_refresh。
-    /// @note 不暂存，不写 1，不写 0，不读车速。控件不可用时调用也保持 Store 不变。
+    /// @brief 兼容测试：脉冲入口已移除，调用不改变 Store。
     void pressRefresh();
 
     /// @brief 这一页是否有该目录 ID。
