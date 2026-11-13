@@ -1658,6 +1658,7 @@ if(ERNC_BUILD_UI)
 
     add_executable(ernc_plot_workspace_tests
         plot_workspace_test.cpp
+        ../src/presentation/analysis/curve_color_palette.cpp
         ../src/presentation/analysis/plot_workspace.cpp
     )
 
@@ -1679,7 +1680,8 @@ if(ERNC_BUILD_UI)
     foreach(ernc_plot_case IN ITEMS
         chart_tools_are_installed
         raw_samples_survive_clearing_the_curve
-        two_by_three_keeps_one_tab)
+        two_by_three_keeps_one_tab
+        legend_click_emphasizes_and_restores)
         add_test(
             NAME "plot_workspace.${ernc_plot_case}"
             COMMAND ernc_plot_workspace_tests "${ernc_plot_case}"
@@ -1688,6 +1690,7 @@ if(ERNC_BUILD_UI)
 
     add_executable(ernc_dataset_manager_tests
         dataset_manager_test.cpp
+        ../src/presentation/analysis/curve_color_palette.cpp
         ../src/presentation/analysis/dataset_manager.cpp
         ../src/presentation/analysis/plot_workspace.cpp
     )
@@ -1721,6 +1724,7 @@ if(ERNC_BUILD_UI)
 
     add_executable(ernc_tf_plot_tests
         ernc_tf_plot_test.cpp
+        ../src/presentation/analysis/curve_color_palette.cpp
         ../src/presentation/analysis/ernc_tf_plot.cpp
         ../src/presentation/analysis/plot_workspace.cpp
     )
@@ -1754,6 +1758,7 @@ if(ERNC_BUILD_UI)
 
     add_executable(ernc_check_data_plot_tests
         check_data_plot_test.cpp
+        ../src/presentation/analysis/curve_color_palette.cpp
         ../src/presentation/analysis/check_data_plot.cpp
         ../src/presentation/analysis/plot_workspace.cpp
     )
@@ -1787,6 +1792,7 @@ if(ERNC_BUILD_UI)
 
     add_executable(ernc_spec_radius_plot_tests
         spec_radius_plot_test.cpp
+        ../src/presentation/analysis/curve_color_palette.cpp
         ../src/presentation/analysis/spec_radius_plot.cpp
         ../src/presentation/analysis/plot_workspace.cpp
     )

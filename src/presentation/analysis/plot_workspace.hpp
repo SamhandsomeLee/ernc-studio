@@ -3,11 +3,14 @@
 #include "ernc/domain/analysis/dataset.hpp"
 
 #include <QColor>
+#include <QPen>
+#include <QPoint>
 #include <QPointF>
 #include <QString>
 #include <QWidget>
 
 class QEvent;
+class QHideEvent;
 class QShowEvent;
 class QWheelEvent;
 
@@ -17,9 +20,11 @@ class QWheelEvent;
 
 class QTabWidget;
 class QToolButton;
+class QLabel;
 class QwtLegend;
 class QwtPlot;
 class QwtPlotCurve;
+class QwtPlotGrid;
 class QwtPlotMagnifier;
 class QwtPlotPanner;
 class QwtPlotPicker;
@@ -127,13 +132,55 @@ protected:
     void wheelEvent(QWheelEvent* event) override;
     void resizeEvent(QResizeEvent* event) override;
     void showEvent(QShowEvent* event) override;
+    void hideEvent(QHideEvent* event) override;
     bool eventFilter(QObject* watched, QEvent* event) override;
 
 private:
+    /// 记录曲线载入时的完整绘制样式，用于取消图例选中后无损恢复。
+    struct CurvePenStyle {
+        QPen pen;
+        double z = 0.0;
+    };
+
     void configurePlotNavigation();
+    void configurePlotGrid();
+
+    /// @brief 配置图例模式，并在应用事件入口监听本工作区的标签和画布。
+    /// 应用级过滤器只处理 legend_ 的后代和本 plot_ 的画布，随本控件销毁自动移除。
+    void configureLegendInteraction();
+
+    /// @brief 把当前 Qwt 图例标签设置为可点击模式。
+    /// 点击解析由应用级过滤器完成，不依赖会在图例刷新期间失效的 itemInfo 或对象地址映射。
+    void syncLegendClickHandlers();
+
+    /// @brief 立即同步一次，并在本轮事件结束后再同步一次 Qwt 延迟创建的标签。
+    void scheduleLegendHandlerSync();
+
+    /// @brief 把图例点击排到当前 Qwt 鼠标回调之后执行，避免回调重入。
+    /// @param curve 当前曲线中的借用指针；换图后由代际号使排队任务失效。
+    void scheduleCurveEmphasis(QwtPlotCurve* curve);
     void resetPlotView();
     void updateResetViewButtonGeometry();
+    void updateCurveHintGeometry();
     void createResetViewButton();
+    void recordCurveStyles();
+
+    /// @brief 销毁本控件创建的临时光晕曲线。
+    /// 光晕不出现在图例中；detach 后由本函数释放。
+    void clearEmphasisGlow();
+
+    /// @brief 恢复所有曲线的载入样式并隐藏提示。
+    /// 必须在 UI 主线程调用；若样式发生变化则立即重绘。
+    void clearCurveEmphasis();
+
+    /// @brief 切换一条仍属于当前工作区曲线的轻量高亮状态。
+    /// @param curve 借用指针；不属于 curves_ 时忽略，再次传入已选曲线时恢复原样。
+    void emphasizeCurve(QwtPlotCurve* curve);
+
+    /// @brief 为选中曲线重建一层不参与图例和自动缩放的轻光晕。
+    /// @param selected 当前曲线中的借用指针。
+    /// @param neon 选中曲线使用的不透明强调色。
+    void rebuildEmphasisGlow(QwtPlotCurve* selected, const QColor& neon);
     /// 唯一的图表页签。本控件拥有。
     QTabWidget* tabs_ = nullptr;
 
@@ -155,11 +202,32 @@ private:
     /// 右侧图例。图拥有。
     QwtLegend* legend_ = nullptr;
 
+    /// 主/次网格。图拥有。
+    QwtPlotGrid* grid_ = nullptr;
+
+    /// 图例选中后在画布上方显示的曲线名。父对象为 plot。
+    QLabel* curveHintLabel_ = nullptr;
+
     /// 画布右下角「复位视图」。父对象为 plot 画布。
     QToolButton* resetViewButton_ = nullptr;
 
     /// 按曲线号排列的显示曲线。图拥有这些对象，本向量只保存指针。
     std::vector<QwtPlotCurve*> curves_;
+
+    /// 与 curves_ 对齐的默认画笔。重画后重建。
+    std::vector<CurvePenStyle> curveStyles_;
+
+    /// 曲线集合的代际号。换图时递增，用于丢弃旧图例点击排入的任务。
+    std::size_t curveGeneration_ = 0;
+
+    /// 画布左键按下位置。仅用于区分空白点击与拖动缩放。
+    std::optional<QPoint> canvasPressPosition_;
+
+    /// 图例当前选中的曲线。不拥有。
+    QwtPlotCurve* emphasizedCurve_ = nullptr;
+
+    /// 选中曲线的低透明度轻光晕层。图拥有，当前至多一层。
+    std::vector<QwtPlotCurve*> emphasisGlow_;
 
     /// 原始样本。空表示还没有载入。成功载入后控件拥有这份副本。
     std::optional<ernc::domain::AnalysisDataset> dataset_;

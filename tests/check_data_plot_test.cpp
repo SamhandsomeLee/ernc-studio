@@ -59,7 +59,7 @@ std::vector<float> indexValues(std::size_t count) {
 
 /// @brief 按图例标题找一条曲线。
 /// @param plot 一张图，只在本次调用期间借用。空指针时返回空。
-/// @param title 图例文字，例如「曲线 1」。
+/// @param title 图例文字，例如「check_data.OutputCheck · 系列 2」。
 /// @return 找到时指向该曲线。没有时为空。
 QwtPlotCurve* curveNamed(PlotWorkspace* plot, const QString& title) {
     if (plot == nullptr || plot->plot() == nullptr) {
@@ -99,7 +99,7 @@ bool outputCheckOverlayKeeps6By200() {
     if (!plot.setField(output.value()).ok() || plot.mode() != CheckDataViewMode::Overlay) {
         return fail("output_check_overlay_keeps_6_by_200");
     }
-    const QwtPlotCurve* seriesOne = curveNamed(plot.plotAt(0), QStringLiteral("曲线 1"));
+    const QwtPlotCurve* seriesOne = curveNamed(plot.plotAt(0), QStringLiteral("check_data.OutputCheck · 系列 2"));
     const Result<std::size_t> displayed = plot.displayedPointCount(0);
     const Result<float> stored = plot.valueAt("check_data.OutputCheck", 200);
     if (plot.plotCount() != 1 || plot.plotAt(0) == nullptr || plot.plotAt(0)->curveCount() != 6U || !displayed.ok()
@@ -122,7 +122,7 @@ bool outputCheckStackSplitsSixPlots() {
     if (!plot.setField(output.value()).ok() || !plot.setMode(CheckDataViewMode::Stack).ok()) {
         return fail("output_check_stack_splits_six_plots");
     }
-    const QwtPlotCurve* second = curveNamed(plot.plotAt(1), QStringLiteral("曲线 0"));
+    const QwtPlotCurve* second = curveNamed(plot.plotAt(1), QStringLiteral("check_data.OutputCheck"));
     if (plot.plotCount() != 6 || second == nullptr || second->data() == nullptr || second->data()->sample(0).y() != 200.0
         || plot.fullSampleCount("check_data.OutputCheck") != 1200U || plot.valueAt("check_data.OutputCheck", 200).value() != 200.0F
         || !plot.chromeText().contains(QStringLiteral("组 1")) || !unitsStayBlank(plot) || plot.displayedPointCount(6).ok()) {
@@ -148,7 +148,7 @@ bool scalarFieldIsOnePoint() {
     if (!plot.setField(scalar.value()).ok()) {
         return fail("scalar_field_is_one_point");
     }
-    const QwtPlotCurve* overlay = curveNamed(plot.plotAt(0), QStringLiteral("曲线 0"));
+    const QwtPlotCurve* overlay = curveNamed(plot.plotAt(0), QStringLiteral("check_data.RNCAdapCheckRefNum"));
     if (plot.plotCount() != 1 || !plot.displayedPointCount(0).ok() || plot.displayedPointCount(0).value() != 1U || overlay == nullptr
         || overlay->data() == nullptr || overlay->data()->sample(0).y() != 1.5 || plot.fullSampleCount("check_data.RNCAdapCheckRefNum") != 1U
         || plot.valueAt("check_data.RNCAdapCheckRefNum", 0).value() != 1.5F) {
@@ -173,7 +173,7 @@ bool fieldSwitchUsesThatFieldsLength() {
     if (!plot.setField(output.value()).ok() || !plot.setField(horn.value()).ok() || !plot.selectField("check_data.HornRefCheck_F").ok()) {
         return fail("field_switch_uses_that_fields_length");
     }
-    const QwtPlotCurve* curve = curveNamed(plot.plotAt(0), QStringLiteral("曲线 0"));
+    const QwtPlotCurve* curve = curveNamed(plot.plotAt(0), QStringLiteral("check_data.HornRefCheck_F"));
     if (plot.plotCount() != 1 || plot.plotAt(0)->curveCount() != 1U || plot.displayedPointCount(0).value() != 250U || curve == nullptr
         || curve->data() == nullptr || curve->data()->size() != 250U || curve->data()->sample(249).y() != 249.0
         || plot.fullSampleCount("check_data.OutputCheck") != 1200U || plot.valueAt("check_data.OutputCheck", 200).value() != 200.0F) {
@@ -195,7 +195,7 @@ bool badPathKeepsPrevious() {
         return fail("bad_path_keeps_previous");
     }
     const Result<void> rejected = plot.setField(other.value());
-    const QwtPlotCurve* seriesOne = curveNamed(plot.plotAt(0), QStringLiteral("曲线 1"));
+    const QwtPlotCurve* seriesOne = curveNamed(plot.plotAt(0), QStringLiteral("check_data.OutputCheck · 系列 2"));
     if (rejected.ok() || rejected.tryError() == nullptr || *rejected.tryError() != ErrorCode::InvalidParameter || seriesOne == nullptr
         || seriesOne->data() == nullptr || seriesOne->data()->sample(0).y() != 200.0 || plot.fullSampleCount("check_data.OutputCheck") != 1200U
         || plot.fullSampleCount("ERNC_TF.SpecRadius") != 0U || plot.selectField("check_data.HornRefCheck_F").ok()) {

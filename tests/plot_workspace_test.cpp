@@ -3,8 +3,13 @@
 #include "ernc/domain/analysis/dataset.hpp"
 
 #include <QApplication>
+#include <QCoreApplication>
+#include <QEventLoop>
+#include <QLabel>
+#include <QMouseEvent>
 
 #include <qwt_legend.h>
+#include <qwt_legend_label.h>
 #include <qwt_plot.h>
 #include <qwt_plot_curve.h>
 #include <qwt_plot_layout.h>
@@ -62,7 +67,56 @@ std::vector<float> indexValues(std::size_t count) {
     return values;
 }
 
-/// @brief 空页签已经装好缩放、中键平移、十字光标和图例。
+/// @brief 发送一次不带拖动的左键点击。
+/// @param target 接收事件的控件，只在本次调用期间借用。
+/// @param localPosition target 坐标系内的位置。
+void sendLeftClick(QWidget* target, const QPoint& localPosition = QPoint(1, 1)) {
+    if (target == nullptr) {
+        return;
+    }
+    const QPoint globalPosition = target->mapToGlobal(localPosition);
+    QMouseEvent press(QEvent::MouseButtonPress, QPointF(localPosition), QPointF(globalPosition), Qt::LeftButton,
+                      Qt::LeftButton, Qt::NoModifier);
+    QCoreApplication::sendEvent(target, &press);
+    QMouseEvent release(QEvent::MouseButtonRelease, QPointF(localPosition), QPointF(globalPosition), Qt::LeftButton,
+                        Qt::NoButton, Qt::NoModifier);
+    QCoreApplication::sendEvent(target, &release);
+}
+
+/// @brief 找到标题完全相同的原始曲线。
+/// @param workspace 曲线工作区，只在本次调用期间借用。
+/// @param title 要匹配的图例标题。
+/// @return 找到时为不转移所有权的曲线指针，否则为空。
+QwtPlotCurve* findCurve(PlotWorkspace& workspace, const QString& title) {
+    for (QwtPlotItem* item : workspace.plot()->itemList(QwtPlotItem::Rtti_PlotCurve)) {
+        auto* curve = static_cast<QwtPlotCurve*>(item);
+        if (curve->title().text() == title) {
+            return curve;
+        }
+    }
+    return nullptr;
+}
+
+/// @brief 找到标题完全相同的 Qwt 图例标签。
+/// @param workspace 曲线工作区，只在本次调用期间借用。
+/// @param title 要匹配的图例标题。
+/// @return 找到时为不转移所有权的标签指针，否则为空。
+QwtLegendLabel* findLegendLabel(PlotWorkspace& workspace, const QString& title) {
+    for (QwtLegendLabel* label : workspace.legend()->findChildren<QwtLegendLabel*>()) {
+        if (label != nullptr && label->data().title().text() == title) {
+            return label;
+        }
+    }
+    return nullptr;
+}
+
+/// @brief 处理本线程已经排队的 UI 回调。
+/// 图例点击故意延迟到 Qwt 鼠标回调之后，所以测试必须显式推进事件队列。
+void processUiEvents() {
+    QCoreApplication::processEvents(QEventLoop::AllEvents);
+}
+
+/// @brief 空页签已经装好缩放、右键平移、十字光标和图例。
 /// @return 轴标题和工具都符合约定时为 true。
 bool chartToolsAreInstalled() {
     PlotWorkspace workspace;
@@ -78,7 +132,7 @@ bool chartToolsAreInstalled() {
         && workspace.plot()->plotLayout()->legendPosition() == QwtPlot::RightLegend;
     if (workspace.tabCount() != 1 || workspace.tabTitle() != QStringLiteral("未载入") || workspace.curveCount() != 0U
         || workspace.rawSampleCount() != 0U || workspace.rawValue(0).ok() || workspace.zoomer() == nullptr
-        || workspace.panner() == nullptr || button != Qt::MiddleButton || modifiers != Qt::NoModifier
+        || workspace.panner() == nullptr || button != Qt::RightButton || modifiers != Qt::NoModifier
         || workspace.picker() == nullptr || workspace.picker()->rubberBand() != QwtPicker::CrossRubberBand
         || workspace.picker()->trackerMode() != QwtPicker::AlwaysOn || workspace.legend() == nullptr
         || workspace.plot()->legend() == nullptr || !axesOk) {
@@ -132,7 +186,7 @@ bool twoByThreeKeepsOneTab() {
     QwtPlotCurve* seriesOne = nullptr;
     for (QwtPlotItem* item : workspace.plot()->itemList(QwtPlotItem::Rtti_PlotCurve)) {
         auto* curve = static_cast<QwtPlotCurve*>(item);
-        if (curve->title().text() == QStringLiteral("曲线 1")) {
+        if (curve->title().text() == QStringLiteral("grid · 系列 2")) {
             seriesOne = curve;
         }
     }
@@ -150,6 +204,110 @@ bool twoByThreeKeepsOneTab() {
     return true;
 }
 
+/// @brief 图例点击会轻量高亮、同项取消、切换、恢复，并且换图可取消旧的排队点击。
+/// @return 单层轻光晕不污染图例，且没有悬空点击任务时为 true。
+bool legendClickEmphasizesAndRestores() {
+    const Result<AnalysisDataset> grid = makeDataset("grid", {2, 3}, indexValues(6));
+    const Result<AnalysisDataset> replacement = makeDataset("replacement", {3}, {7.0F, 8.0F, 9.0F});
+    if (!grid.ok() || !replacement.ok()) {
+        return fail("legend_click_emphasizes_and_restores");
+    }
+
+    PlotWorkspace workspace;
+    workspace.resize(800, 500);
+    workspace.show();
+    if (!workspace.setDataset(grid.value()).ok()) {
+        return fail("legend_click_emphasizes_and_restores");
+    }
+    processUiEvents();
+
+    const QString firstTitle = QStringLiteral("grid · 系列 1");
+    const QString secondTitle = QStringLiteral("grid · 系列 2");
+    QwtPlotCurve* first = findCurve(workspace, firstTitle);
+    QwtPlotCurve* second = findCurve(workspace, secondTitle);
+    QwtLegendLabel* firstLabel = findLegendLabel(workspace, firstTitle);
+    QLabel* hint = workspace.findChild<QLabel*>(QStringLiteral("erncPlotCurveHint"));
+    if (first == nullptr || second == nullptr || firstLabel == nullptr || hint == nullptr) {
+        return fail("legend_click_emphasizes_and_restores.setup");
+    }
+
+    sendLeftClick(firstLabel);
+    processUiEvents();
+    const bool firstSelected = first->pen().widthF() > 2.0 && first->pen().widthF() <= 4.0
+        && second->pen().widthF() > 1.0 && second->pen().widthF() < 2.0
+        && second->pen().color().alpha() >= 96 && second->pen().color().alpha() < 255
+        && !hint->isHidden() && hint->text().contains(firstTitle)
+        && workspace.plot()->itemList(QwtPlotItem::Rtti_PlotCurve).size() == 3
+        && workspace.legend()->findChildren<QwtLegendLabel*>().size() == 2;
+    if (!firstSelected) {
+        return fail("legend_click_emphasizes_and_restores.first_selection");
+    }
+
+    firstLabel = findLegendLabel(workspace, firstTitle);
+    sendLeftClick(firstLabel);
+    processUiEvents();
+    const bool sameLabelRestored = first->pen().widthF() == 2.0 && first->pen().color().alpha() == 255
+        && second->pen().widthF() == 2.0 && second->pen().color().alpha() == 255 && hint->isHidden()
+        && workspace.plot()->itemList(QwtPlotItem::Rtti_PlotCurve).size() == 2;
+    if (!sameLabelRestored) {
+        return fail("legend_click_emphasizes_and_restores.same_label_restore");
+    }
+
+    firstLabel = findLegendLabel(workspace, firstTitle);
+    sendLeftClick(firstLabel);
+    processUiEvents();
+    QwtLegendLabel* secondLabel = findLegendLabel(workspace, secondTitle);
+    sendLeftClick(secondLabel);
+    processUiEvents();
+    const bool secondSelected = secondLabel != nullptr && first->pen().widthF() > 1.0 && first->pen().widthF() < 2.0
+        && first->pen().color().alpha() >= 96 && first->pen().color().alpha() < 255
+        && second->pen().widthF() > 2.0 && second->pen().widthF() <= 4.0 && hint->text().contains(secondTitle)
+        && workspace.plot()->itemList(QwtPlotItem::Rtti_PlotCurve).size() == 3;
+    if (!secondSelected) {
+        std::cerr << "second selection state: label=" << (secondLabel != nullptr)
+                  << " first_width=" << first->pen().widthF() << " first_alpha=" << first->pen().color().alpha()
+                  << " second_width=" << second->pen().widthF() << " second_alpha=" << second->pen().color().alpha()
+                  << " curves=" << workspace.plot()->itemList(QwtPlotItem::Rtti_PlotCurve).size()
+                  << " labels=" << workspace.legend()->findChildren<QwtLegendLabel*>().size()
+                  << " hint=" << hint->text().toStdString() << '\n';
+        return fail("legend_click_emphasizes_and_restores.second_selection");
+    }
+
+    sendLeftClick(workspace.plot()->canvas(), QPoint(12, 12));
+    processUiEvents();
+    const bool blankRestored = first->pen().widthF() == 2.0 && first->pen().color().alpha() == 255
+        && second->pen().widthF() == 2.0 && second->pen().color().alpha() == 255 && hint->isHidden()
+        && workspace.plot()->itemList(QwtPlotItem::Rtti_PlotCurve).size() == 2;
+    if (!blankRestored) {
+        return fail("legend_click_emphasizes_and_restores.blank_restore");
+    }
+
+    firstLabel = findLegendLabel(workspace, firstTitle);
+    sendLeftClick(firstLabel);
+    processUiEvents();
+    workspace.hide();
+    processUiEvents();
+    if (first->pen().widthF() != 2.0 || second->pen().widthF() != 2.0 || !hint->isHidden()
+        || workspace.plot()->itemList(QwtPlotItem::Rtti_PlotCurve).size() != 2) {
+        return fail("legend_click_emphasizes_and_restores.hide_restore");
+    }
+
+    workspace.show();
+    processUiEvents();
+    firstLabel = findLegendLabel(workspace, firstTitle);
+    sendLeftClick(firstLabel);
+    if (!workspace.setDataset(replacement.value()).ok()) {
+        return fail("legend_click_emphasizes_and_restores.replacement_load");
+    }
+    processUiEvents();
+    QwtPlotCurve* current = findCurve(workspace, QStringLiteral("replacement"));
+    if (workspace.curveCount() != 1U || current == nullptr || current->pen().widthF() != 2.0 || !hint->isHidden()
+        || workspace.plot()->itemList(QwtPlotItem::Rtti_PlotCurve).size() != 1) {
+        return fail("legend_click_emphasizes_and_restores.stale_click");
+    }
+    return true;
+}
+
 /// @brief 按用例名运行。
 /// @param name 用例名。这些用例不读取 manifest，也不使用设备样本。
 /// @return 用例通过时为 true。
@@ -162,6 +320,9 @@ bool runCase(std::string_view name) {
     }
     if (name == "two_by_three_keeps_one_tab") {
         return twoByThreeKeepsOneTab();
+    }
+    if (name == "legend_click_emphasizes_and_restores") {
+        return legendClickEmphasizesAndRestores();
     }
     std::cerr << "unknown case: " << name << '\n';
     return false;
