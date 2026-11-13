@@ -92,7 +92,7 @@ public:
 
     void readCategory(const std::string& pageId);
 
-    /// @brief 批量读目录标量。大块区域（check_data、ERNC_TF）按布局跳过，不触发区域传函流程。
+    /// @brief 批量读目录内全部 FC03 可读项（含多 slot 紧凑数组）。根级 Region（check_data、ERNC_TF）整段跳过，不走 RegionReader。
     void readAllScalars();
 
     /// @brief 读固件 Can_Msg float[72]。仅模拟器路径；与批量读不要并发。

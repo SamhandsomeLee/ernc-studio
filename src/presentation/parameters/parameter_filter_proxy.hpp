@@ -39,6 +39,9 @@ public:
     /// @note 不统计仅含工程历史 `projectReadValue` 的行。断线后仍为 stale 的行会被隐藏。
     void setReadObservedOnly(bool enabled);
 
+    /// @brief 运行状态 Store 批量更新后重新求值筛选；用于「待写入」「只看已读取」等依赖 Store 的条件。
+    void refreshAfterRuntimeStoreChange();
+
 protected:
     /// @brief 判断源模型的一行是否进入当前视图。
     /// @param sourceRow 源模型行号，与目录顺序一致。

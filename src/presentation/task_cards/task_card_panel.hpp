@@ -17,7 +17,7 @@ signals:
     void readCurrentPageRequested();
     /// @brief 用户请求查看编辑区当前页面的待写参数，尚未发送设备命令。
     void writeCurrentPageRequested();
-    /// @brief 用户请求读取目录内全部可读标量。
+    /// @brief 用户请求批量读取目录内全部 FC03 可读项（含 1-slot 与紧凑数组，不含 Region 整段）。
     void readAllScalarsRequested();
     /// @brief 用户请求查看全工程待写标量，尚未发送设备命令。
     void writeAllDirtyRequested();

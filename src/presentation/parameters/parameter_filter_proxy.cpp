@@ -46,6 +46,11 @@ void ParameterFilterProxy::setReadObservedOnly(bool enabled) {
     endFilterChange(QSortFilterProxyModel::Direction::Rows);
 }
 
+void ParameterFilterProxy::refreshAfterRuntimeStoreChange() {
+    beginFilterChange();
+    endFilterChange(QSortFilterProxyModel::Direction::Rows);
+}
+
 bool ParameterFilterProxy::filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const {
     if (sourceParent.isValid() || catalog_ == nullptr || sourceRow < 0
         || static_cast<std::size_t>(sourceRow) >= catalog_->size()) {

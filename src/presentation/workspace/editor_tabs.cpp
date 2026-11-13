@@ -33,6 +33,7 @@
 #include <QHeaderView>
 #include <QHBoxLayout>
 #include <QItemSelectionModel>
+#include <QTimer>
 #include <QLabel>
 #include <QLineEdit>
 #include <QMenu>
@@ -132,6 +133,7 @@ QWidget* makeParameterView(QWidget* parent, const ernc::domain::ParameterCatalog
     table->horizontalHeader()->setSortIndicatorShown(false);
     table->setSelectionBehavior(QAbstractItemView::SelectRows);
     table->setSelectionMode(QAbstractItemView::SingleSelection);
+    table->setUpdateThreshold(0);
     table->setItemDelegate(new ParameterDelegate(catalog, layout, store, table));
     table->setEditTriggers(QAbstractItemView::DoubleClicked | QAbstractItemView::EditKeyPressed);
     auto* header = table->horizontalHeader();
@@ -372,6 +374,9 @@ void EditorTabs::selectParameter(const QString& parameterId) {
         const ernc::domain::ParameterDefinition* definition = catalog_->find(incoming);
         if (usesCompactArrayUi(definition, layout_)) {
             arrayDetail_->bindParameter(parameterId);
+            if (arrayDetailPresenter_) {
+                arrayDetailPresenter_();
+            }
         }
     }
     if (parameterObserver_) {
@@ -409,6 +414,10 @@ void EditorTabs::setArrayRuntimeStore(ernc::domain::ArrayRuntimeStore* store) no
 
 void EditorTabs::setArrayDetailPanel(ArrayDetailPanel* panel) noexcept {
     arrayDetail_ = panel;
+}
+
+void EditorTabs::setArrayDetailPresenter(std::function<void()> presenter) {
+    arrayDetailPresenter_ = std::move(presenter);
 }
 
 bool EditorTabs::showingFunctionView() const {
@@ -555,12 +564,16 @@ void EditorTabs::notifyParametersUpdated(const ernc::domain::SessionId session, 
     if (parameterModel_ == nullptr) {
         return;
     }
-    for (const QString& text : parameterIds) {
-        const ernc::domain::Result<ernc::domain::ParameterId> parsed = ernc::domain::ParameterId::parse(text.toStdString());
+    if (parameterIds.size() == 1U) {
+        const ernc::domain::Result<ernc::domain::ParameterId> parsed =
+            ernc::domain::ParameterId::parse(parameterIds.front().toStdString());
         if (parsed.ok() && parsed.tryValue() != nullptr) {
             parameterModel_->noteUpdated(session, *parsed.tryValue());
         }
+    } else if (!parameterIds.isEmpty()) {
+        parameterModel_->noteBatchUpdated(session, parameterIds);
     }
+    repaintParameterTable();
     refresh();
     if (parameterObserver_ && !selection_.parameterId().empty()) {
         const QString selected = QString::fromStdString(selection_.parameterId());
@@ -574,6 +587,26 @@ void EditorTabs::notifyParametersUpdated(const ernc::domain::SessionId session, 
     if (arrayDetail_ != nullptr) {
         arrayDetail_->onArrayStoreChanged();
     }
+}
+
+void EditorTabs::refreshParameterTableAfterBatchRead() {
+    if (parameterModel_ != nullptr) {
+        parameterModel_->reloadAllRowsFromStore();
+    }
+    repaintParameterTable();
+}
+
+void EditorTabs::repaintParameterTable() {
+    if (parameterProxy_ != nullptr) {
+        parameterProxy_->refreshAfterRuntimeStoreChange();
+    }
+    if (parameterTable_ == nullptr) {
+        return;
+    }
+    if (parameterTable_->viewport() != nullptr) {
+        parameterTable_->viewport()->repaint();
+    }
+    parameterTable_->repaint();
 }
 
 void EditorTabs::noteDeviceDisconnected() {
@@ -674,7 +707,8 @@ void EditorTabs::refresh() {
         : QString::fromStdString(selection_.parameterId());
     const QString text = QStringLiteral("当前页面 %1\n参数 %2").arg(page, parameter);
     functionLabel_->setText(text);
-    const QString readLabel = selection_.pageId() == "ALL" ? QStringLiteral("读取全部标量") : QStringLiteral("读取本页");
+    const QString readLabel =
+        selection_.pageId() == "ALL" ? QStringLiteral("读取全部可读参数") : QStringLiteral("读取本页");
     findChild<QPushButton*>(QStringLiteral("erncFunctionRead"))->setText(readLabel);
     findChild<QPushButton*>(QStringLiteral("erncReadCurrentPage"))->setText(readLabel);
     const bool showFlag = selection_.pageId() == "ERNC_Flag";

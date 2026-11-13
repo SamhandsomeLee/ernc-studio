@@ -65,7 +65,7 @@ QString readSummary(bool success, const QString& detail) {
         return detail.isEmpty() ? QStringLiteral("读取失败") : detail;
     }
     const QString scope = object.value(QStringLiteral("scope")).toString() == QStringLiteral("all_scalars")
-        ? QStringLiteral("全部标量") : QStringLiteral("本页");
+        ? QStringLiteral("全部可读参数") : QStringLiteral("本页");
     return QStringLiteral("%1%2 · %3 项完成，%4 项失败，%5 项跳过")
         .arg(scope, success ? QStringLiteral("读取完成") : QStringLiteral("读取有失败"))
         .arg(object.value(QStringLiteral("completed")).toInt())
@@ -192,15 +192,16 @@ MainWindow::MainWindow(ernc::domain::CatalogLoad catalog, QString catalogPath, Q
     inspectorPanel_ = new InspectorPanel(loadedCatalog, &parameterStore_, inspectorDock_);
     arrayDetailPanel_ = new ArrayDetailPanel(loadedCatalog, firmwareLayout_ ? &*firmwareLayout_ : nullptr,
                                              &arrayParameterStore_, inspectorDock_);
-    auto* inspectorTabs = new QTabWidget(inspectorDock_);
-    inspectorTabs->setObjectName(QStringLiteral("erncInspectorTabs"));
-    inspectorTabs->addTab(inspectorPanel_, QStringLiteral("检查器"));
-    inspectorTabs->addTab(arrayDetailPanel_, QStringLiteral("数组详情"));
+    bottomInspectorTabs_ = new QTabWidget(inspectorDock_);
+    bottomInspectorTabs_->setObjectName(QStringLiteral("erncBottomInspectorTabs"));
+    bottomInspectorTabs_->addTab(inspectorPanel_, QStringLiteral("检查器"));
+    bottomInspectorTabs_->addTab(arrayDetailPanel_, QStringLiteral("数组详情"));
     QWidget* previousInspector = inspectorDock_->widget();
-    inspectorDock_->setWidget(inspectorTabs);
+    inspectorDock_->setWidget(bottomInspectorTabs_);
     delete previousInspector;
     editorTabs_->setArrayRuntimeStore(&arrayParameterStore_);
     editorTabs_->setArrayDetailPanel(arrayDetailPanel_);
+    editorTabs_->setArrayDetailPresenter([this] { presentArrayDetailPanel(); });
     editorTabs_->setParameterObserver([panel = inspectorPanel_](std::string_view parameterId) {
         panel->showParameter(parameterId);
     });
@@ -287,6 +288,11 @@ MainWindow::MainWindow(ernc::domain::CatalogLoad catalog, QString catalogPath, Q
         });
         QObject::connect(deviceController_, &DeviceController::readPageFinished, this, [this](bool success, QString detail) {
             taskStatus_->setText(readSummary(success, detail));
+            if (success && editorTabs_ != nullptr) {
+                QTimer::singleShot(0, editorTabs_, [tabs = editorTabs_]() {
+                    tabs->refreshParameterTableAfterBatchRead();
+                });
+            }
         });
         QObject::connect(deviceController_, &DeviceController::scalarReadFinished, this,
                          [this](bool success, const QString& parameterId, const QString& detail) {
@@ -641,13 +647,26 @@ void MainWindow::onDeviceConnectionChanged(const bool connected, const ernc::dom
     updateDeviceStatusBar(connected, sessionId);
 }
 
+void MainWindow::presentArrayDetailPanel() {
+    if (inspectorDock_ == nullptr || arrayDetailPanel_ == nullptr || bottomInspectorTabs_ == nullptr) {
+        return;
+    }
+    inspectorDock_->show();
+    inspectorDock_->raise();
+    bottomInspectorTabs_->setCurrentWidget(arrayDetailPanel_);
+}
+
 void MainWindow::onParametersUpdated(const ernc::domain::SessionId sessionId, const QStringList& parameterIds) {
     if (arrayDetailPanel_ != nullptr) {
         arrayDetailPanel_->onArrayStoreChanged();
     }
-    if (editorTabs_ != nullptr) {
-        editorTabs_->notifyParametersUpdated(sessionId, parameterIds);
+    if (editorTabs_ == nullptr) {
+        return;
     }
+    EditorTabs* tabs = editorTabs_;
+    QTimer::singleShot(0, tabs, [tabs, sessionId, parameterIds]() {
+        tabs->notifyParametersUpdated(sessionId, parameterIds);
+    });
 }
 
 void MainWindow::closeEvent(QCloseEvent* event) {

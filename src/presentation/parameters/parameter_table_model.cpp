@@ -1,6 +1,7 @@
 #include "parameters/parameter_table_model.hpp"
 
 #include "parameters/parameter_set_policy.hpp"
+#include "parameters/parameter_status_display.hpp"
 #include "parameters/scalar_display.hpp"
 
 #include "parameters/fake_parameter_rows.hpp"
@@ -24,29 +25,6 @@ QString formatTime(ernc::domain::RuntimeTime time) {
     return QDateTime::fromSecsSinceEpoch(static_cast<qint64>(seconds.count()), QTimeZone::UTC).toString(Qt::ISODate);
 }
 
-/// @brief 由一条运行状态决定状态列文字。
-/// @param state Store 里的记录。空表示还没有记录。
-/// @return 工程历史值标记「工程历史读数」，设备缓存过期时为「数据已过期」。有未提交目标时为「待写入」。
-/// 有未过期读数时为「已读取」。否则为「未读取」。
-QString statusText(const ernc::domain::ParameterRuntimeState* state) {
-    if (state == nullptr) {
-        return QStringLiteral("未读取");
-    }
-    if (state->projectReadValue) {
-        return QStringLiteral("工程历史读数");
-    }
-    if (state->stale && state->deviceValue.has_value()) {
-        return QStringLiteral("数据已过期");
-    }
-    if (state->dirty) {
-        return QStringLiteral("待写入");
-    }
-    if (state->deviceValue.has_value() && !state->stale) {
-        return QStringLiteral("已读取");
-    }
-    return QStringLiteral("未读取");
-}
-
 } // namespace
 
 ParameterTableModel::ParameterTableModel(const ernc::domain::ParameterCatalog* catalog, ernc::domain::ParameterRuntimeStore* store,
@@ -66,7 +44,7 @@ void ParameterTableModel::bindSession(ernc::domain::SessionId session) noexcept 
 }
 
 void ParameterTableModel::noteUpdated(ernc::domain::SessionId session, const ernc::domain::ParameterId& id) {
-    if (session != session_) {
+    if (session_ != ernc::domain::SessionId::none() && session != session_) {
         return;
     }
     const int row = rowOf(id);
@@ -77,6 +55,26 @@ void ParameterTableModel::noteUpdated(ernc::domain::SessionId session, const ern
     const QModelIndex left = index(row, 0);
     const QModelIndex right = index(row, columnCount() - 1);
     emit dataChanged(left, right, {Qt::DisplayRole});
+}
+
+void ParameterTableModel::noteBatchUpdated(ernc::domain::SessionId session, const QStringList& parameterIds) {
+    if (session_ != ernc::domain::SessionId::none() && session != session_) {
+        return;
+    }
+    if (parameterIds.isEmpty() || catalog_ == nullptr) {
+        return;
+    }
+    reloadAllRowsFromStore();
+}
+
+void ParameterTableModel::reloadAllRowsFromStore() {
+    if (catalog_ == nullptr || rowCount() <= 0) {
+        return;
+    }
+    for (int row = 0; row < rows_.size(); ++row) {
+        refreshRow(row);
+    }
+    emit dataChanged(index(0, 0), index(rowCount() - 1, columnCount() - 1));
 }
 
 void ParameterTableModel::noteLocalEdit(const ernc::domain::ParameterId& id) {
@@ -189,7 +187,7 @@ void ParameterTableModel::refreshRow(int row) {
     const ernc::domain::ParameterDefinition& definition = catalog_->entries()[static_cast<std::size_t>(row)];
     const ernc::domain::ParameterRuntimeState* state = store_ == nullptr ? nullptr : store_->find(definition.id);
     RowText& text = rows_[row];
-    text.status = statusText(state);
+    text.status = parameterStatusText(state);
     text.parameter = QString::fromStdString(definition.id.text());
     text.path = definition.firmwarePath ? QString::fromStdString(*definition.firmwarePath) : kBlank.toString();
     const auto* read = state == nullptr ? nullptr : state->displayedRead();

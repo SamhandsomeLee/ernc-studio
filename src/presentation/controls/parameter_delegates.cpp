@@ -4,6 +4,7 @@
 #include "parameters/fake_parameter_rows.hpp"
 #include "parameters/parameter_table_model.hpp"
 #include "parameters/parameter_set_policy.hpp"
+#include "parameters/parameter_status_display.hpp"
 #include "parameters/scalar_display.hpp"
 
 #include <QApplication>
@@ -160,12 +161,15 @@ void ParameterDelegate::initStyleOption(QStyleOptionViewItem* option, const QMod
         return;
     }
     const ernc::domain::ParameterRuntimeState* state = store_ == nullptr ? nullptr : store_->find(definition->id);
-    if (index.column() == static_cast<int>(FakeParameterColumn::Status) && state != nullptr) {
-        if (state->projectReadValue || (state->stale && state->displayedRead() != nullptr)) {
-            option->text.prepend(QStringLiteral("◷ "));
-        } else if (state->dirty) {
-            option->text.prepend(QStringLiteral("▲ "));
-            option->palette.setColor(QPalette::Text, QColor(QStringLiteral("#A86609")));
+    if (index.column() == static_cast<int>(FakeParameterColumn::Status)) {
+        option->text = parameterStatusText(state);
+        if (state != nullptr) {
+            if (state->projectReadValue || (state->stale && state->displayedRead() != nullptr)) {
+                option->text.prepend(QStringLiteral("◷ "));
+            } else if (state->dirty) {
+                option->text.prepend(QStringLiteral("▲ "));
+                option->palette.setColor(QPalette::Text, QColor(QStringLiteral("#A86609")));
+            }
         }
     }
     if (index.column() == static_cast<int>(FakeParameterColumn::Read)
@@ -191,8 +195,15 @@ void ParameterDelegate::initStyleOption(QStyleOptionViewItem* option, const QMod
 void ParameterDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const {
     const bool toggleRead = isToggleReadCell(index);
     const bool toggleSet = isToggleSetCell(index);
-    if (painter == nullptr || (!toggleRead && !toggleSet)) {
+    const bool statusCell = index.column() == static_cast<int>(FakeParameterColumn::Status);
+    if (painter == nullptr || (!toggleRead && !toggleSet && !statusCell)) {
         QStyledItemDelegate::paint(painter, option, index);
+        return;
+    }
+    if (statusCell) {
+        QStyleOptionViewItem styled(option);
+        initStyleOption(&styled, index);
+        QApplication::style()->drawControl(QStyle::CE_ItemViewItem, &styled, painter);
         return;
     }
     QStyleOptionViewItem styled(option);

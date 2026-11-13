@@ -124,6 +124,9 @@ public:
     void setArrayRuntimeStore(ernc::domain::ArrayRuntimeStore* store) noexcept;
     void setArrayDetailPanel(ArrayDetailPanel* panel) noexcept;
 
+    /// @brief 选中紧凑数组参数后调用，用于壳层切换到数组详情页签。
+    void setArrayDetailPresenter(std::function<void()> presenter);
+
     /// @brief 读取当前项目树页面分类的参数。未连接时提示由控制器记录。
     void readCurrentPage();
 
@@ -138,6 +141,10 @@ public:
 
     void bindParameterSession(ernc::domain::SessionId session);
     void notifyParametersUpdated(ernc::domain::SessionId session, const QStringList& parameterIds);
+
+    /// @brief 批量读完成后整表从 Store 重绘。不校验会话号。
+    void refreshParameterTableAfterBatchRead();
+
     void noteDeviceDisconnected();
 
     /// @brief 文件导入或工程切换后重读 Store，更新参数表与当前功能页。
@@ -151,6 +158,9 @@ private:
 
     /// @brief 参数视图可见时定位两视图共享的参数。不更改筛选或暂存状态。
     void syncParameterSelection();
+
+    /// @brief 参数表代理筛选失效后强制重绘可见区域。
+    void repaintParameterTable();
 
     /// @brief 按当前选择重写 Function View，并让当前功能页占满剩余高度。
     /// @note 参数表不在这里改写。没有功能页时，说明文字仍停在上方。
@@ -240,6 +250,7 @@ private:
     DeviceController* deviceController_{nullptr};
     ernc::domain::ArrayRuntimeStore* arrayStore_{nullptr};
     ArrayDetailPanel* arrayDetail_{nullptr};
+    std::function<void()> arrayDetailPresenter_;
 };
 
 } // namespace ernc::presentation

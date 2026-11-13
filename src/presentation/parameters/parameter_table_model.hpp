@@ -32,6 +32,14 @@ public:
     /// @note 只发出这一行的 dataChanged。不写 Store，不入队设备命令。
     void noteUpdated(ernc::domain::SessionId session, const ernc::domain::ParameterId& id);
 
+    /// @brief 一批参数读回或写入后刷新表。大量 id 时合并为一次 dataChanged，避免视图迟滞。
+    /// @param session 发出通知的会话代号。与当前绑定不一致时丢掉。
+    /// @param parameterIds 目录主键列表。本函数会复制其中文本。
+    void noteBatchUpdated(ernc::domain::SessionId session, const QStringList& parameterIds);
+
+    /// @brief 从 Store 重算全部行并发出整表 dataChanged（所有角色）。
+    void reloadAllRowsFromStore();
+
     /// @brief 断连后重读全部可见行。
     /// @note 不调用 markOffline。调用方先把 Store 标成过期，再调用本函数。只在 UI 主线程调用。
     void noteDisconnected();

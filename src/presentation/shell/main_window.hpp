@@ -20,6 +20,7 @@ class QAction;
 class QCloseEvent;
 class QDockWidget;
 class QLabel;
+class QTabWidget;
 class QTimer;
 
 namespace ernc::infrastructure {
@@ -133,6 +134,9 @@ private:
     void onDeviceConnectionChanged(bool connected, ernc::domain::SessionId sessionId);
     void onParametersUpdated(ernc::domain::SessionId sessionId, const QStringList& parameterIds);
 
+    /// @brief 显示底部 Dock 并切到数组详情页签。只在 UI 主线程调用。
+    void presentArrayDetailPanel();
+
     /// 参数运行状态。本窗口拥有。参数表只借用它，不保存第二份数值。
     ernc::domain::ParameterRuntimeStore parameterStore_;
     ernc::domain::ArrayRuntimeStore arrayParameterStore_;
@@ -179,6 +183,7 @@ private:
     /// 底部检查器内容。由检查器 Dock 通过 Qt 父子关系拥有。
     InspectorPanel* inspectorPanel_ = nullptr;
     ArrayDetailPanel* arrayDetailPanel_ = nullptr;
+    QTabWidget* bottomInspectorTabs_{nullptr};
 
     /// 左侧项目树 Dock。由本窗口通过 Qt 父子关系拥有。
     QDockWidget* projectTree_ = nullptr;

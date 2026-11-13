@@ -31,7 +31,7 @@ QWidget* makeCardPage(TaskCardPanel* panel, QWidget* parent) {
     hint->setWordWrap(true);
     layout->addWidget(hint);
 
-    auto* readAll = new QPushButton(QStringLiteral("读取全部标量"), page);
+    auto* readAll = new QPushButton(QStringLiteral("读取全部可读参数"), page);
     readAll->setObjectName(QStringLiteral("erncTaskReadAll"));
     auto* writeAll = new QPushButton(QStringLiteral("全工程写入计划"), page);
     writeAll->setObjectName(QStringLiteral("erncTaskWriteAll"));
