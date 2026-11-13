@@ -17,6 +17,7 @@
 #include <QLabel>
 #include <QProgressBar>
 #include <QPushButton>
+#include <QSettings>
 #include <QStackedWidget>
 #include <QVBoxLayout>
 
@@ -31,6 +32,38 @@ namespace ernc::presentation {
 namespace {
 
 using ernc::domain::ErrorCode;
+
+/// @brief QSettings 键：区域 BIN/TXT 导入对话框上次使用的目录（绝对路径）。
+constexpr QLatin1StringView kRegionImportDirectoryKey("regions/lastImportDirectory");
+
+/// @brief 读取已保存的导入起始目录。
+/// @return 目录仍存在时为绝对路径；否则为空，由 QFileDialog 自选默认位置。
+QString loadRegionImportDirectory() {
+    QSettings settings;
+    const QString stored = settings.value(kRegionImportDirectoryKey).toString();
+    if (stored.isEmpty()) {
+        return QString();
+    }
+    const QFileInfo info(stored);
+    if (!info.isDir() || !info.exists()) {
+        return QString();
+    }
+    return info.absoluteFilePath();
+}
+
+/// @brief 在用户选定文件后记住其所在目录，供下次导入打开同一文件夹。
+/// @param directory 必须是已存在的目录绝对路径；空或无效时忽略。
+void storeRegionImportDirectory(const QString& directory) {
+    if (directory.isEmpty()) {
+        return;
+    }
+    const QFileInfo info(directory);
+    if (!info.isDir() || !info.exists()) {
+        return;
+    }
+    QSettings settings;
+    settings.setValue(kRegionImportDirectoryKey, info.absoluteFilePath());
+}
 
 /// @brief 为 JSON 字符串转义引号和反斜杠。
 std::string escapeJson(std::string_view text) {
@@ -216,11 +249,12 @@ RegionWorkspace::RegionWorkspace(const ernc::domain::RegionCatalog& catalog, ern
     QObject::connect(readButton_, &QPushButton::clicked, this, [this]() { readSelected(); });
     QObject::connect(importButton_, &QPushButton::clicked, this, [this]() {
         const QStringList fileNames = QFileDialog::getOpenFileNames(
-            this, QStringLiteral("导入区域文件"), QString(),
+            this, QStringLiteral("导入区域文件"), loadRegionImportDirectory(),
             QStringLiteral("区域数据 (*.bin *.txt);;二进制 (*.bin);;文本 (*.txt);;所有文件 (*)"));
         if (fileNames.isEmpty()) {
             return;
         }
+        storeRegionImportDirectory(QFileInfo(fileNames.constFirst()).absolutePath());
         std::vector<std::filesystem::path> paths;
         paths.reserve(static_cast<std::size_t>(fileNames.size()));
         for (const QString& fileName : fileNames) {
