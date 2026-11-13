@@ -429,6 +429,27 @@ bool importToSnapshotPersists(const ParameterCatalog& catalog, const FirmwareLay
   return rowQuery.value(1).toString().toFloat() == 0.f;
 }
 
+/// @brief 导出文本为 2 空格缩进的多行布局，便于人工查看。
+bool serializeMultilineLayout() {
+  constexpr const char* name = "serialize_multiline_layout";
+  LegacyParamJsonDocument document;
+  document.version = std::string(kLegacyParamJsonVersion);
+  document.params.push_back({ "ANC_OFF", ScalarValue::fromFloat(0.f) });
+  document.params.push_back({ "ENC_OFF", ScalarValue::fromUInt32(1U) });
+  const Result<std::string> text = serializeLegacyParamJson(document);
+  if (!text.ok()) {
+    return fail(name);
+  }
+  const std::string& json = text.value();
+  if (json.find("{\n  \"version\"") == std::string::npos
+      || json.find("\n  \"params\": [\n") == std::string::npos
+      || json.find("\n    {\n      \"name\"") == std::string::npos
+      || json.find("\n  ]\n}\n") == std::string::npos) {
+    return fail(name);
+  }
+  return true;
+}
+
 bool runCase(std::string_view caseName, const ParameterCatalog& catalog, const FirmwareLayout& layout,
              const char* fixturePath) {
   if (caseName == "minimal_fixture_parses") {
@@ -457,6 +478,9 @@ bool runCase(std::string_view caseName, const ParameterCatalog& catalog, const F
   }
   if (caseName == "export_staged_then_device_round_trip") {
     return exportStagedThenDeviceRoundTrip(catalog, layout, fixturePath);
+  }
+  if (caseName == "serialize_multiline_layout") {
+    return serializeMultilineLayout();
   }
   if (caseName == "import_to_snapshot_persists") {
     return importToSnapshotPersists(catalog, layout, fixturePath);

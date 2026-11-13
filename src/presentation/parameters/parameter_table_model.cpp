@@ -2,6 +2,7 @@
 
 #include "parameters/parameter_set_policy.hpp"
 #include "parameters/parameter_status_display.hpp"
+#include "parameters/runtime_time_display.hpp"
 #include "parameters/scalar_display.hpp"
 
 #include "parameters/fake_parameter_rows.hpp"
@@ -10,24 +11,11 @@
 
 #include "ernc/domain/array_runtime_store.hpp"
 
-#include <QDateTime>
-#include <QTimeZone>
-
-#include <chrono>
-
 namespace ernc::presentation {
 namespace {
 
 /// 没有读数或暂存值时的占位。不是数值 0。
 constexpr QStringView kBlank = u"—";
-
-/// @brief 把调用方给出的时刻写成 UTC 的 ISO 文字。
-/// @param time 系统钟时间点。本函数不读取当前时间。
-/// @return 例如 1970-01-01T00:00:10Z。秒以下被丢掉。
-QString formatTime(ernc::domain::RuntimeTime time) {
-    const auto seconds = std::chrono::duration_cast<std::chrono::seconds>(time.time_since_epoch());
-    return QDateTime::fromSecsSinceEpoch(static_cast<qint64>(seconds.count()), QTimeZone::UTC).toString(Qt::ISODate);
-}
 
 } // namespace
 
@@ -210,14 +198,14 @@ void ParameterTableModel::refreshRow(int row) {
     if (compactArray && arrayStore_ != nullptr) {
         const ernc::domain::ArrayRuntimeMeta* meta = arrayStore_->meta(definition.id);
         if (meta != nullptr && meta->readAt) {
-            text.updatedAt = formatTime(*meta->readAt);
+            text.updatedAt = formatRuntimeTimeBeijing(*meta->readAt);
         } else {
             text.updatedAt = kBlank.toString();
         }
     } else if (state != nullptr && !state->projectReadValue && state->readAt) {
-        text.updatedAt = formatTime(*state->readAt);
+        text.updatedAt = formatRuntimeTimeBeijing(*state->readAt);
     } else if (state != nullptr && state->stagedAt) {
-        text.updatedAt = formatTime(*state->stagedAt);
+        text.updatedAt = formatRuntimeTimeBeijing(*state->stagedAt);
     } else {
         text.updatedAt = kBlank.toString();
     }

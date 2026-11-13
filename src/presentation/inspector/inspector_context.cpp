@@ -1,5 +1,6 @@
 #include "inspector/inspector_context.hpp"
 
+#include "parameters/runtime_time_display.hpp"
 #include "parameters/scalar_display.hpp"
 #include <format>
 #include <optional>
@@ -133,8 +134,8 @@ InspectorText describeInspector(
             timestamp = state->stagedAt;
         }
     }
-    const std::string updatedAt = timestamp
-        ? std::format("{:%FT%TZ}", std::chrono::floor<std::chrono::seconds>(*timestamp)) : std::string(kMissing);
+    const std::string updatedAt =
+        timestamp ? formatRuntimeTimeBeijingUtf8(*timestamp) : std::string(kMissing);
 
     InspectorText text;
     appendLine(text.properties, "参数", shownId);

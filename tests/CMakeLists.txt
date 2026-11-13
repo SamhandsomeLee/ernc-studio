@@ -1123,6 +1123,9 @@ if(ERNC_BUILD_UI)
         parameter_store_model_test.cpp
         ../src/presentation/parameters/parameter_table_model.cpp
         ../src/presentation/parameters/parameter_set_policy.cpp
+        ../src/presentation/parameters/parameter_status_display.cpp
+        ../src/presentation/parameters/runtime_time_display.cpp
+        ../src/presentation/arrays/array_summary.cpp
     )
 
     target_include_directories(ernc_parameter_store_model_tests PRIVATE
@@ -1814,16 +1817,19 @@ if(ERNC_BUILD_UI)
     endforeach()
 endif()
 
+find_package(Qt6 REQUIRED COMPONENTS Core)
+
 add_executable(ernc_inspector_context_tests
     inspector_context_test.cpp
     ../src/presentation/inspector/inspector_context.cpp
+    ../src/presentation/parameters/runtime_time_display.cpp
 )
 
 target_include_directories(ernc_inspector_context_tests PRIVATE
     "${CMAKE_SOURCE_DIR}/src/presentation"
 )
 
-target_link_libraries(ernc_inspector_context_tests PRIVATE ernc_domain)
+target_link_libraries(ernc_inspector_context_tests PRIVATE Qt6::Core ernc_domain)
 
 set(ernc_inspector_context_cases
     empty_selection
@@ -2134,6 +2140,7 @@ set(ernc_legacy_param_json_cases
     capture_read_all_scalars_includes_unread
     export_all_scalars_includes_unread
     export_staged_then_device_round_trip
+    serialize_multiline_layout
     import_to_snapshot_persists
 )
 

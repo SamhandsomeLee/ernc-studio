@@ -23,6 +23,7 @@ qt_add_executable(ernc_app
     ../src/presentation/pages/threshold.cpp
     ../src/presentation/pages/other_page.cpp
     ../src/presentation/parameters/parameter_status_display.cpp
+    ../src/presentation/parameters/runtime_time_display.cpp
     ../src/presentation/parameters/parameter_table_model.cpp
     ../src/presentation/parameters/parameter_filter_proxy.cpp
     ../src/presentation/parameters/parameter_set_policy.cpp

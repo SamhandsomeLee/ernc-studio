@@ -54,7 +54,7 @@ LegacyParamJsonLoad parseLegacyParamJson(std::string_view utf8,
 /// @brief 从文件读取并解析。
 LegacyParamJsonLoad loadLegacyParamJsonFile(const std::filesystem::path& source);
 
-/// @brief 序列化为旧版 v1 UTF-8 JSON 文本，保留整数精度，拒绝非有限数值。
+/// @brief 序列化为旧版 v1 UTF-8 JSON 文本（2 空格缩进、垂直布局），保留整数精度，拒绝非有限数值。
 /// @param document 参数 ID 和原单位标量，只在本次调用期间借用。
 ernc::domain::Result<std::string> serializeLegacyParamJson(const LegacyParamJsonDocument& document);
 

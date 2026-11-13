@@ -121,6 +121,28 @@ std::string escapeJsonString(std::string_view text) {
     return out;
 }
 
+/// @brief 将标量写成 JSON 字面量文本（无换行），供多行文档内联使用。
+bool appendScalarJsonLiteral(std::string& out, const ScalarValue& value) {
+    if (const auto number = value.asFloat(); number.ok()) {
+        if (!std::isfinite(number.value())) {
+            return false;
+        }
+        char buffer[32];
+        const auto encoded = std::to_chars(buffer, buffer + sizeof(buffer), static_cast<double>(number.value()));
+        if (encoded.ec != std::errc{}) {
+            return false;
+        }
+        out.append(buffer, encoded.ptr);
+        return true;
+    }
+    if (const auto integer = value.asInt32(); integer.ok()) {
+        out.append(std::to_string(integer.value()));
+        return true;
+    }
+    out.append(std::to_string(value.asUInt32().value()));
+    return true;
+}
+
 }  // namespace
 
 LegacyParamJsonLoad parseLegacyParamJson(std::string_view utf8, const ParameterCatalog* catalog) {
@@ -151,37 +173,26 @@ Result<std::string> serializeLegacyParamJson(const LegacyParamJsonDocument& docu
     if (document.version != kLegacyParamJsonVersion) {
         return Result<std::string>::failure(ErrorCode::InvalidParameter);
     }
-    std::string out = "{\"version\":\"";
-    out.append(document.version);
-    out.append("\",\"params\":[");
+    std::string out;
+    out.reserve(document.params.size() * 48U + 64U);
+    out.append("{\n  \"version\": ");
+    out.append(escapeJsonString(document.version));
+    out.append(",\n  \"params\": [\n");
     for (std::size_t index = 0; index < document.params.size(); ++index) {
-        if (index > 0) {
+        const LegacyParamJsonEntry& entry = document.params[index];
+        out.append("    {\n      \"name\": ");
+        out.append(escapeJsonString(entry.name));
+        out.append(",\n      \"value\": ");
+        if (!appendScalarJsonLiteral(out, entry.value)) {
+            return Result<std::string>::failure(ErrorCode::InvalidParameter);
+        }
+        out.append("\n    }");
+        if (index + 1U < document.params.size()) {
             out.push_back(',');
         }
-        const LegacyParamJsonEntry& entry = document.params[index];
-        out.push_back('{');
-        out.append("\"name\":");
-        out.append(escapeJsonString(entry.name));
-        out.push_back(',');
-        out.append("\"value\":");
-        if (const auto number = entry.value.asFloat(); number.ok()) {
-            if (!std::isfinite(number.value())) {
-                return Result<std::string>::failure(ErrorCode::InvalidParameter);
-            }
-            char buffer[32];
-            const auto encoded = std::to_chars(buffer, buffer + sizeof(buffer), static_cast<double>(number.value()));
-            if (encoded.ec != std::errc{}) {
-                return Result<std::string>::failure(ErrorCode::InvalidParameter);
-            }
-            out.append(buffer, encoded.ptr);
-        } else if (const auto integer = entry.value.asInt32(); integer.ok()) {
-            out.append(std::to_string(integer.value()));
-        } else {
-            out.append(std::to_string(entry.value.asUInt32().value()));
-        }
-        out.push_back('}');
+        out.push_back('\n');
     }
-    out.append("]}");
+    out.append("  ]\n}\n");
     return Result<std::string>::success(std::move(out));
 }
 

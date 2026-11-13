@@ -61,7 +61,7 @@ QString cell(const ParameterTableModel& model, int row, FakeParameterColumn colu
 
 /// @brief 读数 1 显示为最短十进制，状态是已读取。
 /// @param catalog 正式目录。
-/// @return Read 为 1、Set 为 —、更新时间是第 10 秒的 UTC 文本时为 true。
+/// @return Read 为 1、Set 为 —、更新时间是第 10 秒对应的北京时间文本时为 true。
 bool observeShowsRead(const ParameterCatalog& catalog) {
     ParameterRuntimeStore store;
     ParameterTableModel model{&catalog, &store};
@@ -75,8 +75,7 @@ bool observeShowsRead(const ParameterCatalog& catalog) {
     const RuntimeTime readAt{std::chrono::seconds{10}};
     store.observe(id, ScalarValue::fromFloat(1.0F), readAt);
     model.noteUpdated(session, id);
-    const QString expectedTime =
-        QDateTime::fromSecsSinceEpoch(10, QTimeZone::UTC).toString(Qt::ISODate);
+    const QString expectedTime = QStringLiteral("1970-01-01 08:00:10");
     if (cell(model, row, FakeParameterColumn::Status) != QStringLiteral("已读取")
         || cell(model, row, FakeParameterColumn::Read) != QString()
         || cell(model, row, FakeParameterColumn::Set) != QString()
