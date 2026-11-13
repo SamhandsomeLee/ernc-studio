@@ -24,6 +24,7 @@ qt_add_executable(ernc_app
     ../src/presentation/shell/main_window.cpp
     ../src/presentation/shell/main_window_files.cpp
     ../src/presentation/shell/window_title.cpp
+    ../src/presentation/shell/bundle_paths.cpp
     ../src/presentation/shell/layout_settings.cpp
     ../src/presentation/navigator/navigator_pages.cpp
     ../src/presentation/navigator/navigator_model.cpp

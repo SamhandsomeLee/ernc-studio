@@ -1,3 +1,4 @@
+#include "shell/bundle_paths.hpp"
 #include "shell/main_window.hpp"
 #include "theme/theme.hpp"
 
@@ -32,9 +33,10 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    const std::filesystem::path catalogPath{ERNC_PARAMETER_CATALOG_PATH};
+    const std::filesystem::path catalogPath = ernc::presentation::resolveBundledResourcePath(
+        "catalog/parameter_catalog.json", ERNC_PARAMETER_CATALOG_PATH);
     ernc::domain::CatalogLoad catalog = ernc::domain::ParameterCatalogLoader::loadFile(catalogPath);
-    ernc::presentation::MainWindow window(std::move(catalog), QString::fromUtf8(ERNC_PARAMETER_CATALOG_PATH));
+    ernc::presentation::MainWindow window(std::move(catalog), QString::fromStdWString(catalogPath.wstring()));
     window.show();
 
     if (application.arguments().contains(QStringLiteral("--exit-after-show"))) {

@@ -1,3 +1,4 @@
+#include "shell/bundle_paths.hpp"
 #include "shell/layout_settings.hpp"
 #include "shell/window_title.hpp"
 #include "shell/main_window.hpp"
@@ -156,7 +157,9 @@ MainWindow::MainWindow(ernc::domain::CatalogLoad catalog, QString catalogPath, Q
     workLayout->setContentsMargins(0, 0, 0, 0);
     workLayout->setSpacing(0);
 #ifdef ERNC_LAYOUT_MANIFEST_PATH
-    const ernc::domain::LayoutLoad layoutLoad = ernc::domain::FirmwareLayoutLoader::loadFile(ERNC_LAYOUT_MANIFEST_PATH);
+    const std::filesystem::path layoutManifestPath = resolveBundledResourcePath(
+        "firmware/layout_manifest.json", ERNC_LAYOUT_MANIFEST_PATH);
+    const ernc::domain::LayoutLoad layoutLoad = ernc::domain::FirmwareLayoutLoader::loadFile(layoutManifestPath);
     if (layoutLoad.ok()) {
         firmwareLayout_ = layoutLoad.layout();
         const ernc::domain::Result<ernc::domain::RegionCatalog> regionLoad =
@@ -170,10 +173,18 @@ MainWindow::MainWindow(ernc::domain::CatalogLoad catalog, QString catalogPath, Q
     const ernc::domain::RegionCatalog* regionCatalog = regionCatalog_ ? &*regionCatalog_ : nullptr;
     auto* editorTabs = new EditorTabs(loadedCatalog, &parameterStore_, layout, regionCatalog, workArea);
 #ifdef ERNC_CAN_NAMES_PATH
-    editorTabs->setCanNamesPath(QString::fromUtf8(ERNC_CAN_NAMES_PATH));
+    {
+        const std::filesystem::path path = resolveBundledResourcePath(
+            "catalog/source/can_names.raw.json", ERNC_CAN_NAMES_PATH);
+        editorTabs->setCanNamesPath(QString::fromStdWString(path.wstring()));
+    }
 #endif
 #ifdef ERNC_CAN_SLOT_MAP_PATH
-    editorTabs->setCanSlotMapPath(QString::fromUtf8(ERNC_CAN_SLOT_MAP_PATH));
+    {
+        const std::filesystem::path path =
+            resolveBundledResourcePath("catalog/can_msg_slot_map.json", ERNC_CAN_SLOT_MAP_PATH);
+        editorTabs->setCanSlotMapPath(QString::fromStdWString(path.wstring()));
+    }
 #endif
     editorTabs_ = editorTabs;
     workspaceContext_ = new QLabel(workArea);
@@ -569,7 +580,9 @@ void MainWindow::restoreDefaultShellLayout() {
 }
 
 void MainWindow::bindShellKeymap() {
-    const ShellKeymap map = loadShellKeymapFile(std::filesystem::path{ERNC_SHELL_KEYMAP_PATH});
+    const std::filesystem::path keymapPath =
+        resolveBundledResourcePath("resources/keymap/shell.txt", ERNC_SHELL_KEYMAP_PATH);
+    const ShellKeymap map = loadShellKeymapFile(keymapPath);
     if (!map.error.empty()) {
         return;
     }
