@@ -9,7 +9,10 @@
 #include "regions/region_workspace.hpp"
 
 #include "ernc/application/batch_write.hpp"
+#include "ernc/domain/types.hpp"
 #include "scheduler.hpp"
+
+#include <sstream>
 
 #include "controls/parameter_delegates.hpp"
 #include "pages/can_names.hpp"
@@ -559,9 +562,22 @@ void EditorTabs::readCurrentPage() {
 }
 
 void EditorTabs::readSelectedScalar() {
-    if (deviceController_ == nullptr || selection_.parameterId().empty()) {
+    auto recordRequest = [this](std::string_view detail, bool success, ernc::domain::ErrorCode error) {
+        if (uiRecorder_) {
+            uiRecorder_("parameter.ui.scalar_read.request", detail, success, error);
+        }
+    };
+    if (deviceController_ == nullptr) {
+        recordRequest(R"({"reason":"no_controller"})", false, ernc::domain::ErrorCode::InvalidParameter);
         return;
     }
+    if (selection_.parameterId().empty()) {
+        recordRequest(R"({"reason":"no_selection"})", false, ernc::domain::ErrorCode::InvalidParameter);
+        return;
+    }
+    std::ostringstream detail;
+    detail << R"({"page":")" << selection_.pageId() << R"(","parameter":")" << selection_.parameterId() << "\"}";
+    recordRequest(detail.str(), true, ernc::domain::ErrorCode::Unknown);
     deviceController_->readScalarParameter(QString::fromStdString(selection_.parameterId()));
 }
 
@@ -690,8 +706,9 @@ void EditorTabs::showCurveAnalysis() {
 
 void EditorTabs::setUiActivityRecorder(
     std::function<void(std::string_view, std::string_view, bool, ernc::domain::ErrorCode)> recorder) {
+    uiRecorder_ = recorder;
     if (curveAnalysis_ != nullptr) {
-        curveAnalysis_->setUiActivityRecorder(std::move(recorder));
+        curveAnalysis_->setUiActivityRecorder(recorder);
     }
 }
 

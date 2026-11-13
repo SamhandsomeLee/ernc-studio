@@ -70,11 +70,17 @@ AnalysisPanel::AnalysisPanel(const ernc::domain::RegionCatalog& catalog, ernc::a
             status_->setText(QStringLiteral("解码失败，请核对区域与文件长度。"));
             if (uiActivityRecorder_) {
                 std::ostringstream detail;
-                detail << "{\"region\":\"" << region.path << "\",\"expected_bytes\":" << bytes.size()
+                detail << "{\"region\":\"" << region.path << "\",\"byte_count\":" << bytes.size()
                        << ",\"stage\":\"analysis.decode\"}";
                 uiActivityRecorder_("region.decode", detail.str(), false, loaded.error());
             }
             return;
+        }
+        if (uiActivityRecorder_) {
+            std::ostringstream detail;
+            detail << "{\"region\":\"" << region.path << "\",\"byte_count\":" << bytes.size()
+                   << ",\"stage\":\"analysis.decode\"}";
+            uiActivityRecorder_("region.decode", detail.str(), true, ernc::domain::ErrorCode::Unknown);
         }
         status_->setText(QStringLiteral("已载入 ") + QString::fromStdString(region.path));
         focusSpecializedTab(region.path);

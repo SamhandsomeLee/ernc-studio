@@ -318,6 +318,7 @@ ernc::domain::Result<void> RegionWorkspace::readSelected() {
     }
     if (!started.ok()) {
         const ErrorCode error = started.tryError() != nullptr ? *started.tryError() : ErrorCode::Unknown;
+        notifyUiAction("region.read.start", importDetailJson(*region, {}, std::nullopt), false, error);
         if (error == ErrorCode::DeviceDisconnected) {
             status_ = QStringLiteral("未连接设备");
         } else if (error == ErrorCode::InvalidParameter) {
@@ -330,6 +331,7 @@ ernc::domain::Result<void> RegionWorkspace::readSelected() {
         status_ = QStringLiteral("正在读取 %1").arg(activeReadPath_);
         setReadRunning(true);
         noteReadProgress(activeReadPath_, 0, region->size);
+        notifyUiAction("region.read.start", importDetailJson(*region, {}, std::nullopt), true, ErrorCode::Unknown);
     }
     statusLabel_->setText(status_);
     refreshProgress();
@@ -365,6 +367,16 @@ ernc::domain::Result<void> RegionWorkspace::importFiles(const std::vector<std::f
             }
         }
         if (candidates.empty()) {
+            std::ostringstream detail;
+            detail << "{\"source\":\"" << escapeJson(source.filename().string()) << "\",\"suffix\":\""
+                   << escapeJson(suffix.toStdString()) << "\"";
+            std::error_code sizeError;
+            const std::uintmax_t fileBytes = std::filesystem::file_size(source, sizeError);
+            if (!sizeError) {
+                detail << ",\"file_bytes\":" << fileBytes;
+            }
+            detail << "}";
+            notifyUiAction("region.import.reject", detail.str(), false, ErrorCode::InvalidParameter);
             status_ = QStringLiteral("无法识别文件：%1").arg(QString::fromStdString(source.filename().string()));
             statusLabel_->setText(status_);
             return ernc::domain::Result<void>::failure(ErrorCode::InvalidParameter);
@@ -529,7 +541,18 @@ void RegionWorkspace::noteReadProgress(const QString& path, const quint64 filled
 
 void RegionWorkspace::noteReadFinished(const bool success, const QString& path, const QByteArray& bytes,
                                        const int errorCode) {
+    {
+        std::ostringstream attempt;
+        attempt << R"({"path":")" << escapeJson(path.toStdString()) << R"(","success":)" << (success ? "true" : "false")
+                << R"(,"bytes":)" << bytes.size() << R"(,"active_read_path":")" << escapeJson(activeReadPath_.toStdString())
+                << R"(","read_running":)" << (readRunning_ ? "true" : "false") << "}";
+        notifyUiAction("region.read.finish.attempt", attempt.str(), true, ErrorCode::Unknown);
+    }
     if (!activeReadPath_.isEmpty() && path != activeReadPath_) {
+        std::ostringstream detail;
+        detail << R"({"path":")" << escapeJson(path.toStdString()) << R"(","active_read_path":")"
+               << escapeJson(activeReadPath_.toStdString()) << R"(","reason":"path_mismatch"})";
+        notifyUiAction("region.read.finish.ignored", detail.str(), true, ErrorCode::Unknown);
         return;
     }
     const std::optional<ernc::domain::RegionDefinition> definition = definitionForPath(catalog_, path.toStdString());

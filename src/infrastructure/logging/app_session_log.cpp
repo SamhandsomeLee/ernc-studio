@@ -94,6 +94,7 @@ void AppSessionLog::appendReadableLine(std::string_view line) {
     }
     output.write(line.data(), static_cast<std::streamsize>(line.size()));
     output.put('\n');
+    output.flush();
 }
 
 void AppSessionLog::appendJsonlRecord(const LogEvent& event) {
@@ -108,6 +109,7 @@ void AppSessionLog::appendJsonlRecord(const LogEvent& event) {
     const std::string line = formatJsonlLine(event);
     output.write(line.data(), static_cast<std::streamsize>(line.size()));
     output.put('\n');
+    output.flush();
 }
 
 }  // namespace ernc::infrastructure

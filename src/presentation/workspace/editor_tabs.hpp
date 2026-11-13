@@ -248,6 +248,9 @@ private:
 
     /// 设备控制器。不拥有。
     DeviceController* deviceController_{nullptr};
+
+    /// 参数页 UI 意图记录（单读、选中等）。空表示不写入会话日志。
+    std::function<void(std::string_view, std::string_view, bool, ernc::domain::ErrorCode)> uiRecorder_;
     ernc::domain::ArrayRuntimeStore* arrayStore_{nullptr};
     ArrayDetailPanel* arrayDetail_{nullptr};
     std::function<void()> arrayDetailPresenter_;
