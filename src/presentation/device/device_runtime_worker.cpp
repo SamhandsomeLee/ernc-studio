@@ -115,6 +115,8 @@ void DeviceRuntimeWorker::doDisconnect() {
         (void)stack_->disconnectLink();
     }
     activeRead_.reset();
+    activeScalarRead_.reset();
+    activeScalarReadId_.clear();
     wasWriteBusy_ = false;
 }
 
@@ -200,7 +202,8 @@ quint64 DeviceRuntimeWorker::sessionIdRaw() const {
 }
 
 bool DeviceRuntimeWorker::startBatchRead(const QString& pageId) {
-    if (stack_ == nullptr || !stack_->connected() || stack_->batchReader().busy()) {
+    if (stack_ == nullptr || !stack_->connected() || stack_->batchReader().busy() || activeScalarRead_.has_value()
+        || stack_->parameterReader().busy()) {
         return false;
     }
     ernc::application::BatchReadScope scope;
@@ -230,8 +233,27 @@ bool DeviceRuntimeWorker::startBatchRead(const QString& pageId) {
     return true;
 }
 
+bool DeviceRuntimeWorker::startScalarRead(const QString& parameterId) {
+    if (stack_ == nullptr || !stack_->connected() || activeRead_.has_value() || activeScalarRead_.has_value()
+        || stack_->batchReader().busy() || stack_->parameterReader().busy() || stack_->batchWriter().busy()) {
+        return false;
+    }
+    const ernc::domain::Result<ernc::domain::ParameterId> parsed =
+        ernc::domain::ParameterId::parse(parameterId.toStdString());
+    if (!parsed.ok() || parsed.tryValue() == nullptr) {
+        return false;
+    }
+    const ernc::domain::Result<ernc::application::ReadTicket> started = stack_->parameterReader().read(*parsed.tryValue());
+    if (!started.ok() || started.tryValue() == nullptr) {
+        return false;
+    }
+    activeScalarRead_ = started.value();
+    activeScalarReadId_ = parameterId;
+    return true;
+}
+
 bool DeviceRuntimeWorker::startArrayRead(const QString& parameterId) {
-    if (stack_ == nullptr || !stack_->connected() || stack_->batchReader().busy()) {
+    if (stack_ == nullptr || !stack_->connected() || stack_->batchReader().busy() || activeScalarRead_.has_value()) {
         return false;
     }
     const ernc::domain::Result<ernc::domain::ParameterId> parsed = ernc::domain::ParameterId::parse(parameterId.toStdString());
@@ -281,10 +303,12 @@ DeviceRuntimeWorker::PumpReport DeviceRuntimeWorker::doPump() {
     }
     stack_->scheduler().pump();
     pumpBatchRead();
+    pumpScalarRead();
     pumpBatchWrite(report);
     pumpRegionRead(report);
     pumpRegionWrite(report);
     finishBatchReadIfIdle(report);
+    finishScalarReadIfIdle(report);
     report.writerBusy = stack_->batchWriter().busy();
     report.writeItems = stack_->batchWriter().items();
     report.writeInflight = stack_->batchWriter().inFlight();
@@ -371,6 +395,35 @@ void DeviceRuntimeWorker::pumpBatchRead() {
             stack_->batchReader().apply(*outcome, readAt);
         }
     }
+}
+
+void DeviceRuntimeWorker::pumpScalarRead() {
+    if (!activeScalarRead_.has_value() || stack_ == nullptr) {
+        return;
+    }
+    const RuntimeTime readAt = now();
+    for (const ernc::application::CommandId id : activeScalarRead_->commands()) {
+        if (std::optional<ernc::application::CommandOutcome> outcome = stack_->scheduler().takeResult(id)) {
+            stack_->parameterReader().apply(*outcome, readAt);
+        }
+    }
+}
+
+void DeviceRuntimeWorker::finishScalarReadIfIdle(PumpReport& report) {
+    if (!activeScalarRead_.has_value() || stack_ == nullptr || stack_->parameterReader().busy()) {
+        return;
+    }
+    const ernc::application::ParameterReadImage* image = stack_->parameterReader().image();
+    const bool success = image != nullptr && image->scalar;
+    std::ostringstream detail;
+    detail << R"({"scope":"scalar","parameter":)" << jsonQuote(activeScalarReadId_.toStdString()) << "}";
+    report.scalarReadFinished = true;
+    report.scalarReadSuccess = success;
+    report.scalarReadParameterId = activeScalarReadId_;
+    report.scalarReadDetailJson = detail.str();
+    report.parametersUpdated = QStringList{activeScalarReadId_};
+    activeScalarRead_.reset();
+    activeScalarReadId_.clear();
 }
 
 void DeviceRuntimeWorker::pumpBatchWrite(PumpReport& report) {

@@ -272,6 +272,12 @@ MainWindow::MainWindow(ernc::domain::CatalogLoad catalog, QString catalogPath, Q
             deviceController_->attachSessionDiagnosticLog(&sessionLog_->diagnosticLog());
         }
         editorTabs_->setDeviceController(deviceController_);
+        inspectorPanel_->setScalarReadHandler(
+            [controller = deviceController_](const std::string_view parameterId) {
+                if (controller != nullptr && !parameterId.empty()) {
+                    controller->readScalarParameter(QString::fromStdString(std::string(parameterId)));
+                }
+            });
         QObject::connect(deviceController_, &DeviceController::connectionChanged, this, &MainWindow::onDeviceConnectionChanged);
         QObject::connect(deviceController_, &DeviceController::parametersUpdated, this, &MainWindow::onParametersUpdated);
         QObject::connect(deviceController_, &DeviceController::operationLogRefreshRequested, this, [this] {
@@ -282,6 +288,16 @@ MainWindow::MainWindow(ernc::domain::CatalogLoad catalog, QString catalogPath, Q
         QObject::connect(deviceController_, &DeviceController::readPageFinished, this, [this](bool success, QString detail) {
             taskStatus_->setText(readSummary(success, detail));
         });
+        QObject::connect(deviceController_, &DeviceController::scalarReadFinished, this,
+                         [this](bool success, const QString& parameterId, const QString& detail) {
+                             const QString prefix = success ? QStringLiteral("读取完成") : QStringLiteral("读取失败");
+                             taskStatus_->setText(QStringLiteral("%1 · %2").arg(prefix, parameterId));
+                             if (!success && !detail.isEmpty()) {
+                                 taskStatus_->setToolTip(detail);
+                             } else {
+                                 taskStatus_->setToolTip(QString());
+                             }
+                         });
         QObject::connect(deviceController_, &DeviceController::writeBatchFinished, this, [this](int acked, int failed) {
             taskStatus_->setText(QStringLiteral("写入结束 · %1 项设备已确认，%2 项失败").arg(acked).arg(failed));
         });

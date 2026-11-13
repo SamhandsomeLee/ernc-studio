@@ -48,8 +48,18 @@ InspectorPanel::InspectorPanel(const ernc::domain::ParameterCatalog* catalog,
     layout->setContentsMargins(0, 0, 0, 0);
     tabs_ = new QTabWidget(this);
     tabs_->setObjectName(QStringLiteral("erncInspectorTabs"));
-    tabs_->addTab(makePage(QStringLiteral("erncInspectorProperties"), tabs_, propertiesLabel_),
-        QStringLiteral("属性"));
+    auto* propertiesPage = makePage(QStringLiteral("erncInspectorProperties"), tabs_, propertiesLabel_);
+    scalarReadButton_ = new QPushButton(QStringLiteral("从设备读取"), propertiesPage);
+    scalarReadButton_->setObjectName(QStringLiteral("erncInspectorReadScalar"));
+    if (auto* pageLayout = qobject_cast<QVBoxLayout*>(propertiesPage->layout())) {
+        pageLayout->insertWidget(0, scalarReadButton_, 0, Qt::AlignLeft);
+    }
+    connect(scalarReadButton_, &QPushButton::clicked, this, [this] {
+        if (scalarReadHandler_ && !parameterId_.empty()) {
+            scalarReadHandler_(parameterId_);
+        }
+    });
+    tabs_->addTab(propertiesPage, QStringLiteral("属性"));
     tabs_->addTab(makePage(QStringLiteral("erncInspectorInfo"), tabs_, infoLabel_),
         QStringLiteral("信息"));
     auto* diagnosticsPage = makePage(QStringLiteral("erncInspectorDiagnostics"), tabs_, diagnosticsLabel_);
@@ -83,6 +93,10 @@ void InspectorPanel::showParameter(std::string_view parameterId) {
 
 void InspectorPanel::setOperationCenterOpener(std::function<void()> opener) {
     operationCenterOpener_ = std::move(opener);
+}
+
+void InspectorPanel::setScalarReadHandler(std::function<void(std::string_view)> handler) {
+    scalarReadHandler_ = std::move(handler);
 }
 
 void InspectorPanel::showNamedPage(const char* objectName) {

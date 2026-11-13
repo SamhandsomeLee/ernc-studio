@@ -99,6 +99,9 @@ QWidget* makeParameterView(QWidget* parent, const ernc::domain::ParameterCatalog
     dirtyOnly->setObjectName(QStringLiteral("erncParameterDirtyOnly"));
     filters->addWidget(search, 1);
     filters->addWidget(dirtyOnly);
+    auto* readObservedOnly = new QCheckBox(QStringLiteral("只看已读取"), view);
+    readObservedOnly->setObjectName(QStringLiteral("erncParameterReadObservedOnly"));
+    filters->addWidget(readObservedOnly);
     auto* columns = new QToolButton(view);
     columns->setText(QStringLiteral("显示"));
     columns->setObjectName(QStringLiteral("erncParameterDisplayOptions"));
@@ -109,6 +112,9 @@ QWidget* makeParameterView(QWidget* parent, const ernc::domain::ParameterCatalog
     auto* readPage = new QPushButton(QStringLiteral("读取本页"), view);
     readPage->setObjectName(QStringLiteral("erncReadCurrentPage"));
     filters->addWidget(readPage);
+    auto* readSelected = new QPushButton(QStringLiteral("读取选中"), view);
+    readSelected->setObjectName(QStringLiteral("erncReadSelectedScalar"));
+    filters->addWidget(readSelected);
     auto* writePlan = new QPushButton(QStringLiteral("查看写入计划"), view);
     writePlan->setObjectName(QStringLiteral("erncOpenWritePlan"));
     filters->addWidget(writePlan);
@@ -160,6 +166,7 @@ QWidget* makeParameterView(QWidget* parent, const ernc::domain::ParameterCatalog
     viewLayout->addWidget(table, 1);
     QObject::connect(search, &QLineEdit::textChanged, proxy, &ParameterFilterProxy::setQuery);
     QObject::connect(dirtyOnly, &QCheckBox::toggled, proxy, &ParameterFilterProxy::setDirtyOnly);
+    QObject::connect(readObservedOnly, &QCheckBox::toggled, proxy, &ParameterFilterProxy::setReadObservedOnly);
     return view;
 }
 
@@ -294,6 +301,16 @@ EditorTabs::EditorTabs(const ernc::domain::ParameterCatalog* catalog, ernc::doma
     if (auto* readCurrent = parameterView->findChild<QPushButton*>(QStringLiteral("erncReadCurrentPage"))) {
         connect(readCurrent, &QPushButton::clicked, this, &EditorTabs::readCurrentPage);
     }
+    if (auto* readScalar = parameterView->findChild<QPushButton*>(QStringLiteral("erncReadSelectedScalar"))) {
+        connect(readScalar, &QPushButton::clicked, this, &EditorTabs::readSelectedScalar);
+    }
+    connect(parameterTable_, &QTableView::doubleClicked, this, [this](const QModelIndex& index) {
+        if (!index.isValid()
+            || index.column() != static_cast<int>(FakeParameterColumn::Read)) {
+            return;
+        }
+        readSelectedScalar();
+    });
     if (auto* openWritePlan = parameterView->findChild<QPushButton*>(QStringLiteral("erncOpenWritePlan"))) {
         connect(openWritePlan, &QPushButton::clicked, this, &EditorTabs::openWritePlan);
     }
@@ -521,6 +538,13 @@ void EditorTabs::readCurrentPage() {
     deviceController_->readCategory(selection_.pageId());
 }
 
+void EditorTabs::readSelectedScalar() {
+    if (deviceController_ == nullptr || selection_.parameterId().empty()) {
+        return;
+    }
+    deviceController_->readScalarParameter(QString::fromStdString(selection_.parameterId()));
+}
+
 void EditorTabs::bindParameterSession(const ernc::domain::SessionId session) {
     if (parameterModel_ != nullptr) {
         parameterModel_->bindSession(session);
@@ -538,6 +562,15 @@ void EditorTabs::notifyParametersUpdated(const ernc::domain::SessionId session, 
         }
     }
     refresh();
+    if (parameterObserver_ && !selection_.parameterId().empty()) {
+        const QString selected = QString::fromStdString(selection_.parameterId());
+        for (const QString& text : parameterIds) {
+            if (text == selected) {
+                parameterObserver_(selection_.parameterId());
+                break;
+            }
+        }
+    }
     if (arrayDetail_ != nullptr) {
         arrayDetail_->onArrayStoreChanged();
     }

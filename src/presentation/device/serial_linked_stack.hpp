@@ -2,6 +2,7 @@
 
 #include "ernc/application/batch_read.hpp"
 #include "ernc/application/batch_write.hpp"
+#include "ernc/application/read_parameter.hpp"
 #include "ernc/domain/catalog.hpp"
 #include "ernc/domain/firmware_layout.hpp"
 #include "ernc/domain/runtime_store.hpp"
@@ -45,6 +46,8 @@ public:
     ernc::application::CommandScheduler& scheduler();
     ernc::application::ParameterBatchReader& batchReader();
     ernc::application::ParameterBatchWriter& batchWriter();
+    ernc::application::ParameterReader& parameterReader();
+    const ernc::application::ParameterReader& parameterReader() const;
 
     void attachDiagnosticLog(ernc::infrastructure::DiagnosticLog* log) noexcept;
 
@@ -61,6 +64,7 @@ private:
     std::unique_ptr<ernc::application::CommandScheduler> scheduler_;
     std::unique_ptr<ernc::application::ParameterBatchReader> batchReader_;
     std::unique_ptr<ernc::application::ParameterBatchWriter> batchWriter_;
+    std::unique_ptr<ernc::application::ParameterReader> parameterReader_;
 
     ernc::infrastructure::DiagnosticLog* diagnosticLog_{nullptr};
 };

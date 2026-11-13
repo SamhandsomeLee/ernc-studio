@@ -39,6 +39,10 @@ class DeviceRuntimeWorker final : public QObject {
 public:
     struct PumpReport {
         QStringList parametersUpdated;
+        bool scalarReadFinished{false};
+        bool scalarReadSuccess{false};
+        QString scalarReadParameterId;
+        std::string scalarReadDetailJson;
         bool readFinished{false};
         bool readSuccess{false};
         std::string readDetailJson;
@@ -77,6 +81,7 @@ public slots:
     quint64 sessionIdRaw() const;
     bool startBatchRead(const QString& pageId);
     bool startArrayRead(const QString& parameterId);
+    bool startScalarRead(const QString& parameterId);
     int startRegionRead(const QString& path);
     void cancelRegionRead();
     int startRegionWrite(const QString& path, const QByteArray& bytes);
@@ -90,8 +95,10 @@ private:
     using RuntimeTime = ernc::domain::RuntimeTime;
 
     void pumpBatchRead();
+    void pumpScalarRead();
     void pumpBatchWrite(PumpReport& report);
     void finishBatchReadIfIdle(PumpReport& report);
+    void finishScalarReadIfIdle(PumpReport& report);
     void pumpRegionRead(PumpReport& report);
     void pumpRegionWrite(PumpReport& report);
     RuntimeTime now() const noexcept;
@@ -111,6 +118,8 @@ private:
     ernc::infrastructure::DiagnosticLog* diagnosticLog_{nullptr};
 
     std::optional<ernc::application::BatchReadTicket> activeRead_;
+    std::optional<ernc::application::ReadTicket> activeScalarRead_;
+    QString activeScalarReadId_;
     std::string lastReadCategory_;
     QStringList parametersTouchedThisRead_;
     bool wasWriteBusy_{false};

@@ -34,11 +34,16 @@ public:
     /// @note 不把状态文字「待写入」当作条件。过期但仍然 dirty 的行会留下。
     void setDirtyOnly(bool enabled);
 
+    /// @brief 设置是否只显示已从设备成功读回且未过期的参数。
+    /// @param enabled 为 true 时只保留 `deviceValue` 有值且 `stale == false` 的行。
+    /// @note 不统计仅含工程历史 `projectReadValue` 的行。断线后仍为 stale 的行会被隐藏。
+    void setReadObservedOnly(bool enabled);
+
 protected:
     /// @brief 判断源模型的一行是否进入当前视图。
     /// @param sourceRow 源模型行号，与目录顺序一致。
     /// @param sourceParent 只接受无效父索引。
-    /// @return 页面、搜索文字和 Dirty 开关都通过时为 true。
+    /// @return 页面、搜索、Dirty 与读回筛选都通过时为 true。
     bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override;
 
 private:
@@ -56,6 +61,9 @@ private:
 
     /// 为 true 时只显示 dirty 行。
     bool dirtyOnly_{false};
+
+    /// 为 true 时只显示未过期的设备读数行。
+    bool readObservedOnly_{false};
 };
 
 } // namespace ernc::presentation

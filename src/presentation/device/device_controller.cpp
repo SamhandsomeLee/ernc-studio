@@ -198,7 +198,9 @@ void DeviceController::tearDownAll() {
     }
     tearDownSerial();
     activeRead_.reset();
-    activeCanMsgRead_.reset();
+    activeParameterRead_.reset();
+    activeParameterReadKind_.reset();
+    activeScalarReadId_.clear();
     canMsgSnapshot_.clear();
     canMsgSnapshotValid_ = false;
     linkKind_ = LinkKind::None;
@@ -338,7 +340,7 @@ Result<void> DeviceController::startRegionRead(const QString& path) {
         return Result<void>::success();
     }
     if (linkKind_ != LinkKind::Simulator || simulatorRegionReader_ == nullptr || activeRead_.has_value()
-        || activeCanMsgRead_.has_value() || stack_.batchReader().busy() || stack_.parameterReader().busy()
+        || parameterReaderBusy() || stack_.batchReader().busy()
         || stack_.batchWriter().busy()) {
         return Result<void>::failure(ErrorCode::InvalidParameter);
     }
@@ -413,7 +415,7 @@ Result<void> DeviceController::startRegionWrite(const QString& path, const QByte
         return Result<void>::success();
     }
     if (linkKind_ != LinkKind::Simulator || simulatorRegionWriter_ == nullptr || activeRead_.has_value()
-        || activeCanMsgRead_.has_value() || stack_.batchReader().busy() || stack_.parameterReader().busy()
+        || parameterReaderBusy() || stack_.batchReader().busy()
         || stack_.batchWriter().busy()) {
         return Result<void>::failure(ErrorCode::InvalidParameter);
     }
@@ -471,7 +473,7 @@ void DeviceController::readCategory(const std::string& pageId) {
         recordUi("parameter.batch_read.start", detail.str(), true);
         return;
     }
-    if (stack_.batchReader().busy() || activeCanMsgRead_.has_value() || stack_.parameterReader().busy()) {
+    if (stack_.batchReader().busy() || parameterReaderBusy()) {
         recordUi("parameter.batch_read.start", R"({"reason":"reader_busy"})", false, ErrorCode::InvalidParameter);
         return;
     }
@@ -523,7 +525,7 @@ void DeviceController::readAllScalars() {
         recordUi("parameter.batch_read.start", R"({"scope":"all_scalars","transport":"serial"})", true);
         return;
     }
-    if (stack_.batchReader().busy() || activeCanMsgRead_.has_value() || stack_.parameterReader().busy()) {
+    if (stack_.batchReader().busy() || parameterReaderBusy()) {
         recordUi("parameter.batch_read.start", R"({"reason":"reader_busy"})", false, ErrorCode::InvalidParameter);
         return;
     }
@@ -576,7 +578,7 @@ void DeviceController::pumpSimulator() {
         dialog->noteProgress();
     }
     finishBatchReadIfIdleSimulator();
-    finishCanMsgReadIfIdleSimulator();
+    finishParameterReadIfIdleSimulator();
     finishRegionReadSimulator();
     finishRegionWriteSimulator();
 }
@@ -667,7 +669,7 @@ void DeviceController::readCanMsg() {
     if (activeRead_.has_value() || stack_.batchReader().busy()) {
         return;
     }
-    if (activeCanMsgRead_.has_value() || stack_.parameterReader().busy()) {
+    if (parameterReaderBusy()) {
         return;
     }
     const Result<ParameterId> parsed = ParameterId::parse("Can_Msg");
@@ -683,59 +685,170 @@ void DeviceController::readCanMsg() {
         emit canMsgUpdated(false);
         return;
     }
-    activeCanMsgRead_ = started.value();
+    activeParameterRead_ = started.value();
+    activeParameterReadKind_ = ParameterReadKind::CanMsg;
     recordUi("parameter.can_msg_read.start", R"({"scope":"Can_Msg","transport":"simulator"})", true);
     pumpParameterReadSimulator();
-    finishCanMsgReadIfIdleSimulator();
+    finishParameterReadIfIdleSimulator();
 }
 
 bool DeviceController::canMsgReadBusy() const noexcept {
     if (linkKind_ == LinkKind::Simulator && stack_.connected()) {
-        return activeCanMsgRead_.has_value() || stack_.parameterReader().busy();
+        return parameterReaderBusy();
     }
     return false;
 }
 
 void DeviceController::pumpParameterReadSimulator() {
-    if (!activeCanMsgRead_.has_value()) {
+    if (!activeParameterRead_.has_value()) {
         return;
     }
-    for (const CommandId id : activeCanMsgRead_->commands()) {
+    for (const CommandId id : activeParameterRead_->commands()) {
         if (std::optional<CommandOutcome> outcome = stack_.scheduler().takeResult(id)) {
             stack_.parameterReader().apply(*outcome, now());
         }
     }
 }
 
-void DeviceController::finishCanMsgReadIfIdleSimulator() {
-    if (!activeCanMsgRead_.has_value() || stack_.parameterReader().busy()) {
+void DeviceController::finishParameterReadIfIdleSimulator() {
+    if (!activeParameterRead_.has_value() || stack_.parameterReader().busy() || !activeParameterReadKind_.has_value()) {
         return;
     }
     const ernc::application::ParameterReadImage* image = stack_.parameterReader().image();
-    bool success = false;
-    canMsgSnapshot_.clear();
-    canMsgSnapshotValid_ = false;
-    if (image != nullptr && image->elements.size() == kCanMsgElementCount) {
-        canMsgSnapshot_.reserve(image->elements.size());
-        for (const ernc::domain::ScalarValue& element : image->elements) {
-            const Result<float> number = element.asFloat();
-            if (!number.ok()) {
-                canMsgSnapshot_.clear();
-                break;
+  if (*activeParameterReadKind_ == ParameterReadKind::CanMsg) {
+        bool success = false;
+        canMsgSnapshot_.clear();
+        canMsgSnapshotValid_ = false;
+        if (image != nullptr && image->elements.size() == kCanMsgElementCount) {
+            canMsgSnapshot_.reserve(image->elements.size());
+            for (const ernc::domain::ScalarValue& element : image->elements) {
+                const Result<float> number = element.asFloat();
+                if (!number.ok()) {
+                    canMsgSnapshot_.clear();
+                    break;
+                }
+                canMsgSnapshot_.push_back(number.value());
             }
-            canMsgSnapshot_.push_back(number.value());
+            if (canMsgSnapshot_.size() == kCanMsgElementCount) {
+                canMsgSnapshotValid_ = true;
+                success = true;
+            }
         }
-        if (canMsgSnapshot_.size() == kCanMsgElementCount) {
-            canMsgSnapshotValid_ = true;
-            success = true;
+        std::ostringstream detail;
+        detail << R"({"scope":"Can_Msg","elements":)" << canMsgSnapshot_.size() << "}";
+        recordUi("parameter.can_msg_read.finish", detail.str(), success,
+                 success ? ErrorCode::Unknown : ErrorCode::ResponseMismatch);
+        emit canMsgUpdated(success);
+    } else if (*activeParameterReadKind_ == ParameterReadKind::Scalar) {
+        const bool success = image != nullptr && image->scalar;
+        std::ostringstream detail;
+        detail << R"({"scope":"scalar","parameter":)" << jsonQuote(activeScalarReadId_.toStdString()) << "}";
+        recordUi("parameter.scalar_read.finish", detail.str(), success,
+                 success ? ErrorCode::Unknown : ErrorCode::ResponseMismatch);
+        if (stack_.connected()) {
+            emit parametersUpdated(stack_.session().currentId(), QStringList{activeScalarReadId_});
         }
+        emit scalarReadFinished(success, activeScalarReadId_, QString::fromStdString(detail.str()));
+        emit operationLogRefreshRequested();
     }
+    activeParameterRead_.reset();
+    activeParameterReadKind_.reset();
+    activeScalarReadId_.clear();
+}
+
+bool DeviceController::parameterReaderBusy() const noexcept {
+    if (linkKind_ == LinkKind::Simulator && stack_.connected()) {
+        return activeParameterRead_.has_value() || stack_.parameterReader().busy();
+    }
+    return false;
+}
+
+ErrorCode DeviceController::validateScalarReadTarget(const ParameterId& id) const noexcept {
+    const ernc::domain::ParameterDefinition* definition = catalog_.find(id.text());
+    if (definition == nullptr) {
+        return ErrorCode::InvalidParameter;
+    }
+    if (ernc::domain::shouldUseCompactArrayUi(definition, layout_)) {
+        return ErrorCode::InvalidParameter;
+    }
+    if (!definition->firmwarePath || definition->firmwarePath->empty()) {
+        return ErrorCode::InvalidParameter;
+    }
+    const ernc::domain::LayoutResolve located = layout_.locate(*definition->firmwarePath);
+    if (!located.ok()) {
+        return ErrorCode::InvalidParameter;
+    }
+    const ernc::domain::FieldLayout& field = located.field();
+    if (!field.scalarType || field.slotCount != 1U || field.size != 4U) {
+        return ErrorCode::InvalidParameter;
+    }
+    if (definition->dataType && *definition->dataType != *field.scalarType) {
+        return ErrorCode::InvalidParameter;
+    }
+    return ErrorCode::Unknown;
+}
+
+void DeviceController::readScalarParameter(const QString& parameterIdQString) {
+    const QByteArray utf8 = parameterIdQString.toUtf8();
+    const Result<ParameterId> parsed = ParameterId::parse(std::string_view{utf8.constData(), static_cast<std::size_t>(utf8.size())});
+    if (!parsed.ok() || parsed.tryValue() == nullptr) {
+        recordUi("parameter.scalar_read.start", R"({"reason":"invalid_id"})", false, ErrorCode::InvalidParameter);
+        emit scalarReadFinished(false, parameterIdQString, QStringLiteral("无效参数"));
+        return;
+    }
+    const ParameterId id = parsed.value();
+    const ErrorCode targetError = validateScalarReadTarget(id);
+    if (targetError != ErrorCode::Unknown) {
+        recordUi("parameter.scalar_read.start", R"({"reason":"not_scalar"})", false, targetError);
+        emit scalarReadFinished(false, parameterIdQString, QStringLiteral("不是可单读的 1-slot 标量"));
+        return;
+    }
+    if (!connected()) {
+        recordUi("parameter.scalar_read.start", R"({"reason":"disconnected"})", false, ErrorCode::DeviceDisconnected);
+        emit scalarReadFinished(false, parameterIdQString, QStringLiteral("未连接设备"));
+        return;
+    }
+    if (activeArrayIo_.has_value() || stack_.batchReader().busy() || activeRead_.has_value() || writeBusy()
+        || !activeRegionPath_.empty()) {
+        recordUi("parameter.scalar_read.start", R"({"reason":"busy"})", false, ErrorCode::InvalidParameter);
+        emit scalarReadFinished(false, parameterIdQString, QStringLiteral("设备正忙"));
+        return;
+    }
+    if (linkKind_ == LinkKind::Serial && serialWorker_ != nullptr) {
+        bool started = false;
+        QMetaObject::invokeMethod(
+            serialWorker_, "startScalarRead", Qt::BlockingQueuedConnection, Q_RETURN_ARG(bool, started),
+            Q_ARG(QString, parameterIdQString));
+        std::ostringstream detail;
+        detail << R"({"parameter":)" << jsonQuote(id.text()) << R"(,"transport":"serial"})";
+        recordUi("parameter.scalar_read.start", detail.str(), started, started ? ErrorCode::Unknown : ErrorCode::InvalidParameter);
+        if (!started) {
+            emit scalarReadFinished(false, parameterIdQString, QStringLiteral("单标量读入队失败"));
+        }
+        return;
+    }
+    if (linkKind_ != LinkKind::Simulator || parameterReaderBusy()) {
+        recordUi("parameter.scalar_read.start", R"({"reason":"busy"})", false, ErrorCode::InvalidParameter);
+        emit scalarReadFinished(false, parameterIdQString, QStringLiteral("设备正忙"));
+        return;
+    }
+    const Result<ernc::application::ReadTicket> started = stack_.parameterReader().read(id);
+    if (!started.ok() || started.tryValue() == nullptr) {
+        const ErrorCode code = started.tryError() != nullptr ? *started.tryError() : ErrorCode::Unknown;
+        std::ostringstream detail;
+        detail << R"({"parameter":)" << jsonQuote(id.text()) << R"(,"error":)" << static_cast<int>(code) << "}";
+        recordUi("parameter.scalar_read.start", detail.str(), false, code);
+        emit scalarReadFinished(false, parameterIdQString, QStringLiteral("单标量读入队失败"));
+        return;
+    }
+    activeParameterRead_ = started.value();
+    activeParameterReadKind_ = ParameterReadKind::Scalar;
+    activeScalarReadId_ = parameterIdQString;
     std::ostringstream detail;
-    detail << R"({"scope":"Can_Msg","elements":)" << canMsgSnapshot_.size() << "}";
-    recordUi("parameter.can_msg_read.finish", detail.str(), success,
-             success ? ErrorCode::Unknown : ErrorCode::ResponseMismatch);
-    emit canMsgUpdated(success);
-    activeCanMsgRead_.reset();
+    detail << R"({"parameter":)" << jsonQuote(id.text()) << R"(,"transport":"simulator"})";
+    recordUi("parameter.scalar_read.start", detail.str(), true);
+    pumpParameterReadSimulator();
+    finishParameterReadIfIdleSimulator();
 }
 
 void DeviceController::pumpSerial() {
@@ -745,6 +858,14 @@ void DeviceController::pumpSerial() {
     DeviceRuntimeWorker::PumpReport report;
     QMetaObject::invokeMethod(
         serialWorker_, "doPump", Qt::BlockingQueuedConnection, Q_RETURN_ARG(DeviceRuntimeWorker::PumpReport, report));
+    if (report.scalarReadFinished) {
+        recordUi("parameter.scalar_read.finish", report.scalarReadDetailJson, report.scalarReadSuccess,
+                 report.scalarReadSuccess ? ErrorCode::Unknown : ErrorCode::ResponseMismatch);
+        emit parametersUpdated(sessionId(), report.parametersUpdated);
+        emit scalarReadFinished(report.scalarReadSuccess, report.scalarReadParameterId,
+                                QString::fromStdString(report.scalarReadDetailJson));
+        emit operationLogRefreshRequested();
+    }
     if (report.readFinished) {
         recordUi("parameter.batch_read.finish", report.readDetailJson, report.readSuccess,
                  report.readSuccess ? ErrorCode::Unknown : ErrorCode::ResponseMismatch);
@@ -981,7 +1102,7 @@ void DeviceController::readArrayParameter(const QString& parameterIdQString) {
                  started ? ErrorCode::Unknown : ErrorCode::InvalidParameter);
         return;
     }
-    if (activeArrayIo_.has_value() || stack_.batchReader().busy()) {
+    if (activeArrayIo_.has_value() || stack_.batchReader().busy() || parameterReaderBusy()) {
         recordUi("parameter.array_read.start", R"({"reason":"busy"})", false, ErrorCode::InvalidParameter);
         return;
     }

@@ -1154,6 +1154,7 @@ if(ERNC_BUILD_UI)
         all_search_keeps_source_order
         flag_page_hides_other_group
         dirty_keeps_stale_dirty_row
+        read_observed_shows_fresh_device_value
     )
 
     foreach(ernc_parameter_filter_case IN LISTS ernc_parameter_filter_cases)

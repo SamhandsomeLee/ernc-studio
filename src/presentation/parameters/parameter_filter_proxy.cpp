@@ -37,6 +37,15 @@ void ParameterFilterProxy::setDirtyOnly(bool enabled) {
     endFilterChange(QSortFilterProxyModel::Direction::Rows);
 }
 
+void ParameterFilterProxy::setReadObservedOnly(bool enabled) {
+    if (enabled == readObservedOnly_) {
+        return;
+    }
+    readObservedOnly_ = enabled;
+    beginFilterChange();
+    endFilterChange(QSortFilterProxyModel::Direction::Rows);
+}
+
 bool ParameterFilterProxy::filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const {
     if (sourceParent.isValid() || catalog_ == nullptr || sourceRow < 0
         || static_cast<std::size_t>(sourceRow) >= catalog_->size()) {
@@ -61,9 +70,14 @@ bool ParameterFilterProxy::filterAcceptsRow(int sourceRow, const QModelIndex& so
             return false;
         }
     }
+    const ernc::domain::ParameterRuntimeState* state = store_ == nullptr ? nullptr : store_->find(definition.id);
     if (dirtyOnly_) {
-        const ernc::domain::ParameterRuntimeState* state = store_ == nullptr ? nullptr : store_->find(definition.id);
         if (state == nullptr || !state->dirty) {
+            return false;
+        }
+    }
+    if (readObservedOnly_) {
+        if (state == nullptr || !state->deviceValue || state->stale) {
             return false;
         }
     }

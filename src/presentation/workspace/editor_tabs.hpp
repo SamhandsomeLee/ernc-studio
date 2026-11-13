@@ -127,6 +127,9 @@ public:
     /// @brief 读取当前项目树页面分类的参数。未连接时提示由控制器记录。
     void readCurrentPage();
 
+    /// @brief 读取共用选择中的 1-slot 标量。未选择或不可读时由控制器记录。
+    void readSelectedScalar();
+
     /// @brief 打开当前分类的写入预览（仅本页已修改参数）。
     void openWritePlan();
 

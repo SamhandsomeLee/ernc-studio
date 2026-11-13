@@ -22,6 +22,8 @@ ernc::domain::Result<ernc::domain::SessionId> SerialLinkedStack::connectLink() {
     batchReader_ = std::make_unique<ernc::application::ParameterBatchReader>(catalog_, layout_, store_, *session_, *scheduler_,
                                                                              &arrayStore_);
     batchWriter_ = std::make_unique<ernc::application::ParameterBatchWriter>(catalog_, layout_, store_, *session_, *scheduler_);
+    parameterReader_ =
+        std::make_unique<ernc::application::ParameterReader>(catalog_, layout_, store_, *session_, *scheduler_);
     if (diagnosticLog_ != nullptr) {
         session_->attachDiagnosticLog(diagnosticLog_);
         scheduler_->attachDiagnosticLog(diagnosticLog_);
@@ -65,6 +67,14 @@ ernc::application::ParameterBatchWriter& SerialLinkedStack::batchWriter() {
     return *batchWriter_;
 }
 
+ernc::application::ParameterReader& SerialLinkedStack::parameterReader() {
+    return *parameterReader_;
+}
+
+const ernc::application::ParameterReader& SerialLinkedStack::parameterReader() const {
+    return *parameterReader_;
+}
+
 void SerialLinkedStack::attachDiagnosticLog(ernc::infrastructure::DiagnosticLog* log) noexcept {
     diagnosticLog_ = log;
     if (session_ != nullptr) {
@@ -76,6 +86,7 @@ void SerialLinkedStack::attachDiagnosticLog(ernc::infrastructure::DiagnosticLog*
 }
 
 void SerialLinkedStack::resetKeepTransport() {
+    parameterReader_.reset();
     batchWriter_.reset();
     batchReader_.reset();
     scheduler_.reset();

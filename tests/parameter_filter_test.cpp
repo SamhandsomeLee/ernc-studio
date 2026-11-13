@@ -118,6 +118,30 @@ bool flagPageHidesOtherGroup(const ParameterCatalog& catalog) {
 /// @brief Dirty 开关只看 Store 的 dirty，过期但仍然 dirty 的行留下。
 /// @param catalog 正式目录。
 /// @return ANC_OFF 留下，只读过的 ENC_OFF 被隐藏时为 true。
+/// @brief 读回筛选只保留未过期的 deviceValue。
+/// @param catalog 正式目录。
+/// @return 读过且在线的 ANC_OFF 留下，未读或仅过期的 ENC_OFF 隐藏时为 true。
+bool readObservedShowsFreshDeviceValue(const ParameterCatalog& catalog) {
+    ParameterRuntimeStore store;
+    ParameterTableModel model{&catalog, &store};
+    ParameterFilterProxy proxy{&catalog, &store};
+    proxy.setSourceModel(&model);
+    const ParameterId anc = ParameterId::parse("ANC_OFF").value();
+    const ParameterId enc = ParameterId::parse("ENC_OFF").value();
+    store.observe(anc, ScalarValue::fromFloat(1.0F), RuntimeTime{std::chrono::seconds{10}});
+    store.observe(enc, ScalarValue::fromFloat(3.0F), RuntimeTime{std::chrono::seconds{12}});
+    store.markOffline();
+    model.noteUpdated(ernc::domain::SessionId::fromRaw(1), anc);
+    model.noteUpdated(ernc::domain::SessionId::fromRaw(1), enc);
+    proxy.setPage(QStringLiteral("ALL"));
+    proxy.setQuery(QString());
+    proxy.setReadObservedOnly(true);
+    if (!proxyShows(proxy, QStringLiteral("ANC_OFF")) || proxyShows(proxy, QStringLiteral("ENC_OFF"))) {
+        return fail("read_observed_shows_fresh_device_value");
+    }
+    return true;
+}
+
 bool dirtyKeepsStaleDirtyRow(const ParameterCatalog& catalog) {
     ParameterRuntimeStore store;
     ParameterTableModel model{&catalog, &store};
@@ -155,6 +179,9 @@ bool runCase(std::string_view name, const ParameterCatalog& catalog, bool& recog
     }
     if (name == "dirty_keeps_stale_dirty_row") {
         return dirtyKeepsStaleDirtyRow(catalog);
+    }
+    if (name == "read_observed_shows_fresh_device_value") {
+        return readObservedShowsFreshDeviceValue(catalog);
     }
     recognized = false;
     return false;

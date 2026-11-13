@@ -7,6 +7,7 @@
 #include <string_view>
 
 class QLabel;
+class QPushButton;
 class QTabWidget;
 
 namespace ernc::domain {
@@ -36,6 +37,9 @@ public:
     /// @param opener 按钮按下时调用的函数。空函数表示按下后不做任何事。本控件复制这份函数。
     /// @note 只在 UI 主线程调用。这个按钮不改参数 id，也不写设备。
     void setOperationCenterOpener(std::function<void()> opener);
+
+    /// @brief 登记 Properties 页「从设备读取」动作。空表示禁用按钮逻辑。
+    void setScalarReadHandler(std::function<void(std::string_view)> handler);
 
     /// @brief 切到 Properties。
     /// @note 不改参数 id，也不写设备。只在 UI 主线程调用。
@@ -69,6 +73,11 @@ private:
 
     /// Diagnostics 上「操作中心」按钮按下时调用。空表示没有动作。不拥有操作中心。
     std::function<void()> operationCenterOpener_;
+
+    /// Properties 上「从设备读取」按下时调用。
+    std::function<void(std::string_view)> scalarReadHandler_;
+
+    QPushButton* scalarReadButton_{nullptr};
 
     /// 三个标签的页签控件。由本控件通过 Qt 父子关系拥有。
     QTabWidget* tabs_ = nullptr;

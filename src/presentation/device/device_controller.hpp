@@ -67,6 +67,9 @@ public:
     /// 单数组 FC03 整段读（模拟器同步泵；串口经 Worker 批量读覆盖）。
     void readArrayParameter(const QString& parameterId);
 
+    /// @brief 读取当前选中的 1-slot 标量。成功后经 parametersUpdated 刷新表与功能页。
+    void readScalarParameter(const QString& parameterId);
+
     /// 单数组写 dirty 元素（当前仅模拟器）。
     void writeArrayParameter(const QString& parameterId);
 
@@ -138,6 +141,8 @@ signals:
     void connectionChanged(bool connected, ernc::domain::SessionId sessionId);
     void parametersUpdated(ernc::domain::SessionId sessionId, const QStringList& parameterIds);
     void readPageFinished(bool success, QString detail);
+    /// @brief 单标量读结束。失败时 detail 含 scope；成功时 Store 已 observe。
+    void scalarReadFinished(bool success, QString parameterId, QString detail);
     /// @brief 本批标量写已结束。只在 UI 线程发出。
     /// @param acked 设备回 ACK 的条目数，不代表读回验证。
     /// @param failed 失败条目数，不含计划排除项。
@@ -171,7 +176,15 @@ private:
     void publishWriteResult(const std::vector<ernc::application::BatchWriteItem>& items);
     void pumpParameterReadSimulator();
     void finishBatchReadIfIdleSimulator();
-    void finishCanMsgReadIfIdleSimulator();
+    void finishParameterReadIfIdleSimulator();
+
+    enum class ParameterReadKind {
+        CanMsg,
+        Scalar,
+    };
+
+    bool parameterReaderBusy() const noexcept;
+    ernc::domain::ErrorCode validateScalarReadTarget(const ernc::domain::ParameterId& id) const noexcept;
     void pumpArrayIoSimulator();
     void pumpRegionReadSimulator();
     void finishRegionReadSimulator();
@@ -203,7 +216,9 @@ private:
     DeviceRuntimeWorker* serialWorker_{nullptr};
 
     std::optional<ernc::application::BatchReadTicket> activeRead_;
-    std::optional<ernc::application::ReadTicket> activeCanMsgRead_;
+    std::optional<ernc::application::ReadTicket> activeParameterRead_;
+    std::optional<ParameterReadKind> activeParameterReadKind_;
+    QString activeScalarReadId_;
     std::vector<float> canMsgSnapshot_;
     bool canMsgSnapshotValid_{false};
     std::string lastReadCategory_;
