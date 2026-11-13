@@ -81,7 +81,11 @@ public slots:
     quint64 sessionIdRaw() const;
     bool startBatchRead(const QString& pageId);
     bool startArrayRead(const QString& parameterId);
-    bool startScalarRead(const QString& parameterId);
+    /// @brief 在 Device Worker 线程校验单标量读取条件并尝试入队，不代表设备已响应或读回已验证。
+    /// @param parameterId 参数目录中的稳定 ID；本函数只在调用期间读取该字符串。
+    /// @return 0 表示命令已入队；非 0 为拒绝码，供 UI 线程记录为 worker_gate。
+    /// @note 调用方当前通过 BlockingQueuedConnection 等待入队结果；本函数不得同步回调 UI 线程。
+    int startScalarRead(const QString& parameterId);
     int startRegionRead(const QString& path);
     void cancelRegionRead();
     int startRegionWrite(const QString& path, const QByteArray& bytes);
@@ -90,6 +94,13 @@ public slots:
 
 signals:
     void stackReady();
+
+    /// @brief 发布 Worker 线程上的诊断快照，不表示命令 ACK 或读回 Verified。
+    /// @param action 稳定动作名；按值跨线程交给接收方。
+    /// @param detail JSON 对象文本；按值跨线程交给接收方。
+    /// @param success 当前诊断步骤是否成功，不代表整个读取完成。
+    /// @note 接收方必须使用 QueuedConnection 在其所属线程处理，避免与同步 Worker 调用形成双向阻塞。
+    void traceUiAction(QString action, QString detail, bool success);
 
 private:
     using RuntimeTime = ernc::domain::RuntimeTime;
@@ -101,6 +112,8 @@ private:
     void finishScalarReadIfIdle(PumpReport& report);
     void pumpRegionRead(PumpReport& report);
     void pumpRegionWrite(PumpReport& report);
+    void traceScalarWorkerGate(const QString& parameterId, int gate);
+
     RuntimeTime now() const noexcept;
 
     const ernc::domain::ParameterCatalog& catalog_;

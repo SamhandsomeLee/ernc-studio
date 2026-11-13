@@ -22,6 +22,7 @@
 #include "ernc/infrastructure/logging/diagnostic_log.hpp"
 
 #include <QMetaObject>
+#include <QThread>
 
 #include <sstream>
 
@@ -274,6 +275,14 @@ void DeviceController::connectSerial(const QString& portName, const int baudRate
     serialTransport_->start();
     serialWorker_ = new DeviceRuntimeWorker(catalog_, layout_, store_, arrayStore_, serialTransport_.get());
     serialWorker_->moveToThread(serialTransport_->thread());
+    // UI 到 Worker 的入队调用会同步等待；诊断只能排队回 UI 线程，不能形成反向同步等待。
+    QObject::connect(
+        serialWorker_, &DeviceRuntimeWorker::traceUiAction, this,
+        [this](const QString& action, const QString& detail, const bool success) {
+            recordUi(action.toStdString(), detail.toStdString(), success,
+                     success ? ErrorCode::Unknown : ErrorCode::InvalidParameter);
+        },
+        Qt::QueuedConnection);
     if (diagnosticLog_ != nullptr) {
         serialWorker_->attachDiagnosticLog(diagnosticLog_);
     }
@@ -317,14 +326,20 @@ void DeviceController::disconnectDevice() {
 
 Result<void> DeviceController::startRegionRead(const QString& path) {
     if (!connected()) {
+        recordUi("region.read.start", R"({"reason":"disconnected"})", false, ErrorCode::DeviceDisconnected);
         return Result<void>::failure(ErrorCode::DeviceDisconnected);
     }
     if (!regionCatalog_ || !activeRegionPath_.empty()) {
+        std::ostringstream detail;
+        detail << R"({"reason":"busy","active_region_path":)" << jsonQuote(activeRegionPath_)
+               << R"(,"catalog_loaded":)" << (regionCatalog_.has_value() ? "true" : "false") << "}";
+        recordUi("region.read.start", detail.str(), false, ErrorCode::InvalidParameter);
         return Result<void>::failure(ErrorCode::InvalidParameter);
     }
     const std::optional<ernc::domain::RegionDefinition> region =
         regionDefinitionFor(*regionCatalog_, path.toStdString());
     if (!region) {
+        recordUi("region.read.start", R"({"reason":"unknown_region"})", false, ErrorCode::InvalidParameter);
         return Result<void>::failure(ErrorCode::InvalidParameter);
     }
     if (linkKind_ == LinkKind::Serial && serialWorker_ != nullptr) {
@@ -332,25 +347,47 @@ Result<void> DeviceController::startRegionRead(const QString& path) {
         QMetaObject::invokeMethod(serialWorker_, "startRegionRead", Qt::BlockingQueuedConnection,
                                   Q_RETURN_ARG(int, code), Q_ARG(QString, path));
         if (code != 0) {
+            std::ostringstream detail;
+            detail << R"({"region":)" << jsonQuote(region->path) << R"(,"transport":"serial","worker_code":)" << code
+                   << "}";
+            recordUi("region.read.start", detail.str(), false, static_cast<ErrorCode>(code));
             return Result<void>::failure(static_cast<ErrorCode>(code));
         }
         activeRegionPath_ = region->path;
         activeRegionIsWrite_ = false;
         emit regionReadProgress(path, 0, region->size);
+        std::ostringstream detail;
+        detail << R"({"region":)" << jsonQuote(region->path) << R"(,"expected_bytes":)" << region->size
+               << R"(,"transport":"serial"})";
+        recordUi("region.read.start", detail.str(), true);
         return Result<void>::success();
     }
     if (linkKind_ != LinkKind::Simulator || simulatorRegionReader_ == nullptr || activeRead_.has_value()
         || parameterReaderBusy() || stack_.batchReader().busy()
         || stack_.batchWriter().busy()) {
+        std::ostringstream detail;
+        detail << R"({"reason":"busy","transport":"simulator","batch_read":)"
+               << (activeRead_.has_value() ? "true" : "false") << R"(,"scalar_read_pending":)"
+               << (parameterReaderBusy() ? "true" : "false") << "}";
+        recordUi("region.read.start", detail.str(), false, ErrorCode::InvalidParameter);
         return Result<void>::failure(ErrorCode::InvalidParameter);
     }
     const Result<void> started = simulatorRegionReader_->start(*region);
     if (!started.ok()) {
+        const ErrorCode code = started.tryError() != nullptr ? *started.tryError() : ErrorCode::Unknown;
+        std::ostringstream detail;
+        detail << R"({"region":)" << jsonQuote(region->path) << R"(,"transport":"simulator","error":)"
+               << static_cast<int>(code) << "}";
+        recordUi("region.read.start", detail.str(), false, code);
         return started;
     }
     activeRegionPath_ = region->path;
     activeRegionIsWrite_ = false;
     emit regionReadProgress(path, 0, region->size);
+    std::ostringstream detail;
+    detail << R"({"region":)" << jsonQuote(region->path) << R"(,"expected_bytes":)" << region->size
+           << R"(,"transport":"simulator"})";
+    recordUi("region.read.start", detail.str(), true);
     finishRegionReadSimulator();
     return Result<void>::success();
 }
@@ -789,6 +826,19 @@ ErrorCode DeviceController::validateScalarReadTarget(const ParameterId& id) cons
 }
 
 void DeviceController::readScalarParameter(const QString& parameterIdQString) {
+    {
+        std::ostringstream enter;
+        enter << R"({"parameter":)" << jsonQuote(parameterIdQString.toStdString()) << R"(,"transport":)";
+        if (linkKind_ == LinkKind::Serial) {
+            enter << "\"serial\"";
+        } else if (linkKind_ == LinkKind::Simulator) {
+            enter << "\"simulator\"";
+        } else {
+            enter << "\"none\"";
+        }
+        enter << R"(,"connected":)" << (connected() ? "true" : "false") << "}";
+        recordUi("parameter.scalar_read.enter", enter.str(), true);
+    }
     const QByteArray utf8 = parameterIdQString.toUtf8();
     const Result<ParameterId> parsed = ParameterId::parse(std::string_view{utf8.constData(), static_cast<std::size_t>(utf8.size())});
     if (!parsed.ok() || parsed.tryValue() == nullptr) {
@@ -797,31 +847,65 @@ void DeviceController::readScalarParameter(const QString& parameterIdQString) {
         return;
     }
     const ParameterId id = parsed.value();
+    {
+        std::ostringstream detail;
+        detail << R"({"parameter":)" << jsonQuote(id.text()) << "}";
+        recordUi("parameter.scalar_read.parsed", detail.str(), true);
+    }
     const ErrorCode targetError = validateScalarReadTarget(id);
     if (targetError != ErrorCode::Unknown) {
         recordUi("parameter.scalar_read.start", R"({"reason":"not_scalar"})", false, targetError);
         emit scalarReadFinished(false, parameterIdQString, QStringLiteral("不是可单读的 1-slot 标量"));
         return;
     }
+    if (const ernc::domain::ParameterDefinition* definition = catalog_.find(id.text()); definition != nullptr) {
+        std::ostringstream validated;
+        validated << R"({"parameter":)" << jsonQuote(id.text()) << R"(,"firmware_path":)";
+        if (definition->firmwarePath && !definition->firmwarePath->empty()) {
+            validated << jsonQuote(*definition->firmwarePath);
+        } else {
+            validated << R"("")";
+        }
+        validated << "}";
+        recordUi("parameter.scalar_read.validated", validated.str(), true);
+    }
     if (!connected()) {
         recordUi("parameter.scalar_read.start", R"({"reason":"disconnected"})", false, ErrorCode::DeviceDisconnected);
         emit scalarReadFinished(false, parameterIdQString, QStringLiteral("未连接设备"));
         return;
     }
-    if (activeArrayIo_.has_value() || stack_.batchReader().busy() || activeRead_.has_value() || writeBusy()
+    // stack_ 只拥有模拟器服务；串口忙状态由 serialWorker_ 判定，不能解引用空的模拟器 reader。
+    const bool simulatorBatchReadBusy =
+        linkKind_ == LinkKind::Simulator && stack_.connected() && stack_.batchReader().busy();
+    if (activeArrayIo_.has_value() || simulatorBatchReadBusy || activeRead_.has_value() || writeBusy()
         || !activeRegionPath_.empty()) {
-        recordUi("parameter.scalar_read.start", R"({"reason":"busy"})", false, ErrorCode::InvalidParameter);
+        std::ostringstream detail;
+        detail << R"({"reason":"busy","parameter":)" << jsonQuote(id.text()) << R"(,"active_region_path":)"
+               << jsonQuote(activeRegionPath_) << R"(,"batch_read":)"
+               << ((simulatorBatchReadBusy || activeRead_.has_value()) ? "true" : "false")
+               << R"(,"scalar_read_pending":)" << (parameterReaderBusy() ? "true" : "false")
+               << R"(,"array_io":)" << (activeArrayIo_.has_value() ? "true" : "false")
+               << R"(,"write_busy":)" << (writeBusy() ? "true" : "false") << "}";
+        recordUi("parameter.scalar_read.start", detail.str(), false, ErrorCode::InvalidParameter);
         emit scalarReadFinished(false, parameterIdQString, QStringLiteral("设备正忙"));
         return;
     }
     if (linkKind_ == LinkKind::Serial && serialWorker_ != nullptr) {
-        bool started = false;
-        QMetaObject::invokeMethod(
-            serialWorker_, "startScalarRead", Qt::BlockingQueuedConnection, Q_RETURN_ARG(bool, started),
-            Q_ARG(QString, parameterIdQString));
+        std::ostringstream beforeWorker;
+        beforeWorker << R"({"parameter":)" << jsonQuote(id.text()) << R"(,"worker_thread":)" << (serialWorker_->thread() == QThread::currentThread() ? "same" : "cross") << "}";
+        recordUi("parameter.scalar_read.before_worker", beforeWorker.str(), true);
+        int workerGate = -1;
+        QMetaObject::invokeMethod(serialWorker_, "startScalarRead", Qt::BlockingQueuedConnection, Q_RETURN_ARG(int, workerGate),
+                                  Q_ARG(QString, parameterIdQString));
+        std::ostringstream afterWorker;
+        afterWorker << R"({"parameter":)" << jsonQuote(id.text()) << R"(,"worker_gate":)" << workerGate << "}";
+        recordUi("parameter.scalar_read.after_worker", afterWorker.str(), workerGate == 0);
         std::ostringstream detail;
-        detail << R"({"parameter":)" << jsonQuote(id.text()) << R"(,"transport":"serial"})";
-        recordUi("parameter.scalar_read.start", detail.str(), started, started ? ErrorCode::Unknown : ErrorCode::InvalidParameter);
+        detail << R"({"parameter":)" << jsonQuote(id.text()) << R"(,"transport":"serial","worker_gate":)" << workerGate
+               << R"(,"active_region_path":)" << jsonQuote(activeRegionPath_) << "}";
+        const bool started = workerGate == 0;
+        recordUi("parameter.scalar_read.start", detail.str(), started,
+                 started ? ErrorCode::Unknown : ErrorCode::InvalidParameter);
         if (!started) {
             emit scalarReadFinished(false, parameterIdQString, QStringLiteral("单标量读入队失败"));
         }

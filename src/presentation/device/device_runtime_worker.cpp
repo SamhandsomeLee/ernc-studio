@@ -233,23 +233,84 @@ bool DeviceRuntimeWorker::startBatchRead(const QString& pageId) {
     return true;
 }
 
-bool DeviceRuntimeWorker::startScalarRead(const QString& parameterId) {
-    if (stack_ == nullptr || !stack_->connected() || activeRead_.has_value() || activeScalarRead_.has_value()
-        || stack_->batchReader().busy() || stack_->parameterReader().busy() || stack_->batchWriter().busy()) {
-        return false;
+void DeviceRuntimeWorker::traceScalarWorkerGate(const QString& parameterId, const int gate) {
+    std::ostringstream detail;
+    detail << R"({"parameter":)" << jsonQuote(parameterId.toStdString()) << R"(,"gate":)" << gate << "}";
+    emit traceUiAction(QStringLiteral("parameter.scalar_read.worker.gate"), QString::fromStdString(detail.str()), false);
+}
+
+int DeviceRuntimeWorker::startScalarRead(const QString& parameterId) {
+    using ernc::domain::ErrorCode;
+    {
+        std::ostringstream detail;
+        detail << R"({"parameter":)" << jsonQuote(parameterId.toStdString()) << "}";
+        emit traceUiAction(QStringLiteral("parameter.scalar_read.worker.enter"), QString::fromStdString(detail.str()), true);
+    }
+    if (stack_ == nullptr || !stack_->connected()) {
+        traceScalarWorkerGate(parameterId, 1);
+        return 1;
+    }
+    if (!activeRegionPath_.empty()) {
+        std::ostringstream detail;
+        detail << R"({"parameter":)" << jsonQuote(parameterId.toStdString()) << R"(,"active_region_path":)"
+               << jsonQuote(activeRegionPath_) << "}";
+        emit traceUiAction(QStringLiteral("parameter.scalar_read.worker.gate"), QString::fromStdString(detail.str()), false);
+        return 2;
+    }
+    if (regionReader_ != nullptr && regionReader_->busy()) {
+        traceScalarWorkerGate(parameterId, 3);
+        return 3;
+    }
+    if (activeRead_.has_value()) {
+        traceScalarWorkerGate(parameterId, 4);
+        return 4;
+    }
+    if (activeScalarRead_.has_value()) {
+        traceScalarWorkerGate(parameterId, 5);
+        return 5;
+    }
+    if (stack_->batchReader().busy()) {
+        traceScalarWorkerGate(parameterId, 6);
+        return 6;
+    }
+    if (stack_->parameterReader().busy()) {
+        traceScalarWorkerGate(parameterId, 7);
+        return 7;
+    }
+    if (stack_->batchWriter().busy()) {
+        traceScalarWorkerGate(parameterId, 8);
+        return 8;
     }
     const ernc::domain::Result<ernc::domain::ParameterId> parsed =
         ernc::domain::ParameterId::parse(parameterId.toStdString());
     if (!parsed.ok() || parsed.tryValue() == nullptr) {
-        return false;
+        traceScalarWorkerGate(parameterId, 9);
+        return 9;
+    }
+    {
+        std::ostringstream detail;
+        detail << R"({"parameter":)" << jsonQuote(parameterId.toStdString()) << "}";
+        emit traceUiAction(QStringLiteral("parameter.scalar_read.worker.before_enqueue"), QString::fromStdString(detail.str()),
+                           true);
     }
     const ernc::domain::Result<ernc::application::ReadTicket> started = stack_->parameterReader().read(*parsed.tryValue());
     if (!started.ok() || started.tryValue() == nullptr) {
-        return false;
+        const int code = static_cast<int>(started.tryError() != nullptr ? *started.tryError() : ErrorCode::Unknown);
+        std::ostringstream detail;
+        detail << R"({"parameter":)" << jsonQuote(parameterId.toStdString()) << R"(,"error":)" << code << "}";
+        emit traceUiAction(QStringLiteral("parameter.scalar_read.worker.enqueue_failed"), QString::fromStdString(detail.str()),
+                           false);
+        return code;
     }
     activeScalarRead_ = started.value();
     activeScalarReadId_ = parameterId;
-    return true;
+    {
+        std::ostringstream detail;
+        detail << R"({"parameter":)" << jsonQuote(parameterId.toStdString()) << R"(,"commands":)"
+               << started.value().commands().size() << "}";
+        emit traceUiAction(QStringLiteral("parameter.scalar_read.worker.enqueued"), QString::fromStdString(detail.str()), true);
+    }
+    return 0;
 }
 
 bool DeviceRuntimeWorker::startArrayRead(const QString& parameterId) {
@@ -416,7 +477,9 @@ void DeviceRuntimeWorker::finishScalarReadIfIdle(PumpReport& report) {
     const ernc::application::ParameterReadImage* image = stack_->parameterReader().image();
     const bool success = image != nullptr && image->scalar;
     std::ostringstream detail;
-    detail << R"({"scope":"scalar","parameter":)" << jsonQuote(activeScalarReadId_.toStdString()) << "}";
+    detail << R"({"scope":"scalar","parameter":)" << jsonQuote(activeScalarReadId_.toStdString())
+           << R"(,"scalar_observed":)" << (success ? "true" : "false");
+    detail << "}";
     report.scalarReadFinished = true;
     report.scalarReadSuccess = success;
     report.scalarReadParameterId = activeScalarReadId_;
