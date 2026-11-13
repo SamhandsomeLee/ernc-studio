@@ -41,6 +41,15 @@ OperationCenterPanel::OperationCenterPanel(QWidget* parent)
     cancel->setEnabled(false);
     layout->addWidget(cancel, 0, Qt::AlignLeft);
 
+    auto* exportLogs = new QPushButton(QStringLiteral("导出日志压缩包…"), this);
+    exportLogs->setObjectName(QStringLiteral("erncOperationExportLogs"));
+    QObject::connect(exportLogs, &QPushButton::clicked, this, [this]() {
+        if (exportLogsHandler_) {
+            exportLogsHandler_();
+        }
+    });
+    layout->addWidget(exportLogs, 0, Qt::AlignLeft);
+
     logView_ = new QPlainTextEdit(this);
     logView_->setObjectName(QStringLiteral("erncOperationLog"));
     logView_->setReadOnly(true);
@@ -52,6 +61,10 @@ void OperationCenterPanel::bindSessionLog(ernc::infrastructure::AppSessionLog* l
     sessionLog_ = log;
     onRefresh_ = std::move(onRefresh);
     refreshFromSession();
+}
+
+void OperationCenterPanel::setExportLogsHandler(std::function<void()> handler) {
+    exportLogsHandler_ = std::move(handler);
 }
 
 void OperationCenterPanel::refreshFromSession() {

@@ -28,9 +28,13 @@ public:
     /// @brief 从结构化日志重画操作摘要。
     void refreshFromSession();
 
+    /// @brief 绑定「导出日志压缩包」动作（由主窗口提供实现）。
+    void setExportLogsHandler(std::function<void()> handler);
+
 private:
     ernc::infrastructure::AppSessionLog* sessionLog_ = nullptr;
     std::function<void()> onRefresh_;
+    std::function<void()> exportLogsHandler_;
     OperationLog log_;
     QLabel* diagnosisLabel_ = nullptr;
     QPlainTextEdit* logView_ = nullptr;

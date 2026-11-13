@@ -4,6 +4,8 @@
 
 #include "ernc/application/project/legacy_param_json_bridge.hpp"
 #include "ernc/application/project/project_session.hpp"
+#include "ernc/infrastructure/logging/app_session_log.hpp"
+#include "ernc/infrastructure/logging/session_log_archive.hpp"
 #include "workspace/editor_tabs.hpp"
 
 #include <QAction>
@@ -15,13 +17,16 @@
 #include <QMenu>
 #include <QMenuBar>
 #include <QMessageBox>
+#include <QDateTime>
 #include <QProgressDialog>
+#include <QSettings>
 #include <QStatusBar>
 #include <QStringList>
 #include <QtConcurrentRun>
 
 #include <chrono>
 #include <filesystem>
+#include <sstream>
 #include <type_traits>
 
 namespace ernc::presentation {
@@ -389,6 +394,88 @@ void MainWindow::exportParameters() {
     }
     statusBar()->showMessage(QStringLiteral("已导出 %1 项参数，其中 %2 项为过期设备读数。%3")
                              .arg(count).arg(staleReads).arg(path), 5000);
+}
+
+namespace {
+
+constexpr QLatin1StringView kLastLogExportDirectoryKey("diagnostics/lastLogExportDirectory");
+
+QString loadLastLogExportDirectory() {
+    QSettings settings;
+    const QString stored = settings.value(kLastLogExportDirectoryKey).toString();
+    if (stored.isEmpty()) {
+        return QString();
+    }
+    const QFileInfo info(stored);
+    if (!info.isDir() || !info.exists()) {
+        return QString();
+    }
+    return info.absoluteFilePath();
+}
+
+void storeLastLogExportDirectory(const QString& directory) {
+    if (directory.isEmpty()) {
+        return;
+    }
+    const QFileInfo info(directory);
+    if (!info.isDir() || !info.exists()) {
+        return;
+    }
+    QSettings settings;
+    settings.setValue(kLastLogExportDirectoryKey, info.absoluteFilePath());
+}
+
+}  // namespace
+
+void MainWindow::exportSessionLogs() {
+    if (sessionLog_ == nullptr) {
+        QMessageBox::information(this, QStringLiteral("导出日志压缩包"), QStringLiteral("当前没有可用的会话日志目录。"));
+        return;
+    }
+    const QMessageBox::StandardButton proceed = QMessageBox::warning(
+        this, QStringLiteral("导出日志压缩包"),
+        QStringLiteral("压缩包可能包含串口与协议报文记录，请勿发往不可信第三方。是否继续？"),
+        QMessageBox::Ok | QMessageBox::Cancel, QMessageBox::Cancel);
+    if (proceed != QMessageBox::Ok) {
+        return;
+    }
+
+    const QString defaultName =
+        QStringLiteral("ERNC-logs-%1.zip").arg(QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd-HHmmss")));
+    QFileDialog dialog(this, QStringLiteral("导出日志压缩包"), loadLastLogExportDirectory(),
+                       QStringLiteral("ZIP 压缩包 (*.zip)"));
+    dialog.setAcceptMode(QFileDialog::AcceptSave);
+    dialog.setDefaultSuffix(QStringLiteral("zip"));
+    dialog.selectFile(defaultName);
+    if (dialog.exec() != QDialog::Accepted) {
+        return;
+    }
+    const QString path = dialog.selectedFiles().constFirst();
+    if (path.isEmpty()) {
+        return;
+    }
+    storeLastLogExportDirectory(QFileInfo(path).absolutePath());
+
+    if (const auto snapshot = sessionLog_->exportSnapshot(); !snapshot.ok()) {
+        showFileFailure(*this, QStringLiteral("导出日志压缩包失败"), path, snapshot.error());
+        return;
+    }
+
+    const std::filesystem::path logsRoot = sessionLog_->sessionDirectory().parent_path();
+    const auto archived = runFileJob(*this, QStringLiteral("正在打包日志…"),
+                                     [logsRoot, zip = nativePath(path)] {
+                                         return ernc::infrastructure::exportSessionLogsToZip(logsRoot, zip);
+                                     });
+    if (!archived.ok()) {
+        showFileFailure(*this, QStringLiteral("导出日志压缩包失败"), path, archived.error());
+        recordUiAction("log.export.zip", std::string{"{\"path\":\""} + path.toStdString() + "\"}", false,
+                       archived.error());
+        return;
+    }
+    statusBar()->showMessage(QStringLiteral("已导出日志压缩包：%1").arg(path), 8000);
+    std::ostringstream detail;
+    detail << "{\"path\":\"" << path.toStdString() << "\",\"logs_root\":\"" << logsRoot.string() << "\"}";
+    recordUiAction("log.export.zip", detail.str(), true);
 }
 
 }  // namespace ernc::presentation

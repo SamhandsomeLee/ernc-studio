@@ -84,6 +84,9 @@ private:
     /// @brief 按 Set 优先、Read 回退的规则写旧版 JSON，源值只在 UI 线程复制。
     void exportParameters();
 
+    /// @brief 将会话日志目录树打包为 zip。导出前先刷新结构化快照。
+    void exportSessionLogs();
+
     /// @brief 增加一个可拖动、可浮动、可关闭的占位 Dock。
     /// @param objectName 稳定的对象名。调用方拥有该字符串的原件，本函数只复制它。
     /// @param title 标题栏和面板里显示的区域名称。不是设备状态。

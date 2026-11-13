@@ -1021,6 +1021,12 @@ target_link_libraries(ernc_app_session_log_tests PRIVATE ernc_logging)
 
 add_test(NAME app_session_log.writes_operations_jsonl COMMAND ernc_app_session_log_tests)
 
+add_executable(ernc_session_log_archive_tests session_log_archive_test.cpp)
+
+target_link_libraries(ernc_session_log_archive_tests PRIVATE ernc_logging)
+
+add_test(NAME session_log_archive.zip_contains_session_files COMMAND ernc_session_log_archive_tests)
+
 add_executable(ernc_theme_tokens_tests
     theme_tokens_test.cpp
 )

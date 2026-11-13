@@ -220,6 +220,7 @@ MainWindow::MainWindow(ernc::domain::CatalogLoad catalog, QString catalogPath, Q
     QWidget* previousOperation = operationCenter_->widget();
     operationCenter_->setWidget(operationPanel_);
     delete previousOperation;
+    operationPanel_->setExportLogsHandler([this] { exportSessionLogs(); });
 
     const std::filesystem::path sessionDirectory = createSessionLogDirectory();
     if (!sessionDirectory.empty()) {
@@ -387,6 +388,10 @@ MainWindow::MainWindow(ernc::domain::CatalogLoad catalog, QString catalogPath, Q
         applyWorkspace(presetLayout(WorkspacePreset::FaultDiagnosis));
     });
     connect(restoreDefault, &QAction::triggered, this, [this] { restoreDefaultShellLayout(); });
+
+    QMenu* helpMenu = menuBar()->addMenu(QStringLiteral("帮助"));
+    QAction* exportLogs = helpMenu->addAction(QStringLiteral("导出日志压缩包…"), this, &MainWindow::exportSessionLogs);
+    exportLogs->setEnabled(sessionLog_ != nullptr);
 
     auto* tools = addToolBar(kProjectBundleUiEnabled ? QStringLiteral("工程工具栏") : QStringLiteral("工具栏"));
     tools->setObjectName(QStringLiteral("erncWorkbenchTools"));
