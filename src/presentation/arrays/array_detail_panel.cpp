@@ -27,6 +27,7 @@ ArrayDetailPanel::ArrayDetailPanel(const ernc::domain::ParameterCatalog* catalog
     auto* readButton = new QPushButton(QStringLiteral("读本参数"), this);
     auto* writeButton = new QPushButton(QStringLiteral("写已改"), this);
     auto* resetButton = new QPushButton(QStringLiteral("收回 Set"), this);
+    resetButton->setVisible(false);
     actions->addWidget(readButton);
     actions->addWidget(writeButton);
     actions->addWidget(resetButton);

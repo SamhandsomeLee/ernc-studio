@@ -15,7 +15,7 @@ namespace ernc::presentation {
 
 class ArrayEditorModel;
 
-/// 底部「数组详情」：Read/Set 表与读本参数 / 写已改 / 收回 Set。
+/// 底部「数组详情」：Read/Set 表与读本参数 / 写已改（收回 Set 入口暂隐藏）。
 class ArrayDetailPanel final : public QWidget {
     Q_OBJECT
 public:
