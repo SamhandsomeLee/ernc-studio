@@ -1,6 +1,8 @@
 #include "parameters/write_plan_dialog.hpp"
 
+#include "device/device_runtime_worker.hpp"
 #include "ernc/application/batch_write.hpp"
+#include "ernc/domain/array_runtime_store.hpp"
 #include "ernc/domain/catalog.hpp"
 #include "ernc/domain/firmware_layout.hpp"
 #include "ernc/domain/runtime_store.hpp"
@@ -17,6 +19,7 @@
 #include <iostream>
 #include <span>
 #include <string_view>
+#include <thread>
 #include <vector>
 
 namespace {
@@ -455,10 +458,10 @@ bool mismatchShowsDiagnostic(const ParameterCatalog& catalog, const FirmwareLayo
     return true;
 }
 
-/// @brief 写 ACK 超时后显示 ResponseTimeout，并且不再提交 FC16。
+/// @brief 写 ACK 超时后显示结果未知，释放弹窗，并保留目标值供读回后确认是否重试。
 /// @param catalog 正式目录。
 /// @param layout 正式布局。
-/// @return 状态为失败，诊断为 ResponseTimeout，提交数仍为 1 时为 true。
+/// @return 结束后能关闭弹窗，重新预览可手动确认，且仅提交了一条 FC16 时为 true。
 bool timeoutDoesNotResend(const ParameterCatalog& catalog, const FirmwareLayout& layout) {
     SilentBench bench{catalog, layout};
     if (!bench.session.connect().ok()) {
@@ -471,6 +474,7 @@ bool timeoutDoesNotResend(const ParameterCatalog& catalog, const FirmwareLayout&
     bench.store.stage(anc, ScalarValue::fromFloat(0.0F), RuntimeTime{std::chrono::seconds{8}});
     WritePlanDialog dialog(sourcesFor(catalog, bench.store, layout, "ERNC_Flag"));
     dialog.setWriter(&bench.writer, &bench.scheduler);
+    dialog.show();
     dialog.confirmWrite();
     const std::vector<std::vector<std::uint8_t>>& frames = bench.transport.submitted();
     if (frames.size() != 1U || !oneSlotHeader(frames[0], 0x10, 0)) {
@@ -481,7 +485,8 @@ bool timeoutDoesNotResend(const ParameterCatalog& catalog, const FirmwareLayout&
     bench.scheduler.pump(start, once);
     dialog.noteProgress();
     const int row = dialog.rowOf(QStringLiteral("ANC_OFF"));
-    if (row < 0 || cellAt(dialog, row, WritePlanColumn::Status) != QStringLiteral("正在写入") || frames.size() != 1U) {
+    if (row < 0 || cellAt(dialog, row, WritePlanColumn::Status) != QStringLiteral("正在写入") || frames.size() != 1U
+        || dialog.close()) {
         return fail("timeout_does_not_resend");
     }
     bench.scheduler.pump(start + kAckWait, once);
@@ -493,11 +498,62 @@ bool timeoutDoesNotResend(const ParameterCatalog& catalog, const FirmwareLayout&
     dialog.noteProgress();
     const ernc::domain::ParameterRuntimeState* state = bench.store.find(anc);
     if (state == nullptr || !state->dirty || !state->stagedValue || cellAt(dialog, row, WritePlanColumn::Status) != QStringLiteral("失败")
-        || cellAt(dialog, row, WritePlanColumn::Diagnostic) != QStringLiteral("ResponseTimeout")
-        || cellAt(dialog, row, WritePlanColumn::Set) != QStringLiteral("开") || frames.size() != 1U || countFunction(frames, 0x10) != 1) {
+        || cellAt(dialog, row, WritePlanColumn::Diagnostic) != QStringLiteral("响应超时，写入结果未知")
+        || cellAt(dialog, row, WritePlanColumn::Set) != QStringLiteral("开") || frames.size() != 1U || countFunction(frames, 0x10) != 1
+        || !dialog.diagnosticText().contains(QStringLiteral("读回设备值")) || !dialog.close() || dialog.isVisible()) {
+        return fail("timeout_does_not_resend");
+    }
+    WritePlanDialog reopened(sourcesFor(catalog, bench.store, layout, "ERNC_Flag"));
+    if (!reopened.confirmEnabled() || frames.size() != 1U) {
         return fail("timeout_does_not_resend");
     }
     return true;
+}
+
+/// @brief 让一条写排在无响应的读之后，验证桌面 Worker 能结束两条请求并释放批次。
+/// @param catalog 正式目录，在本用例内借用。
+/// @param layout 正式布局，在本用例内借用。
+/// @return 各发送一次 FC03 和 FC16，写以 ResponseTimeout 结束且 Set 仍待写时为 true。
+bool serialWorkerTimesOutQueuedWrite(const ParameterCatalog& catalog, const FirmwareLayout& layout) {
+    SilentTransport transport;
+    ParameterRuntimeStore store;
+    ernc::domain::ArrayRuntimeStore arrayStore;
+    ernc::presentation::DeviceRuntimeWorker worker(catalog, layout, store, arrayStore, &transport);
+    const ParameterId anc = ParameterId::parse("ANC_OFF").value();
+    store.stage(anc, ScalarValue::fromFloat(1.0F), std::chrono::system_clock::now());
+    if (!worker.doConnect()) {
+        return fail("serial_worker_times_out_queued_write: connect");
+    }
+    if (worker.startScalarRead(QStringLiteral("ANC_OFF")) != 0 || worker.startBatchWrite(QStringLiteral("ALL")) != 0
+        || transport.submitted().size() != 1U || !worker.isWriteBusy()) {
+        worker.doDisconnect();
+        return fail("serial_worker_times_out_queued_write: enqueue");
+    }
+
+    // 两条命令各等待 1 秒，测试上限留出调度余量，也能在回归时有界退出。
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds{5};
+    auto report = worker.doPump();
+    while (!report.writeFinished && std::chrono::steady_clock::now() < deadline) {
+        std::this_thread::sleep_for(std::chrono::milliseconds{10});
+        report = worker.doPump();
+    }
+    const bool busy = worker.isWriteBusy();
+    worker.doDisconnect();
+    const auto& frames = transport.submitted();
+    const auto* state = store.find(anc);
+    if (!report.writeFinished || report.writeSuccess || report.writerBusy || report.writeInflight || busy
+        || frames.size() != 2U || countFunction(frames, 0x03) != 1 || countFunction(frames, 0x10) != 1
+        || state == nullptr || !state->dirty || !state->stagedValue || state->deviceValue
+        || state->error != ernc::domain::ErrorCode::ResponseTimeout) {
+        return fail("serial_worker_times_out_queued_write: result");
+    }
+    for (const auto& item : report.writeItems) {
+        if (item.id == anc && item.kind == ernc::application::BatchWriteKind::Failed
+            && item.error == ernc::domain::ErrorCode::ResponseTimeout) {
+            return true;
+        }
+    }
+    return fail("serial_worker_times_out_queued_write: missing item result");
 }
 
 /// @brief 按用例名运行一个检查。
@@ -528,6 +584,9 @@ bool runCase(std::string_view name, const ParameterCatalog& catalog, const Firmw
     }
     if (name == "timeout_does_not_resend") {
         return timeoutDoesNotResend(catalog, layout);
+    }
+    if (name == "serial_worker_times_out_queued_write") {
+        return serialWorkerTimesOutQueuedWrite(catalog, layout);
     }
     recognized = false;
     return false;

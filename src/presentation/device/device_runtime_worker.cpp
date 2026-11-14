@@ -22,6 +22,9 @@ namespace {
 
 constexpr std::size_t kCanMsgElementCount = 72U;
 
+/// 沿用旧版 CHNB main.py 的 COMMAND_TIMEOUT（1 秒）。每条命令只提交一次，超时后交付失败结果。
+constexpr ernc::application::ReadRetryLimit kSerialResponseLimit{std::chrono::seconds{1}, 1};
+
 std::string jsonQuote(const std::string& text) {
     std::string out;
     out.reserve(text.size() + 2U);
@@ -73,7 +76,7 @@ DeviceRuntimeWorker::DeviceRuntimeWorker(const ernc::domain::ParameterCatalog& c
                                          const ernc::domain::FirmwareLayout& layout,
                                          ernc::domain::ParameterRuntimeStore& store,
                                          ernc::domain::ArrayRuntimeStore& arrayStore,
-                                         ernc::serial::SerialTransport* transport, QObject* parent)
+                                         ernc::ports::IDeviceTransport* transport, QObject* parent)
     : QObject(parent), catalog_{catalog}, layout_{layout}, store_{store}, arrayStore_{arrayStore}, transport_{transport} {
     const ernc::domain::Result<ernc::domain::RegionCatalog> regions = ernc::domain::RegionCatalog::load(layout_);
     if (regions.ok() && regions.tryValue() != nullptr) {
@@ -412,7 +415,8 @@ DeviceRuntimeWorker::PumpReport DeviceRuntimeWorker::doPump() {
     if (stack_ == nullptr || !stack_->connected()) {
         return report;
     }
-    stack_->scheduler().pump();
+    // 同一条队列里的读命令也需要超时终态，否则排在它后面的写无法发送。
+    stack_->scheduler().pump(std::chrono::steady_clock::now(), kSerialResponseLimit);
     pumpBatchRead();
     pumpScalarRead();
     pumpCanMsgRead();

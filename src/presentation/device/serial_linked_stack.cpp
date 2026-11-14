@@ -1,12 +1,10 @@
 #include "device/serial_linked_stack.hpp"
 
-#include "serial_transport.hpp"
-
 namespace ernc::presentation {
 
 SerialLinkedStack::SerialLinkedStack(const ernc::domain::ParameterCatalog& catalog, const ernc::domain::FirmwareLayout& layout,
                                      ernc::domain::ParameterRuntimeStore& store, ernc::domain::ArrayRuntimeStore& arrayStore,
-                                     ernc::serial::SerialTransport& transport)
+                                     ernc::ports::IDeviceTransport& transport)
     : catalog_{catalog}, layout_{layout}, store_{store}, arrayStore_{arrayStore}, transport_{transport} {}
 
 SerialLinkedStack::~SerialLinkedStack() {

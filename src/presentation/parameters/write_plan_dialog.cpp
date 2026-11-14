@@ -400,6 +400,9 @@ void WritePlanDialog::noteProgressFromWorker(const std::vector<ernc::application
         }
     }
 
+    bool hasTimeout = false;
+    int ackedCount = 0;
+    int failedCount = 0;
     for (int row = 0; row < static_cast<int>(rows_.size()); ++row) {
         const PlanRow& planRow = rows_[static_cast<std::size_t>(row)];
         const ernc::domain::ParameterDefinition* definition = sources_.catalog->find(planRow.id.text());
@@ -426,14 +429,21 @@ void WritePlanDialog::noteProgressFromWorker(const std::vector<ernc::application
             case ernc::application::BatchWriteKind::Verified:
                 // 当前批量标量写收到 FC16 ACK 后结束。历史枚举名不代表独立读回。
                 status = QStringLiteral("设备已确认 (ACK)");
+                ++ackedCount;
                 break;
             case ernc::application::BatchWriteKind::Mismatch:
                 status = QStringLiteral("读回不一致");
                 diagnostic = errorName(item->error.value_or(ernc::domain::ErrorCode::ReadBackMismatch));
+                ++failedCount;
                 break;
             case ernc::application::BatchWriteKind::Failed:
                 status = QStringLiteral("失败");
                 diagnostic = errorName(item->error.value_or(ernc::domain::ErrorCode::Unknown));
+                if (item->error == ernc::domain::ErrorCode::ResponseTimeout) {
+                    diagnostic = QStringLiteral("响应超时，写入结果未知");
+                    hasTimeout = true;
+                }
+                ++failedCount;
                 break;
             }
         } else if (row == currentRow) {
@@ -459,6 +469,13 @@ void WritePlanDialog::noteProgressFromWorker(const std::vector<ernc::application
                 diagnosticItem->setText(diagnostic);
             }
         }
+    }
+    if (!inflight && (ackedCount > 0 || failedCount > 0)) {
+        QString summary = QStringLiteral("写入结束 · %1 项设备已确认 · %2 项失败或未确认").arg(ackedCount).arg(failedCount);
+        if (hasTimeout) {
+            summary += QStringLiteral("。请先关闭窗口并读回设备值，再决定是否重试。");
+        }
+        diagnosticLabel_->setText(summary);
     }
 }
 

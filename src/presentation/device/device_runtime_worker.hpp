@@ -27,10 +27,6 @@ class RegionReader;
 class RegionWriter;
 }
 
-namespace ernc::serial {
-class SerialTransport;
-}
-
 namespace ernc::presentation {
 
 /// 运行在 SerialTransport Worker 线程上的设备运行时。
@@ -67,14 +63,23 @@ public:
         std::vector<float> canMsgElements;
     };
 
+    /// @brief 在 Device Worker 线程推进串口队列及响应超时。超时后释放在途命令，写入结果可能未知。
+    /// @return 按值交给 UI 的进度与终态快照。
     Q_INVOKABLE PumpReport doPump();
     Q_INVOKABLE bool isWriteBusy() const;
     /// @return 已入队 Can_Msg 读且尚未在 pump 中结束时为 true。
     Q_INVOKABLE bool canMsgReadBusy() const;
 
+    /// @brief 建立设备运行时。调用 doConnect 前将它移到传输端口的所属线程。
+    /// @param catalog 借用的参数目录，须比 Worker 存活更久。
+    /// @param layout 借用的固件布局，须比 Worker 存活更久。
+    /// @param store 借用的标量运行状态，须比 Worker 存活更久。
+    /// @param arrayStore 借用的数组运行状态，须比 Worker 存活更久。
+    /// @param transport 调用方持有的端口，须比 Worker 存活更久。为空时拒绝连接。
+    /// @param parent Qt 所有者。跨线程移动时须为空。
     DeviceRuntimeWorker(const ernc::domain::ParameterCatalog& catalog, const ernc::domain::FirmwareLayout& layout,
                         ernc::domain::ParameterRuntimeStore& store, ernc::domain::ArrayRuntimeStore& arrayStore,
-                        ernc::serial::SerialTransport* transport, QObject* parent = nullptr);
+                        ernc::ports::IDeviceTransport* transport, QObject* parent = nullptr);
 
     ~DeviceRuntimeWorker() override;
 
@@ -131,7 +136,8 @@ private:
     const ernc::domain::FirmwareLayout& layout_;
     ernc::domain::ParameterRuntimeStore& store_;
     ernc::domain::ArrayRuntimeStore& arrayStore_;
-    ernc::serial::SerialTransport* transport_;
+    /// 借用的端口。连接及 I/O 只在端口的所属线程执行。
+    ernc::ports::IDeviceTransport* transport_;
 
     std::unique_ptr<SerialLinkedStack> stack_;
     std::optional<ernc::domain::RegionCatalog> regionCatalog_;

@@ -92,7 +92,10 @@ public:
     /// @note 不发送命令，也不取走调度器结果。没有绑定写对象时什么都不做。只在 UI 主线程调用。
     void noteProgress();
 
-    /// @brief 串口 Worker 上的批量写快照刷新表格。只在 UI 主线程调用。
+    /// @brief 在 UI 主线程刷新当前批次的进度及结果。超时保留 Set，并提示先读回再重试。
+    /// @param items 批量写结果快照，只在本次调用期间借用。
+    /// @param inflight 已提交给调度器、尚无终态的命令编号，空表示没有在途写入。
+    /// @param phase 在途命令的写入阶段，空表示没有可显示的 ACK 或读回阶段。
     void noteProgressFromWorker(const std::vector<ernc::application::BatchWriteItem>& items,
                                 const std::optional<ernc::application::CommandId>& inflight,
                                 const std::optional<ernc::application::WritePhase>& phase);

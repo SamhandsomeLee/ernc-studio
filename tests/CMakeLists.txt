@@ -1223,6 +1223,9 @@ if(ERNC_BUILD_UI)
 
     add_executable(ernc_write_plan_dialog_tests
         write_plan_dialog_test.cpp
+        ../src/presentation/device/device_controller.cpp
+        ../src/presentation/device/device_runtime_worker.cpp
+        ../src/presentation/device/serial_linked_stack.cpp
         ../src/presentation/parameters/write_plan_dialog.cpp
     )
 
@@ -1230,7 +1233,8 @@ if(ERNC_BUILD_UI)
         "${CMAKE_SOURCE_DIR}/src/presentation"
     )
 
-    target_link_libraries(ernc_write_plan_dialog_tests PRIVATE Qt6::Widgets ernc_domain ernc_application ernc_simulator)
+    target_link_libraries(ernc_write_plan_dialog_tests PRIVATE Qt6::Widgets ernc_domain ernc_application ernc_simulator ernc_serial)
+    set_target_properties(ernc_write_plan_dialog_tests PROPERTIES AUTOMOC ON)
 
     set(ernc_write_plan_dialog_cases
         flag_preview_before_write
@@ -1240,6 +1244,7 @@ if(ERNC_BUILD_UI)
         ack_then_verified
         mismatch_shows_diagnostic
         timeout_does_not_resend
+        serial_worker_times_out_queued_write
     )
 
     foreach(ernc_write_plan_dialog_case IN LISTS ernc_write_plan_dialog_cases)
