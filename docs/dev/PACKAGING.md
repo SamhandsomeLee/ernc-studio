@@ -22,9 +22,11 @@ powershell -NoProfile -File .\tools\package-win.ps1
 
 Release 构建会使用 `resolveBundledResourcePath`：优先加载 exe 同级的 `catalog/`、`firmware/` 等；开发树 Debug 构建仍回退到 CMake 源码绝对路径。
 
+脚本不会只依赖 `windeployqt --compiler-runtime`。在 Qt 部署完成后，它使用锁定工具链中的 `objdump.exe` 递归解析暂存目录内全部 EXE/DLL，从 `D:/msys64/mingw64/bin` 补齐 GCC、ICU、PCRE2、zlib 等非系统动态依赖。项目只使用 SQLite，因此不会部署需要外部客户端运行库的 Firebird、MySQL、ODBC 和 PostgreSQL 驱动。依赖闭包不完整或隔离 PATH 下的 `--exit-after-show` 冒烟启动失败时，打包会在生成 ZIP/setup 前终止。
+
 ## 安装包（setup.exe）
 
-- 默认安装到 `C:\Program Files\ERNC Studio`，包含 exe、Qt 运行时、`catalog/`、`firmware/`、`resources/keymap/`。
+- 默认安装到 `C:\Program Files\ERNC Studio`，包含 exe、Qt/Qwt/MINGW64 运行时、`catalog/`、`firmware/`、`resources/keymap/`。
 - 创建桌面与开始菜单快捷方式；可在「应用和功能」中卸载。
 - 需管理员确认（UAC）。
 
